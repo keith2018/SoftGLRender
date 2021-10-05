@@ -1,0 +1,36 @@
+{
+	"model": {
+		"AfricanHead": {
+			"path": "AfricanHead/african_head.obj"
+		},
+		"Brickwall": {
+			"path": "Brickwall/brickwall.obj"
+		},
+		"Cube": {
+			"path": "Cube/Cube.gltf"
+		},
+		"DamagedHelmet": {
+			"path": "DamagedHelmet/DamagedHelmet.gltf"
+		},
+		"BoomBox": {
+			"path": "BoomBox/BoomBox.gltf"
+		},
+		"GlassTable": {
+			"path": "GlassTable/scene.gltf"
+		},
+		"Robot": {
+			"path": "Robot/scene.gltf"
+		}
+	},
+	"skybox": {
+		"Lake": {
+			"path": "Skybox/Lake/"
+		},
+		"Room": {
+			"path": "Skybox/Room.jpeg"
+		},
+		"Hotel": {
+			"path": "Skybox/Hotel.jpg"
+		}
+	}
+}

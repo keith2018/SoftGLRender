@@ -1,0 +1,11 @@
+.DS_Store
+.idea/
+.vs/
+cmake-build-*/
+bin/SoftGLRender*
+bin/*.dll
+bin/*.dylib
+bin/*.ilk
+bin/*.pdb
+CMakeSettings.json
+out/
