@@ -40,7 +40,7 @@ struct BRDFLutFragmentShader : BaseFragmentShader {
   // ----------------------------------------------------------------------------
   // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
   // efficient VanDerCorpus calculation.
-  float RadicalInverse_VdC(uint bits) {
+  float RadicalInverse_VdC(uint32_t bits) {
     bits = (bits << 16u) | (bits >> 16u);
     bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
@@ -49,7 +49,7 @@ struct BRDFLutFragmentShader : BaseFragmentShader {
     return float(bits) * 2.3283064365386963e-10; // / 0x100000000
   }
   // ----------------------------------------------------------------------------
-  glm::vec2 Hammersley(uint i, uint N) {
+  glm::vec2 Hammersley(uint32_t i, uint32_t N) {
     return glm::vec2(float(i) / float(N), RadicalInverse_VdC(i));
   }
   // ----------------------------------------------------------------------------
@@ -106,8 +106,8 @@ struct BRDFLutFragmentShader : BaseFragmentShader {
 
     glm::vec3 N = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    const uint SAMPLE_COUNT = 1024u;
-    for (uint i = 0u; i < SAMPLE_COUNT; ++i) {
+    const uint32_t SAMPLE_COUNT = 1024u;
+    for (uint32_t i = 0u; i < SAMPLE_COUNT; ++i) {
       // generates a sample vector that's biased towards the
       // preferred alignment direction (importance sampling).
       glm::vec2 Xi = Hammersley(i, SAMPLE_COUNT);
@@ -121,7 +121,7 @@ struct BRDFLutFragmentShader : BaseFragmentShader {
       if (NdotL > 0.0f) {
         float G = GeometrySmith(N, V, L, roughness);
         float G_Vis = (G * VdotH) / (NdotH * NdotV);
-        float Fc = std::pow(1.0f - VdotH, 5.0f);
+        float Fc = glm::pow(1.0f - VdotH, 5.0f);
 
         A += (1.0f - Fc) * G_Vis;
         B += Fc * G_Vis;

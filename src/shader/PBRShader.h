@@ -122,11 +122,11 @@ struct PBRFragmentShader : BaseFragmentShader {
   }
 
   static glm::vec3 FresnelSchlick(float cosTheta, glm::vec3 F0) {
-    return F0 + (1.0f - F0) * pow(glm::clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
+    return F0 + (1.0f - F0) * glm::pow(glm::clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
   }
 
   static glm::vec3 FresnelSchlickRoughness(float cosTheta, glm::vec3 F0, float roughness) {
-    return F0 + (max(glm::vec3(1.0f - roughness), F0) - F0) * pow(glm::clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
+    return F0 + (max(glm::vec3(1.0f - roughness), F0) - F0) * glm::pow(glm::clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
   }
 
   static glm::vec3 EnvBRDFApprox(glm::vec3 SpecularColor, float Roughness, float NdotV) {
@@ -230,7 +230,7 @@ struct PBRFragmentShader : BaseFragmentShader {
 
     glm::vec3 color = ambient + Lo;
     // gamma correct
-    color = pow(color, glm::vec3(1.0f / 2.2f));
+    color = glm::pow(color, glm::vec3(1.0f / 2.2f));
 
     // emissive
     glm::vec3 emissive = u->u_emissiveMap.texture2D(v->v_texCoord);

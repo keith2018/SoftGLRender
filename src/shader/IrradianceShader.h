@@ -60,11 +60,11 @@ struct IrradianceFragmentShader : BaseFragmentShader {
     for (float phi = 0.0f; phi < 2.0f * PI; phi += sampleDelta) {
       for (float theta = 0.0f; theta < 0.5f * PI; theta += sampleDelta) {
         // spherical to cartesian (in tangent space)
-        glm::vec3 tangentSample = glm::vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+        glm::vec3 tangentSample = glm::vec3(glm::sin(theta) * glm::cos(phi), glm::sin(theta) * glm::sin(phi), glm::cos(theta));
         // tangent space to world
         glm::vec3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * N;
 
-        irradiance += glm::vec3(u->u_cubeMap.textureCube(sampleVec)) * cos(theta) * sin(theta);
+        irradiance += glm::vec3(u->u_cubeMap.textureCube(sampleVec)) * glm::cos(theta) * glm::sin(theta);
         nrSamples++;
       }
     }

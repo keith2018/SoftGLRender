@@ -126,7 +126,7 @@ struct BlinnPhongFragmentShader : BaseFragmentShader {
       glm::vec3 cameraDirection = glm::normalize(v->v_cameraDirection);
       glm::vec3 halfVector = glm::normalize(lightDirection + cameraDirection);
       float specularAngle = std::max(glm::dot(normalVector, halfVector), 0.0f);
-      specularColor = glm::vec3(std::pow(specularAngle, specularExponent));
+      specularColor = glm::vec3(glm::pow(specularAngle, specularExponent));
     }
 
     // emissive
