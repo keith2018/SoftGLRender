@@ -96,8 +96,8 @@ void Environment::GeneratePrefilterMap(Texture *tex_in, Texture *tex_out) {
   }
 
   for (int mip = 0; mip < PrefilterMaxMipLevels; mip++) {
-    int mip_width = PrefilterMapSize * std::pow(0.5f, mip);
-    int mip_height = PrefilterMapSize * std::pow(0.5f, mip);
+    int mip_width = PrefilterMapSize * glm::pow(0.5f, mip);
+    int mip_height = PrefilterMapSize * glm::pow(0.5f, mip);
     GeneratePrefilterMapLod(tex_in, tex_out, mip_width, mip_height, mip);
   }
 }

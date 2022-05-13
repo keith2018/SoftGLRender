@@ -58,7 +58,7 @@ struct PrefilterFragmentShader : BaseFragmentShader {
   // ----------------------------------------------------------------------------
   // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
   // efficient VanDerCorpus calculation.
-  float RadicalInverse_VdC(uint bits) {
+  float RadicalInverse_VdC(uint32_t bits) {
     bits = (bits << 16u) | (bits >> 16u);
     bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
@@ -67,7 +67,7 @@ struct PrefilterFragmentShader : BaseFragmentShader {
     return float(bits) * 2.3283064365386963e-10; // / 0x100000000
   }
   // ----------------------------------------------------------------------------
-  glm::vec2 Hammersley(uint i, uint N) {
+  glm::vec2 Hammersley(uint32_t i, uint32_t N) {
     return glm::vec2(float(i) / float(N), RadicalInverse_VdC(i));
   }
   // ----------------------------------------------------------------------------
@@ -104,11 +104,11 @@ struct PrefilterFragmentShader : BaseFragmentShader {
     glm::vec3 R = N;
     glm::vec3 V = R;
 
-    const uint SAMPLE_COUNT = 1024u;
+    const uint32_t SAMPLE_COUNT = 1024u;
     glm::vec3 prefilteredColor = glm::vec3(0.0f);
     float totalWeight = 0.0f;
 
-    for (uint i = 0u; i < SAMPLE_COUNT; ++i) {
+    for (uint32_t i = 0u; i < SAMPLE_COUNT; ++i) {
       // generates a sample vector that's biased towards the preferred alignment direction (importance sampling).
       glm::vec2 Xi = Hammersley(i, SAMPLE_COUNT);
       glm::vec3 H = ImportanceSampleGGX(Xi, N, u->u_roughness);
