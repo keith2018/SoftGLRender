@@ -15,7 +15,7 @@
 
 namespace SoftGL {
 
-std::unordered_map<std::string, std::shared_ptr<Buffer<glm::vec4>>> Utils::texture_cache_;
+std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> Utils::texture_cache_;
 
 bool Utils::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
   if (texture_cache_.find(path) != texture_cache_.end()) {
@@ -70,8 +70,6 @@ bool Utils::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
         }
         default:break;
       }
-
-      to /= 255.f;
     }
   }
 

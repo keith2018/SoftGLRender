@@ -26,7 +26,7 @@ class Utils {
   static bool LoadTextureFile(Texture &tex, const char *path);
 
  private:
-  static std::unordered_map<std::string, std::shared_ptr<Buffer<glm::vec4>>> texture_cache_;
+  static std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> texture_cache_;
 };
 
 }

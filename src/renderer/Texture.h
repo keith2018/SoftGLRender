@@ -551,35 +551,35 @@ void BaseSamplerCube<T>::ConvertXYZ2UV(float x, float y, float z, int *index, fl
   *v = 0.5f * (vc / maxAxis + 1.0f);
 }
 
-class Sampler2D : public BaseSampler2D<float > {
+class Sampler2D : public BaseSampler2D<uint8_t > {
  public:
 
   glm::vec4 texture2D(glm::vec2 uv, float bias = 0.f) {
-    return BaseSampler2D::texture2DImpl(uv, bias);
+    return BaseSampler2D::texture2DImpl(uv, bias) / 255.f;
   }
 
   glm::vec4 texture2DLod(glm::vec2 uv, float lod = 0.f) {
-    return BaseSampler2D::texture2DLodImpl(uv, lod);
+    return BaseSampler2D::texture2DLodImpl(uv, lod) / 255.f;
   }
 
   glm::vec4 texture2DLodOffset(glm::vec2 uv, float lod, glm::ivec2 offset) {
-    return BaseSampler2D::texture2DLodImpl(uv, lod, offset);
+    return BaseSampler2D::texture2DLodImpl(uv, lod, offset) / 255.f;
   }
 };
 
-class SamplerCube : public BaseSamplerCube<float> {
+class SamplerCube : public BaseSamplerCube<uint8_t> {
  public:
 
   glm::vec4 textureCube(glm::vec3 coord, float bias = 0.f) {
-    return BaseSamplerCube::textureCubeImpl(coord, bias);
+    return BaseSamplerCube::textureCubeImpl(coord, bias) / 255.f;
   }
 
   glm::vec4 textureCubeLod(glm::vec3 coord, float lod = 0.f) {
-    return BaseSamplerCube::textureCubeLodImpl(coord, lod);
+    return BaseSamplerCube::textureCubeLodImpl(coord, lod) / 255.f;
   }
 };
 
-using Texture = BaseTexture<float>;
-using Sampler = BaseSampler<float>;
+using Texture = BaseTexture<uint8_t>;
+using Sampler = BaseSampler<uint8_t>;
 
 }

@@ -7,12 +7,10 @@
 #include "Environment.h"
 #include "ModelLoader.h"
 #include "Camera.h"
-#include "QuadFilter.h"
 #include "renderer/Renderer.h"
 #include "shader/SkyboxShader.h"
 #include "shader/IrradianceShader.h"
 #include "shader/PrefilterShader.h"
-#include "shader/BRDFLutShader.h"
 
 namespace SoftGL {
 namespace App {
@@ -29,7 +27,6 @@ namespace App {
 #define IrradianceMapSize 32
 #define PrefilterMaxMipLevels 5
 #define PrefilterMapSize 128
-#define BRDFLutSize 512
 
 struct LookAtParam {
   glm::vec3 eye;
@@ -55,7 +52,7 @@ void Environment::ConvertEquirectangular(Texture &tex_in, Texture *tex_out, int 
   skybox_uniforms_ptr->u_equirectangularMap.SetFilterMode(Filter_LINEAR);
 
   // draw
-  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::vec4> &buff) {
+  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::u8vec4> &buff) {
     tex_out[face].buffer = Texture::CreateBuffer(buff.GetLayout());
     tex_out[face].buffer->Create(buff.GetWidth(), buff.GetHeight());
     buff.CopyRawDataTo(tex_out[face].buffer->GetRawDataPtr(), true);
@@ -78,7 +75,7 @@ void Environment::GenerateIrradianceMap(Texture *tex_in, Texture *tex_out) {
   skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
 
   // draw
-  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::vec4> &buff) {
+  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::u8vec4> &buff) {
     tex_out[face].buffer = Texture::CreateBuffer(buff.GetLayout());
     tex_out[face].buffer->Create(buff.GetWidth(), buff.GetHeight());
     buff.CopyRawDataTo(tex_out[face].buffer->GetRawDataPtr(), true);
@@ -124,28 +121,13 @@ void Environment::GeneratePrefilterMapLod(Texture *tex_in,
   skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
 
   // draw
-  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::vec4> &buff) {
+  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::u8vec4> &buff) {
     tex_out[face].mipmaps[mip] = Texture::CreateBuffer(buff.GetLayout());
     auto &dst_buff = tex_out[face].mipmaps[mip];
 
     dst_buff->Create(buff.GetWidth(), buff.GetHeight());
     buff.CopyRawDataTo(dst_buff->GetRawDataPtr(), true);
   });
-}
-
-void Environment::GenerateBRDFLut(Texture *tex_out) {
-  QuadFilter lutRender(BRDFLutSize, BRDFLutSize);
-  auto &shader_context = lutRender.GetShaderContext();
-  CREATE_SHADER(BRDFLut);
-
-  lutRender.GetRenderer()->frag_color_hdr = true;
-  lutRender.Clear(0.f, 0.f, 0.f, 0.f);
-  lutRender.Draw();
-
-  auto &buff = lutRender.GetFrameColor();
-  tex_out->buffer = Texture::CreateBuffer(buff->GetLayout());
-  tex_out->buffer->Create(buff->GetWidth(), buff->GetHeight());
-  buff->CopyRawDataTo(tex_out->buffer->GetRawDataPtr());
 }
 
 std::shared_ptr<Renderer> Environment::CreateCubeRender(Camera &camera, int width, int height) {
@@ -162,7 +144,7 @@ std::shared_ptr<Renderer> Environment::CreateCubeRender(Camera &camera, int widt
 
 void Environment::CubeRenderDraw(Renderer &renderer,
                                  Camera &camera,
-                                 const std::function<void(int face, Buffer<glm::vec4> &buff)> &face_cb) {
+                                 const std::function<void(int face, Buffer<glm::u8vec4> &buff)> &face_cb) {
   LookAtParam captureViews[] = {
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},

@@ -27,7 +27,7 @@ class DemoApp {
     settingPanel_->OnDraw();
   }
 
-  inline Buffer<glm::vec4> *GetFrame() {
+  inline Buffer<glm::u8vec4> *GetFrame() {
     return out_color_;
   }
 
@@ -73,7 +73,7 @@ class DemoApp {
   int width_ = 0;
   int height_ = 0;
 
-  Buffer<glm::vec4> *out_color_ = nullptr;
+  Buffer<glm::u8vec4> *out_color_ = nullptr;
   AAType aa_type_ = AAType_NONE;
 
   std::shared_ptr<Renderer> renderer_;

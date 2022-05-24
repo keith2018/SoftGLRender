@@ -25,7 +25,7 @@ class Renderer {
   void DrawLines(ModelLines &lines, glm::mat4 &transform);
   void DrawPoints(ModelPoints &points, glm::mat4 &transform);
 
-  inline std::shared_ptr<Buffer<glm::vec4>> &GetFrameColor() { return fbo_.color; };
+  inline std::shared_ptr<Buffer<glm::u8vec4>> &GetFrameColor() { return fbo_.color; };
   inline ShaderContext &GetShaderContext() { return shader_context_; }
 
  public:
@@ -38,7 +38,6 @@ class Renderer {
   bool wireframe_show_clip = true;
   bool blend_enabled = true;
   bool early_z = true;
-  bool frag_color_hdr = false;
 
  private:
   void ProcessVertexShader();
@@ -54,10 +53,10 @@ class Renderer {
   void BarycentricCorrect(PixelQuadContext &quad);
   void PixelShading(glm::vec4 &screen_pos, bool front_facing, BaseFragmentShader *frag_shader);
 
-  inline void DrawFramePointWithDepth(int x, int y, float depth, const glm::vec4 &color);
-  inline void DrawFramePoint(int x, int y, const glm::vec4 &color);
+  inline void DrawFramePointWithDepth(int x, int y, float depth, const glm::u8vec4 &color);
+  inline void DrawFramePoint(int x, int y, const glm::u8vec4 &color);
   inline bool DepthTestPoint(int x, int y, float depth);
-  void DrawLineFrustumClip(glm::vec4 p0, int mask0, glm::vec4 p1, int mask1, const glm::vec4 &color);
+  void DrawLineFrustumClip(glm::vec4 p0, int mask0, glm::vec4 p1, int mask1, const glm::u8vec4 &color);
 
   void ViewportTransform(glm::vec4 &pos) const;
   static glm::vec4 Viewport(float x, float y, float w, float h);

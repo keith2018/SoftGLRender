@@ -21,8 +21,6 @@ class Environment {
 
   static void GeneratePrefilterMap(Texture *tex_in, Texture *tex_out);
 
-  static void GenerateBRDFLut(Texture *tex_out);
-
  private:
   static void GeneratePrefilterMapLod(Texture *tex_in, Texture *tex_out, int width, int height, int mip);
 
@@ -30,7 +28,7 @@ class Environment {
 
   static void CubeRenderDraw(Renderer &renderer,
                              Camera &camera,
-                             const std::function<void(int face, Buffer<glm::vec4> &buff)> &face_cb);
+                             const std::function<void(int face, Buffer<glm::u8vec4> &buff)> &face_cb);
 };
 
 }
