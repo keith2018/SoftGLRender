@@ -19,7 +19,7 @@ class QuadFilter {
   void Clear(float r, float g, float b, float a);
   void Draw();
 
-  inline std::shared_ptr<Buffer<glm::vec4>> &GetFrameColor() {
+  inline std::shared_ptr<Buffer<glm::u8vec4>> &GetFrameColor() {
     return renderer_->GetFrameColor();
   };
 

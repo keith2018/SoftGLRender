@@ -27,7 +27,6 @@ struct SkyboxTexture {
   // IBL
   Texture irradiance[6];
   Texture prefilter[6];
-  static Texture brdf_lut;
 
   void InitIBL();
 };

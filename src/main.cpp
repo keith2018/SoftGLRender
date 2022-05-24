@@ -216,8 +216,8 @@ int main() {
     demoApp->DrawFrame();
     auto frame = demoApp->GetFrame();
     if (frame) {
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, (int) frame->GetWidth(), (int) frame->GetHeight(), 0, GL_RGBA,
-                   GL_FLOAT, frame->GetRawDataPtr());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int) frame->GetWidth(), (int) frame->GetHeight(), 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, frame->GetRawDataPtr());
     }
 
     glUseProgram(program);

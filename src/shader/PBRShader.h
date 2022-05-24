@@ -23,7 +23,6 @@ struct PBRShaderUniforms : BaseShaderUniforms {
   // IBL
   SamplerCube u_irradianceMap;
   SamplerCube u_prefilterMapMap;
-  Sampler2D u_brdfLutMap;
 };
 
 struct PBRShaderVaryings : BaseShaderVaryings {
@@ -218,12 +217,7 @@ struct PBRFragmentShader : BaseFragmentShader {
       // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
       const float MAX_REFLECTION_LOD = 4.0f;
       glm::vec3 prefilteredColor = glm::vec3(u->u_prefilterMapMap.textureCubeLod(R, roughness * MAX_REFLECTION_LOD));
-#ifndef SOFTGL_BRDF_APPROX
-      glm::vec4 brdf = u->u_brdfLutMap.texture2D(glm::vec2(glm::max(glm::dot(N, V), 0.0f), roughness));
-      specular = prefilteredColor * (F * brdf.x + brdf.y);
-#else
       glm::vec3 specular = prefilteredColor * EnvBRDFApprox(F, roughness, glm::max(glm::dot(N, V), 0.0f));
-#endif
       ambient = (kD * diffuse + specular) * ao;
     }
     // Ambient end ---------------------------------------------------------------

@@ -351,13 +351,6 @@ void DemoApp::BindShaderTextures(ModelMesh &mesh, std::shared_ptr<BaseShaderUnif
           }
           uniforms_ptr->u_prefilterMapMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
           uniforms_ptr->u_prefilterMapMap.SetFilterMode(Filter_LINEAR_MIPMAP_LINEAR);
-
-#ifndef SOFTGL_BRDF_APPROX
-          // brdf lut
-          uniforms_ptr->u_brdfLutMap.SetTexture(&SkyboxTexture::brdf_lut);
-          uniforms_ptr->u_brdfLutMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-          uniforms_ptr->u_brdfLutMap.SetFilterMode(Filter_LINEAR_MIPMAP_LINEAR);
-#endif
         }
       }
     }

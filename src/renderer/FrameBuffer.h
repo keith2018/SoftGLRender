@@ -207,12 +207,12 @@ class MortonBuffer : public Buffer<T> {
 struct FrameBuffer {
   size_t width = 0;
   size_t height = 0;
-  std::shared_ptr<Buffer<glm::vec4>> color;
+  std::shared_ptr<Buffer<glm::u8vec4>> color;
   std::shared_ptr<Buffer<float>> depth;
 
   void Create(size_t w, size_t h) {
     if (!color) {
-      color = std::make_shared<Buffer<glm::vec4>>();
+      color = std::make_shared<Buffer<glm::u8vec4>>();
     }
     if (!depth) {
       depth = std::make_shared<Buffer<float>>();

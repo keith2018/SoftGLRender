@@ -30,7 +30,7 @@ void Renderer::Create(int w, int h, float near, float far) {
 }
 
 void Renderer::Clear(float r, float g, float b, float a) {
-  fbo_.color->SetAll(glm::vec4(r, g, b, a));
+  fbo_.color->SetAll(glm::u8vec4(r * 255, g * 255, b * 255, a * 255));
   fbo_.depth->SetAll(depth_range.near);
 }
 
@@ -59,7 +59,7 @@ void Renderer::DrawLines(ModelLines &lines, glm::mat4 &transform) {
   render_ctx_.Prepare(&lines);
   ProcessVertexShader();
 
-  glm::vec4 color{0.3f};
+  glm::u8vec4 color{64};
   for (int line_idx = 0; line_idx < lines.line_cnt; line_idx++) {
     int idx0 = lines.indices[line_idx * 2];
     int idx1 = lines.indices[line_idx * 2 + 1];
@@ -84,7 +84,7 @@ void Renderer::DrawPoints(ModelPoints &points, glm::mat4 &transform) {
     PerspectiveDivide(pt.pos);
     ViewportTransform(pt.pos);
 
-    glm::vec4 color = glm::vec4(points.colors[pt_idx], 1.f);
+    glm::u8vec4 color = glm::u8vec4(points.colors[pt_idx], 255);
     int radius = 10;
     graphic_.DrawCircle((int) pt.pos.x, (int) pt.pos.y, radius, pt.pos.z, color);
   }
@@ -259,7 +259,7 @@ void Renderer::ProcessFaceRasterization() {
 }
 
 void Renderer::ProcessFaceWireframe(bool clip_space) {
-  glm::vec4 color{1.f};
+  glm::u8vec4 color{255};
 
   for (auto &fh : render_ctx_.faces) {
     if (fh.discard) {
@@ -450,25 +450,25 @@ void Renderer::PixelShading(glm::vec4 &screen_pos, bool front_facing, BaseFragme
   }
 
   // frag color
-  auto color = frag_color_hdr ? frag_shader->gl_FragColor : glm::clamp(frag_shader->gl_FragColor, 0.f, 1.f);
+  glm::vec4 color = glm::clamp(frag_shader->gl_FragColor, 0.f, 1.f);
   if (blend_enabled && render_ctx_.alpha_blend) {
-    auto src_color = color;
-    auto dst_color = *fbo_.color->Get(pos_x, pos_y);
+    glm::vec4 &src_color = color;
+    glm::vec4 dst_color = glm::vec4(*fbo_.color->Get(pos_x, pos_y)) / 255.f;
     color = src_color * (src_color.a) + dst_color * (1.f - src_color.a);
   }
 
   if ((depth_test && early_z) || DepthTestPoint(pos_x, pos_y, frag_shader->gl_FragDepth)) {
-    DrawFramePoint(pos_x, pos_y, color);
+    DrawFramePoint(pos_x, pos_y, color * 255.f);
   }
 }
 
-void Renderer::DrawFramePointWithDepth(int x, int y, float depth, const glm::vec4 &color) {
+void Renderer::DrawFramePointWithDepth(int x, int y, float depth, const glm::u8vec4 &color) {
   if (DepthTestPoint(x, y, depth)) {
     DrawFramePoint(x, y, color);
   }
 }
 
-void Renderer::DrawFramePoint(int x, int y, const glm::vec4 &color) {
+void Renderer::DrawFramePoint(int x, int y, const glm::u8vec4 &color) {
   fbo_.color->Set(x, y, color);
 }
 
@@ -487,7 +487,7 @@ bool Renderer::DepthTestPoint(int x, int y, float depth) {
   return false;
 }
 
-void Renderer::DrawLineFrustumClip(glm::vec4 p0, int mask0, glm::vec4 p1, int mask1, const glm::vec4 &color) {
+void Renderer::DrawLineFrustumClip(glm::vec4 p0, int mask0, glm::vec4 p1, int mask1, const glm::u8vec4 &color) {
   bool full_clip = false;
   float t0 = 0.f;
   float t1 = 1.f;

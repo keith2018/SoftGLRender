@@ -47,7 +47,7 @@ bool Graphic::Barycentric(glm::aligned_vec4 *vert,
   return true;
 }
 
-void Graphic::DrawLine(glm::vec4 v0, glm::vec4 v1, const glm::vec4 &color) {
+void Graphic::DrawLine(glm::vec4 v0, glm::vec4 v1, const glm::u8vec4 &color) {
   int x0 = (int) v0.x, y0 = (int) v0.y;
   int x1 = (int) v1.x, y1 = (int) v1.y;
 
@@ -91,7 +91,7 @@ void Graphic::DrawLine(glm::vec4 v0, glm::vec4 v1, const glm::vec4 &color) {
   }
 }
 
-void Graphic::DrawCircle(int xc, int yc, int r, float depth, const glm::vec4 &color, bool fill) {
+void Graphic::DrawCircle(int xc, int yc, int r, float depth, const glm::u8vec4 &color, bool fill) {
   int x = 0, y = r, yi, d;
   d = 3 - 2 * r;
 
@@ -123,7 +123,7 @@ void Graphic::DrawCircle(int xc, int yc, int r, float depth, const glm::vec4 &co
   }
 }
 
-void Graphic::DrawCirclePoint(int xc, int yc, int x, int y, float depth, const glm::vec4 &color) {
+void Graphic::DrawCirclePoint(int xc, int yc, int x, int y, float depth, const glm::u8vec4 &color) {
   DrawPoint(xc + x, yc + y, depth, color);
   DrawPoint(xc - x, yc + y, depth, color);
   DrawPoint(xc + x, yc - y, depth, color);

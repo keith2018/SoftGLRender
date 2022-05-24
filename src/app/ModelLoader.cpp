@@ -62,7 +62,6 @@ float skyboxVertices[] = {
     1.0f, -1.0f, 1.0f
 };
 
-Texture SkyboxTexture::brdf_lut;
 
 void SkyboxTexture::InitIBL() {
   if (cube[0].buffer == nullptr) {
@@ -80,13 +79,6 @@ void SkyboxTexture::InitIBL() {
     Environment::GeneratePrefilterMap(cube, prefilter);
     std::cout << " done.\n";
   }
-#ifndef SOFTGL_BRDF_APPROX
-  if (brdf_lut.buffer == nullptr) {
-    std::cout << "generate BRDF lut ...";
-    Environment::GenerateBRDFLut(&brdf_lut);
-    std::cout << " done.\n";
-  }
-#endif
 }
 
 ModelMesh ModelLoader::skybox_mash_;
@@ -234,7 +226,7 @@ void ModelLoader::LoadLights() {
   Vertex vertex{};
   vertex.a_position = point_light_position_;
   lights_.vertexes[0] = vertex;
-  lights_.colors[0] = point_light_color_;
+  lights_.colors[0] = point_light_color_ * 255.f;
 }
 
 bool ModelLoader::ProcessNode(const aiNode *ai_node,

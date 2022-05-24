@@ -18,7 +18,7 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 - Skybox CubeMap & Equirectangular
 - Texture mipmaps
 - Texture tiling and swizzling (linear, tiled, morton)
-- Texture filtering and warping
+- Texture filtering and wrapping
 - Shader varying partial derivative `dFdx` `dFdy`
 - Alpha mask & blend
 
@@ -30,7 +30,7 @@ Texture Filtering
   - NEAREST_MIPMAP_LINEAR
   - LINEAR_MIPMAP_LINEAR
 
-Texture Warping
+Texture Wrapping
   - REPEAT
   - MIRRORED_REPEAT
   - CLAMP_TO_EDGE

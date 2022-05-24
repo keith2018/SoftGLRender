@@ -9,9 +9,6 @@ add_definitions("-DSOFTGL_TEXTURE_TILED")
 # SIMD
 add_definitions("-DSOFTGL_SIMD_OPT")
 
-# BRDF lut
-add_definitions("-DSOFTGL_BRDF_APPROX")
-
 include_directories(
         "${CMAKE_CURRENT_SOURCE_DIR}/glfw/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/glad/include"

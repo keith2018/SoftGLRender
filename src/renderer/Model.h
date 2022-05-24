@@ -15,7 +15,7 @@ namespace SoftGL {
 struct ModelPoints {
   size_t point_cnt = 0;
   std::vector<Vertex> vertexes;
-  std::vector<glm::vec3> colors;
+  std::vector<glm::u8vec3> colors;
 };
 
 struct ModelLines {
