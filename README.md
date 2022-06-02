@@ -95,6 +95,9 @@ Check "show clip" to show the triangles created by frustum clip
 ## Build
 
 ```bash
+git clone git@github.com:keith2018/SoftGLRender.git
+cd SoftGLRender
+git submodule update --init --recursive
 mkdir build
 cd build
 cmake ..
