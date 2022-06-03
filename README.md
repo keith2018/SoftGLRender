@@ -92,6 +92,13 @@ Check "show clip" to show the triangles created by frustum clip
 * [imgui](https://github.com/ocornut/imgui)
 
 
+## Clone
+```bash
+git clone git@github.com:keith2018/SoftGLRender.git
+cd SoftGLRender
+git submodule update --init --recursive
+```
+
 ## Build
 
 ```bash
