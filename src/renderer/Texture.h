@@ -10,7 +10,7 @@
 #include <functional>
 #include <atomic>
 
-#include "FrameBuffer.h"
+#include "frame_buffer.h"
 
 namespace SoftGL {
 

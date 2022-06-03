@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "Camera.h"
-#include "renderer/Texture.h"
-#include "renderer/Renderer.h"
+#include "camera.h"
+#include "renderer/texture.h"
+#include "renderer/renderer.h"
 
 namespace SoftGL {
 namespace App {

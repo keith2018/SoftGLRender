@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Texture.h"
+#include "common.h"
+#include "texture.h"
 
 namespace SoftGL {
 

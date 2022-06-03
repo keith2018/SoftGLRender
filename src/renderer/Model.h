@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Texture.h"
-#include "BoundingBox.h"
+#include "common.h"
+#include "texture.h"
+#include "bounding_box.h"
 
 namespace SoftGL {
 

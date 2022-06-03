@@ -4,7 +4,7 @@
  *
  */
 
-#include "Geometry.h"
+#include "geometry.h"
 
 namespace SoftGL {
 

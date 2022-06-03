@@ -11,8 +11,8 @@
 #include <fstream>
 #include <streambuf>
 
-#include "ModelLoader.h"
-#include "OrbitController.h"
+#include "model_loader.h"
+#include "orbit_controller.h"
 #include "json11.hpp"
 
 namespace SoftGL {
