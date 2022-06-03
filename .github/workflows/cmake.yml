@@ -44,7 +44,7 @@ jobs:
 
   build_linux:
     name: build_linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-bionic
 
     steps:
       - uses: actions/checkout@v3
