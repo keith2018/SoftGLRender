@@ -102,9 +102,6 @@ git submodule update --init --recursive
 ## Build
 
 ```bash
-git clone git@github.com:keith2018/SoftGLRender.git
-cd SoftGLRender
-git submodule update --init --recursive
 mkdir build
 cd build
 cmake ..
