@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "Common.h"
-#include "FrameBuffer.h"
+#include "common.h"
+#include "frame_buffer.h"
 
 namespace SoftGL {
 

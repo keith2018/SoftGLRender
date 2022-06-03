@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "BoundingBox.h"
+#include "bounding_box.h"
 
 namespace SoftGL {
 

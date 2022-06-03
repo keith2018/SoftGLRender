@@ -1,6 +1,6 @@
-[submodule "glm"]
-	path = glm
-	url = https://github.com/g-truc/glm.git
-[submodule "assimp"]
-	path = assimp
-	url = https://github.com/assimp/assimp.git
+[submodule "third_party/glm"]
+	path = third_party/glm
+	url = git@github.com:g-truc/glm.git
+[submodule "third_party/assimp"]
+	path = third_party/assimp
+	url = git@github.com:assimp/assimp.git

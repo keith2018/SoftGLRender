@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(SoftGLRender)
 
 set(CMAKE_CXX_STANDARD 11)
+set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 # texture tiled memory
 add_definitions("-DSOFTGL_TEXTURE_TILED")
@@ -10,16 +11,18 @@ add_definitions("-DSOFTGL_TEXTURE_TILED")
 add_definitions("-DSOFTGL_SIMD_OPT")
 
 include_directories(
-        "${CMAKE_CURRENT_SOURCE_DIR}/glfw/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/glad/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/glm"
-        "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/assimp/contrib"
-        "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
-        "${CMAKE_CURRENT_SOURCE_DIR}/json11"
+        "${THIRD_PARTY_DIR}/glfw/include"
+        "${THIRD_PARTY_DIR}/glad/include"
+        "${THIRD_PARTY_DIR}/glm"
+        "${THIRD_PARTY_DIR}/assimp/include"
+        "${THIRD_PARTY_DIR}/assimp/contrib"
+        "${THIRD_PARTY_DIR}/imgui"
+        "${THIRD_PARTY_DIR}/json11"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
+
+# assimp
 set(BUILD_SHARED_LIBS ON)
 set(ASSIMP_NO_EXPORT ON)
 set(ASSIMP_BUILD_TESTS OFF)
@@ -33,23 +36,26 @@ set(ASSIMP_BUILD_GLTF_IMPORTER TRUE)
 set(ASSIMP_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 set(ASSIMP_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/assimp)
+add_subdirectory(${THIRD_PARTY_DIR}/assimp)
 
+
+# main src
 file(GLOB SOFTGL_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp
         )
 
+# imgui src
 file(GLOB IMGUI_SRC
-        ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui/*.cpp
+        ${THIRD_PARTY_DIR}/imgui/imgui/*.cpp
         )
 
 add_executable(SoftGLRender
         "${SOFTGL_SRC}"
         "${IMGUI_SRC}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/glad/src/glad.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/json11/json11.cpp"
+        "${THIRD_PARTY_DIR}/glad/src/glad.c"
+        "${THIRD_PARTY_DIR}/json11/json11.cpp"
         src/main.cpp
         )
 
@@ -60,14 +66,14 @@ if (WIN32)
     if (MSVC)
         target_link_libraries(SoftGLRender
                 assimp
-                "${CMAKE_CURRENT_SOURCE_DIR}/glfw/lib-vc2022/glfw3.lib"
-                "${CMAKE_CURRENT_SOURCE_DIR}/glfw/lib-vc2022/glfw3dll.lib"
+                "${THIRD_PARTY_DIR}/glfw/lib-vc2022/glfw3.lib"
+                "${THIRD_PARTY_DIR}/glfw/lib-vc2022/glfw3dll.lib"
                 )
     else ()
         target_link_libraries(SoftGLRender
                 assimp
-                "${CMAKE_CURRENT_SOURCE_DIR}/glfw/lib-mingw-w64/libglfw3.a"
-                "${CMAKE_CURRENT_SOURCE_DIR}/glfw/lib-mingw-w64/libglfw3dll.a"
+                "${THIRD_PARTY_DIR}/glfw/lib-mingw-w64/libglfw3.a"
+                "${THIRD_PARTY_DIR}/glfw/lib-mingw-w64/libglfw3dll.a"
                 )
     endif ()
 endif ()
@@ -77,7 +83,7 @@ if (APPLE)
     add_compile_definitions(GL_SILENCE_DEPRECATION)
     target_link_libraries(SoftGLRender
             assimp
-            "${CMAKE_CURRENT_SOURCE_DIR}/glfw/lib-macos-universal/libglfw3.a"
+            "${THIRD_PARTY_DIR}/glfw/lib-macos-universal/libglfw3.a"
             )
 endif ()
 

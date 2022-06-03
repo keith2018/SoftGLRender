@@ -4,13 +4,13 @@
  *
  */
 
-#include "Environment.h"
-#include "ModelLoader.h"
-#include "Camera.h"
-#include "renderer/Renderer.h"
-#include "shader/SkyboxShader.h"
-#include "shader/IrradianceShader.h"
-#include "shader/PrefilterShader.h"
+#include "environment.h"
+#include "model_loader.h"
+#include "camera.h"
+#include "renderer/renderer.h"
+#include "shader/skybox_shader.h"
+#include "shader/irradiance_shader.h"
+#include "shader/prefilter_shader.h"
 
 namespace SoftGL {
 namespace App {

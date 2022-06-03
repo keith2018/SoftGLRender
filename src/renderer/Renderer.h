@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Model.h"
-#include "Shader.h"
-#include "Graphic.h"
-#include "RenderContext.h"
-#include "ThreadPool.h"
+#include "common.h"
+#include "model.h"
+#include "shader.h"
+#include "graphic.h"
+#include "render_context.h"
+#include "thread_pool.h"
 
 namespace SoftGL {
 

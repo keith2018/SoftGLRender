@@ -4,8 +4,8 @@
  *
  */
 
-#include "Renderer.h"
-#include "Graphic.h"
+#include "renderer.h"
+#include "graphic.h"
 
 namespace SoftGL {
 

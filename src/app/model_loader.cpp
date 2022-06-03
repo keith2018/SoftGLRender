@@ -4,15 +4,15 @@
  *
  */
 
-#include "ModelLoader.h"
+#include "model_loader.h"
 
 #include <iostream>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/GltfMaterial.h>
 
-#include "Environment.h"
-#include "utils/Utils.h"
+#include "environment.h"
+#include "utils/utils.h"
 
 namespace SoftGL {
 namespace App {
