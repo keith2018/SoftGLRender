@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "renderer/Renderer.h"
-#include "Camera.h"
-#include "OrbitController.h"
-#include "QuadFilter.h"
-#include "Settings.h"
-#include "SettingPanel.h"
+#include "renderer/renderer.h"
+#include "camera.h"
+#include "orbit_controller.h"
+#include "quad_filter.h"
+#include "settings.h"
+#include "setting_panel.h"
 
 namespace SoftGL {
 namespace App {

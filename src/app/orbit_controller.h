@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Camera.h"
+#include "camera.h"
 
 namespace SoftGL {
 namespace App {

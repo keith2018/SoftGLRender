@@ -5,12 +5,12 @@
  */
 
 
-#include "DemoApp.h"
-#include "Environment.h"
-#include "shader/BlinnPhongShader.h"
-#include "shader/PBRShader.h"
-#include "shader/SkyboxShader.h"
-#include "shader/FXAAShader.h"
+#include "demo_app.h"
+#include "environment.h"
+#include "shader/blinn_phong_shader.h"
+#include "shader/pbr_shader.h"
+#include "shader/skybox_shader.h"
+#include "shader/fxaa_shader.h"
 
 #define CREATE_SHADER(PREFIX)                                                   \
   shader_context.vertex_shader = std::make_shared<PREFIX##VertexShader>();      \

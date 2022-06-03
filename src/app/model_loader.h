@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <assimp/scene.h>
 
-#include "renderer/Model.h"
+#include "renderer/model.h"
 
 namespace SoftGL {
 namespace App {

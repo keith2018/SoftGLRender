@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "renderer/Model.h"
-#include "renderer/Renderer.h"
+#include "renderer/model.h"
+#include "renderer/renderer.h"
 
 namespace SoftGL {
 namespace App {

@@ -4,7 +4,7 @@
  *
  */
 
-#include "OrbitController.h"
+#include "orbit_controller.h"
 
 #define MIN_ORBIT_ARM_LENGTH 1.f
 

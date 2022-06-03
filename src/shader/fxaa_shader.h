@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "renderer/Shader.h"
+#include "renderer/shader.h"
 
 namespace SoftGL {
 

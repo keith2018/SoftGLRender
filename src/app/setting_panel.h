@@ -7,7 +7,7 @@
 #pragma once
 
 #include "imgui/imgui.h"
-#include "Settings.h"
+#include "settings.h"
 
 namespace SoftGL {
 namespace App {

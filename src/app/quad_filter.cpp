@@ -4,7 +4,7 @@
  *
  */
 
-#include "QuadFilter.h"
+#include "quad_filter.h"
 
 namespace SoftGL {
 namespace App {

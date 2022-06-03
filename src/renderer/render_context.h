@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Memory.h"
+#include "common.h"
+#include "memory.h"
 
 namespace SoftGL {
 

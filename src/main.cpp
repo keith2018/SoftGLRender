@@ -11,7 +11,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "app/DemoApp.h"
+#include "app/demo_app.h"
 
 std::shared_ptr<SoftGL::App::DemoApp> demoApp = nullptr;
 

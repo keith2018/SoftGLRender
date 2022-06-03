@@ -8,7 +8,7 @@
 
 #include <string>
 #include <unordered_map>
-#include "renderer/Texture.h"
+#include "renderer/texture.h"
 
 namespace SoftGL {
 

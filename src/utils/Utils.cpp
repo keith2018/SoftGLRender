@@ -4,7 +4,7 @@
  *
  */
 
-#include "Utils.h"
+#include "utils.h"
 #include <iostream>
 
 #define STB_IMAGE_IMPLEMENTATION

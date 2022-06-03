@@ -4,7 +4,7 @@
  *
  */
 
-#include "Timer.h"
+#include "timer.h"
 
 namespace SoftGL {
 
