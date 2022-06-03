@@ -18,7 +18,7 @@
 namespace SoftGL {
 namespace App {
 
-const std::string ASSETS_DIR = "../assets/";
+const std::string ASSETS_DIR = "./assets/";
 
 class Settings {
  public:
@@ -118,7 +118,7 @@ class Settings {
   bool show_skybox = false;
   bool cull_face = true;
   bool depth_test = true;
-  bool early_z = true;
+  bool early_z = false;
   int aa_type = AAType_NONE;
 
   glm::vec4 clear_color = {0.f, 0.f, 0.f, 0.f};

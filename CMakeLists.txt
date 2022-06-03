@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 project(SoftGLRender)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -23,7 +24,7 @@ include_directories(
 
 
 # assimp
-set(BUILD_SHARED_LIBS ON)
+set(BUILD_SHARED_LIBS OFF)
 set(ASSIMP_NO_EXPORT ON)
 set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_INSTALL OFF)
@@ -32,9 +33,6 @@ set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
 set(ASSIMP_BUILD_OBJ_IMPORTER TRUE)
 set(ASSIMP_BUILD_GLTF_IMPORTER TRUE)
-
-set(ASSIMP_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
-set(ASSIMP_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 add_subdirectory(${THIRD_PARTY_DIR}/assimp)
 
@@ -58,9 +56,6 @@ add_executable(SoftGLRender
         "${THIRD_PARTY_DIR}/json11/json11.cpp"
         src/main.cpp
         )
-
-SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
-SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 if (WIN32)
     if (MSVC)
@@ -92,3 +87,13 @@ if (MSVC)
 else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma -O3")
 endif ()
+
+
+# output dir
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+
+# copy assets
+add_custom_command(TARGET SoftGLRender POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:SoftGLRender>/assets)

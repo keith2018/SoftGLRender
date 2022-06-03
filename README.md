@@ -103,15 +103,14 @@ git submodule update --init --recursive
 
 ```bash
 mkdir build
-cd build
-cmake ..
-make
+cmake -B ./build -DCMAKE_BUILD_TYPE=Release
+cmake --build ./build --config Release
 ```
 
 ## Run
 
 ```bash
-cd bin
+cd bin/Release
 ./SoftGLRender
 ```
 
