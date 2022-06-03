@@ -85,6 +85,7 @@ if (APPLE)
 endif ()
 
 if (UNIX AND NOT APPLE)
+    find_package(OpenGL REQUIRED)
     target_link_libraries(SoftGLRender
             assimp
             glfw
