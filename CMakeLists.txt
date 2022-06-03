@@ -84,6 +84,15 @@ if (APPLE)
             )
 endif ()
 
+if (UNIX)
+    target_link_libraries(SoftGLRender
+            assimp
+            glfw
+            OpenGL::GL
+            ${CMAKE_DL_LIBS}
+            )
+endif ()
+
 if (MSVC)
     target_compile_options(SoftGLRender PRIVATE $<$<BOOL:${MSVC}>:/arch:AVX2 /std:c++11>)
 else ()

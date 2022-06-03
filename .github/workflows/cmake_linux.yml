@@ -20,7 +20,7 @@ jobs:
           submodules: true
 
       - name: Install OpenGL Library
-        run: sudo apt-get install -y libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev
+        run: sudo apt-get install -y libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libglfw3 libglfw3-dev
 
       - name: Configure CMake
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
