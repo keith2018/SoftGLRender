@@ -90,6 +90,7 @@ if (UNIX AND NOT APPLE)
             assimp
             glfw
             OpenGL::GL
+            pthread
             ${CMAKE_DL_LIBS}
             )
 endif ()
