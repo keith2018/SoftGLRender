@@ -17,6 +17,7 @@ include_directories(
         "${THIRD_PARTY_DIR}/glm"
         "${THIRD_PARTY_DIR}/assimp/include"
         "${THIRD_PARTY_DIR}/assimp/contrib"
+        "${CMAKE_CURRENT_BINARY_DIR}/third_party/assimp/include"
         "${THIRD_PARTY_DIR}/imgui"
         "${THIRD_PARTY_DIR}/json11"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
