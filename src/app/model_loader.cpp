@@ -7,11 +7,19 @@
 #include "model_loader.h"
 
 #include <iostream>
+#include <set>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/GltfMaterial.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "utils/stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "utils/stb_image_write.h"
+
 #include "environment.h"
+#include "renderer/thread_pool.h"
 #include "utils/utils.h"
 
 namespace SoftGL {
@@ -62,6 +70,8 @@ float skyboxVertices[] = {
     1.0f, -1.0f, 1.0f
 };
 
+std::mutex ModelLoader::texture_cache_mutex_;
+std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> ModelLoader::texture_cache_;
 
 void SkyboxTexture::InitIBL() {
   if (cube[0].buffer == nullptr) {
@@ -92,6 +102,7 @@ ModelLoader::ModelLoader() {
 }
 
 bool ModelLoader::LoadModel(const std::string &filepath) {
+  std::lock_guard<std::mutex> lk(model_load_mutex_);
   if (filepath.empty()) {
     return false;
   }
@@ -125,6 +136,9 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
     return false;
   }
   curr_model_->model_file_dir = filepath.substr(0, filepath.find_last_of(FILE_SEPARATOR));
+
+  // preload textures
+  PreloadSceneTextureFiles(scene, curr_model_->model_file_dir);
 
   auto curr_transform = glm::mat4(1.f);
   if (!ProcessNode(scene->mRootNode, scene, curr_model_->root_node, curr_transform)) {
@@ -160,16 +174,17 @@ void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
     curr_skybox_tex_->cube[4].type = TextureType_CUBE_MAP_POSITIVE_Z;
     curr_skybox_tex_->cube[5].type = TextureType_CUBE_MAP_NEGATIVE_Z;
 
-    Utils::LoadTextureFile(curr_skybox_tex_->cube[0], (filepath + "right.jpg").c_str());
-    Utils::LoadTextureFile(curr_skybox_tex_->cube[1], (filepath + "left.jpg").c_str());
-    Utils::LoadTextureFile(curr_skybox_tex_->cube[2], (filepath + "top.jpg").c_str());
-    Utils::LoadTextureFile(curr_skybox_tex_->cube[3], (filepath + "bottom.jpg").c_str());
-    Utils::LoadTextureFile(curr_skybox_tex_->cube[4], (filepath + "front.jpg").c_str());
-    Utils::LoadTextureFile(curr_skybox_tex_->cube[5], (filepath + "back.jpg").c_str());
+    ThreadPool pool(6);
+    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[0], (filepath + "right.jpg").c_str()); });
+    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[1], (filepath + "left.jpg").c_str()); });
+    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[2], (filepath + "top.jpg").c_str()); });
+    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[3], (filepath + "bottom.jpg").c_str()); });
+    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[4], (filepath + "front.jpg").c_str()); });
+    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[5], (filepath + "back.jpg").c_str()); });
   } else {
     curr_skybox_tex_->type = Skybox_Equirectangular;
     curr_skybox_tex_->equirectangular.type = TextureType_EQUIRECTANGULAR;
-    Utils::LoadTextureFile(curr_skybox_tex_->equirectangular, filepath.c_str());
+    LoadTextureFile(curr_skybox_tex_->equirectangular, filepath.c_str());
   }
 }
 
@@ -333,7 +348,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
       out_mesh.shading_type = ShadingType_UNKNOWN;
     }
 
-    for (int i = 0; i <= aiTextureType_UNKNOWN; i++) {
+    for (int i = 0; i <= AI_TEXTURE_TYPE_MAX; i++) {
       ProcessMaterial(material, static_cast<aiTextureType>(i), textures);
     }
   }
@@ -350,9 +365,6 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
 bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
                                   aiTextureType texture_type,
                                   std::unordered_map<int, Texture> &textures) {
-  if (!ai_material) {
-    return false;
-  }
   if (ai_material->GetTextureCount(texture_type) <= 0) {
     return true;
   }
@@ -387,9 +399,8 @@ bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
 
     Texture text;
     text.type = type;
-    bool load_ok = Utils::LoadTextureFile(text, absolutePath.c_str());
+    bool load_ok = LoadTextureFile(text, absolutePath.c_str());
     if (load_ok) {
-      text.GenerateMipmaps();
       textures[text.type] = text;
     } else {
       std::cerr << "load texture failed: " << Texture::TextureTypeString(type) << ", path: " << absolutePath
@@ -414,6 +425,104 @@ BoundingBox ModelLoader::ConvertBoundingBox(const aiAABB &aabb) {
   ret.min = glm::vec3(aabb.mMin.x, aabb.mMin.y, aabb.mMin.z);
   ret.max = glm::vec3(aabb.mMax.x, aabb.mMax.y, aabb.mMax.z);
   return ret;
+}
+
+void ModelLoader::PreloadSceneTextureFiles(const aiScene *scene, const std::string &res_dir) {
+  std::set<std::string> tex_paths;
+  for (int material_idx = 0; material_idx < scene->mNumMaterials; material_idx++) {
+    aiMaterial *material = scene->mMaterials[material_idx];
+    for (int tex_type = aiTextureType_NONE; tex_type <= AI_TEXTURE_TYPE_MAX; tex_type++) {
+      auto texture_type = static_cast<aiTextureType>(tex_type);
+      size_t tex_cnt = material->GetTextureCount(texture_type);
+      for (size_t i = 0; i < tex_cnt; i++) {
+        aiString text_path;
+        aiReturn retStatus = material->GetTexture(texture_type, i, &text_path);
+        if (retStatus != aiReturn_SUCCESS || text_path.length == 0) {
+          continue;
+        }
+        tex_paths.insert(res_dir + FILE_SEPARATOR + text_path.C_Str());
+      }
+    }
+  }
+  if (tex_paths.empty()) {
+    return;
+  }
+
+  ThreadPool pool(std::min(tex_paths.size(), (size_t) std::thread::hardware_concurrency()));
+  for (auto &path : tex_paths) {
+    pool.PushTask([&](int thread_id) {
+      Texture tex;
+      LoadTextureFile(tex, path.c_str());
+    });
+  }
+}
+
+bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
+  {
+    std::lock_guard<std::mutex> lk(texture_cache_mutex_);
+    if (texture_cache_.find(path) != texture_cache_.end()) {
+      tex.buffer = texture_cache_[path];
+      return true;
+    }
+  }
+
+  std::cout << "load texture, path: " << path << std::endl;
+
+  int iw = 0, ih = 0, n = 0;
+  stbi_set_flip_vertically_on_load(true);
+  unsigned char *data = stbi_load(path, &iw, &ih, &n, STBI_default);
+  if (data == nullptr) {
+    return false;
+  }
+  tex.buffer = Texture::CreateBufferDefault();
+  tex.buffer->Create(iw, ih);
+  auto &buffer = tex.buffer;
+
+  for (size_t y = 0; y < ih; y++) {
+    for (size_t x = 0; x < iw; x++) {
+      auto &to = *buffer->Get(x, y);
+      size_t idx = x + y * iw;
+
+      switch (n) {
+        case STBI_grey: {
+          to.r = data[idx];
+          to.g = to.b = to.r;
+          to.a = 255;
+          break;
+        }
+        case STBI_grey_alpha: {
+          to.r = data[idx * 2 + 0];
+          to.g = to.b = to.r;
+          to.a = data[idx * 2 + 1];
+          break;
+        }
+        case STBI_rgb: {
+          to.r = data[idx * 3 + 0];
+          to.g = data[idx * 3 + 1];
+          to.b = data[idx * 3 + 2];
+          to.a = 255;
+          break;
+        }
+        case STBI_rgb_alpha: {
+          to.r = data[idx * 4 + 0];
+          to.g = data[idx * 4 + 1];
+          to.b = data[idx * 4 + 2];
+          to.a = data[idx * 4 + 3];
+          break;
+        }
+        default:break;
+      }
+    }
+  }
+
+  stbi_image_free(data);
+
+  {
+    std::lock_guard<std::mutex> lk(texture_cache_mutex_);
+    texture_cache_[path] = tex.buffer;
+  }
+
+  return true;
 }
 
 }

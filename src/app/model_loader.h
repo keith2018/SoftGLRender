@@ -106,6 +106,9 @@ class ModelLoader {
   void LoadLights();
   static void LoadSkyboxMesh();
 
+  static void PreloadSceneTextureFiles(const aiScene *scene, const std::string &res_dir);
+  static bool LoadTextureFile(Texture &tex, const char *path);
+
  private:
   // model
   ModelContainer *curr_model_ = nullptr;
@@ -123,6 +126,11 @@ class ModelLoader {
   ModelPoints lights_;
   glm::vec3 point_light_position_;
   glm::vec3 point_light_color_;
+
+ private:
+  std::mutex model_load_mutex_;
+  static std::mutex texture_cache_mutex_;
+  static std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> texture_cache_;
 };
 
 }
