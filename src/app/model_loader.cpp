@@ -74,21 +74,37 @@ std::mutex ModelLoader::texture_cache_mutex_;
 std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> ModelLoader::texture_cache_;
 
 void SkyboxTexture::InitIBL() {
-  if (cube[0].buffer == nullptr) {
-    std::cout << "convert equirectangular to cube map ...";
+  if (ibl_running) {
+    return;
+  }
+  ibl_running = true;
+
+  if (!cube_ready && equirectangular_ready) {
+    std::cout << "convert equirectangular to cube map ...\n";
     Environment::ConvertEquirectangular(equirectangular, cube);
-    std::cout << " done.\n";
+    cube_ready = true;
+    std::cout << "convert equirectangular to cube map done.\n";
   }
-  if (irradiance[0].buffer == nullptr) {
-    std::cout << "generate irradiance map ...";
-    Environment::GenerateIrradianceMap(cube, irradiance);
-    std::cout << " done.\n";
-  }
-  if (prefilter[0].buffer == nullptr) {
-    std::cout << "generate prefilter map ...";
-    Environment::GeneratePrefilterMap(cube, prefilter);
-    std::cout << " done.\n";
-  }
+
+  std::thread irradiance_thread([&]() {
+    if (!irradiance_ready && cube_ready) {
+      std::cout << "generate irradiance map ...\n";
+      Environment::GenerateIrradianceMap(cube, irradiance);
+      irradiance_ready = true;
+      std::cout << "generate irradiance map done.\n";
+    }
+  });
+  irradiance_thread.detach();
+
+  std::thread prefilter_thread([&]() {
+    if (!prefilter_ready && cube_ready) {
+      std::cout << "generate prefilter map ...\n";
+      Environment::GeneratePrefilterMap(cube, prefilter);
+      prefilter_ready = true;
+      std::cout << "generate prefilter map done.\n";
+    }
+  });
+  prefilter_thread.detach();
 }
 
 ModelMesh ModelLoader::skybox_mash_;
@@ -181,10 +197,13 @@ void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
     pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[3], (filepath + "bottom.jpg").c_str()); });
     pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[4], (filepath + "front.jpg").c_str()); });
     pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[5], (filepath + "back.jpg").c_str()); });
+    pool.WaitTasksFinish();
+    curr_skybox_tex_->cube_ready = true;
   } else {
     curr_skybox_tex_->type = Skybox_Equirectangular;
     curr_skybox_tex_->equirectangular.type = TextureType_EQUIRECTANGULAR;
     LoadTextureFile(curr_skybox_tex_->equirectangular, filepath.c_str());
+    curr_skybox_tex_->equirectangular_ready = true;
   }
 }
 
@@ -466,7 +485,7 @@ bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
     }
   }
 
-  std::cout << "load texture, path: " << path << std::endl;
+  printf("load texture, path: %s\n", path);
 
   int iw = 0, ih = 0, n = 0;
   stbi_set_flip_vertically_on_load(true);
