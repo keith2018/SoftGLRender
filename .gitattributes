@@ -1,1 +1,2 @@
-third_party/* linguist-vendored
+third_party/** linguist-vendored
+src/utils/stb_* linguist-vendored
