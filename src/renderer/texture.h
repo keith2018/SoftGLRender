@@ -9,6 +9,7 @@
 #include <utility>
 #include <functional>
 #include <atomic>
+#include <thread>
 
 #include "frame_buffer.h"
 
@@ -107,7 +108,8 @@ class BaseTexture {
       type = o.type;
       buffer = o.buffer;
       mipmaps = o.mipmaps;
-      mipmaps_ready_ = o.mipmaps_ready_ ? true : false;
+      mipmaps_ready_ = (bool)o.mipmaps_ready_;
+      mipmaps_generating_ = (bool)o.mipmaps_generating_;
     }
     return *this;
   }
@@ -117,6 +119,7 @@ class BaseTexture {
     buffer = nullptr;
     mipmaps.clear();
     mipmaps_ready_ = false;
+    mipmaps_generating_ = false;
   }
 
   static int RoundupPowerOf2(int n) {
@@ -129,14 +132,22 @@ class BaseTexture {
     n |= n >> 16;
     return n < 0 ? 1 : (n >= max ? max : n + 1);
   }
+
+  virtual ~BaseTexture() {
+    if (mipmaps_thread_) {
+      mipmaps_thread_->join();
+    }
+  }
+
  public:
   TextureType type = TextureType_NONE;
   std::shared_ptr<Buffer<Vec4<T>>> buffer = nullptr;
   std::vector<std::shared_ptr<Buffer<Vec4<T>>>> mipmaps;
 
  private:
-  std::mutex mutex_;
   std::atomic<bool> mipmaps_ready_{false};
+  std::atomic<bool> mipmaps_generating_{false};
+  std::shared_ptr<std::thread> mipmaps_thread_ = nullptr;
 };
 
 enum WrapMode {
@@ -281,41 +292,45 @@ const Vec4<T> BaseSampler<T>::BORDER_COLOR(0);
 
 template<typename T>
 void BaseTexture<T>::GenerateMipmaps() {
-  std::lock_guard<std::mutex> lock_guard(mutex_);
-  if (mipmaps_ready_) {
+  if (mipmaps_ready_ || mipmaps_generating_) {
     return;
   }
-  mipmaps.clear();
 
-  int origin_width = (int) buffer->GetWidth();
-  int origin_height = (int) buffer->GetHeight();
+  mipmaps_generating_ = true;
+  mipmaps_thread_ = std::make_shared<std::thread>([&]() {
+    mipmaps.clear();
 
-  // level 0
-  int level_size = std::max(RoundupPowerOf2(origin_width), RoundupPowerOf2(origin_height));
-  mipmaps.push_back(BaseTexture<T>::CreateBuffer(buffer->GetLayout()));
-  Buffer<Vec4<T>> *level_buffer = mipmaps.back().get();
-  Buffer<Vec4<T>> *level_buffer_from = buffer.get();
-  level_buffer->Create(level_size, level_size);
+    int origin_width = (int) buffer->GetWidth();
+    int origin_height = (int) buffer->GetHeight();
 
-  if (level_size == level_buffer_from->GetWidth() && level_size == level_buffer_from->GetHeight()) {
-    level_buffer_from->CopyRawDataTo(level_buffer->GetRawDataPtr());
-  } else {
-    BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
-  }
-
-  // other levels
-  while (level_size >= 2) {
-    level_size /= 2;
-
+    // level 0
+    int level_size = std::max(RoundupPowerOf2(origin_width), RoundupPowerOf2(origin_height));
     mipmaps.push_back(BaseTexture<T>::CreateBuffer(buffer->GetLayout()));
-    level_buffer = mipmaps.back().get();
-    level_buffer_from = mipmaps[mipmaps.size() - 2].get();
+    Buffer<Vec4<T>> *level_buffer = mipmaps.back().get();
+    Buffer<Vec4<T>> *level_buffer_from = buffer.get();
     level_buffer->Create(level_size, level_size);
 
-    BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
-  }
+    if (level_size == level_buffer_from->GetWidth() && level_size == level_buffer_from->GetHeight()) {
+      level_buffer_from->CopyRawDataTo(level_buffer->GetRawDataPtr());
+    } else {
+      BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
+    }
 
-  mipmaps_ready_ = true;
+    // other levels
+    while (level_size >= 2) {
+      level_size /= 2;
+
+      mipmaps.push_back(BaseTexture<T>::CreateBuffer(buffer->GetLayout()));
+      level_buffer = mipmaps.back().get();
+      level_buffer_from = mipmaps[mipmaps.size() - 2].get();
+      level_buffer->Create(level_size, level_size);
+
+      BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
+    }
+
+    mipmaps_generating_ = false;
+    mipmaps_ready_ = true;
+  });
 }
 
 template<typename T>
