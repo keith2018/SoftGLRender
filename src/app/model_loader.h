@@ -28,6 +28,12 @@ struct SkyboxTexture {
   Texture irradiance[6];
   Texture prefilter[6];
 
+  bool cube_ready = false;
+  bool equirectangular_ready = false;
+  bool irradiance_ready = false;
+  bool prefilter_ready = false;
+  bool ibl_running = false;
+
   void InitIBL();
 };
 

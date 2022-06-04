@@ -257,27 +257,33 @@ void DemoApp::InitShaderSkybox(ShaderContext &shader_context, glm::mat4 &model_m
   }
   switch (skyboxTex->type) {
     case Skybox_Cube: {
-      for (int i = 0; i < 6; i++) {
-        skybox_uniforms_ptr->u_cubeMap.SetTexture(&skyboxTex->cube[i], i);
+      if (skyboxTex->cube_ready) {
+        for (int i = 0; i < 6; i++) {
+          skybox_uniforms_ptr->u_cubeMap.SetTexture(&skyboxTex->cube[i], i);
+        }
+        skybox_uniforms_ptr->u_cubeMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
+        skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
       }
-      skybox_uniforms_ptr->u_cubeMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-      skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
     }
       break;
     case Skybox_Equirectangular: {
 #ifndef SOFTGL_EQUIRECTANGULAR_TO_CUBE
-      skybox_uniforms_ptr->u_equirectangularMap.SetTexture(&skyboxTex->equirectangular);
-      skybox_uniforms_ptr->u_equirectangularMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-      skybox_uniforms_ptr->u_equirectangularMap.SetFilterMode(Filter_LINEAR);
+      if (skyboxTex->equirectangular_ready) {
+        skybox_uniforms_ptr->u_equirectangularMap.SetTexture(&skyboxTex->equirectangular);
+        skybox_uniforms_ptr->u_equirectangularMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
+        skybox_uniforms_ptr->u_equirectangularMap.SetFilterMode(Filter_LINEAR);
+      }
 #else
-      if (skyboxTex->cube[0].buffer == nullptr) {
+      if (!skyboxTex->cube_ready) {
         Environment::ConvertEquirectangular(skyboxTex->equirectangular, skyboxTex->cube);
       }
-      for (int i = 0; i < 6; i++) {
-        skybox_uniforms_ptr->u_cubeMap.SetTexture(&skyboxTex->cube[i], i);
+      if (skyboxTex->cube_ready) {
+        for (int i = 0; i < 6; i++) {
+          skybox_uniforms_ptr->u_cubeMap.SetTexture(&skyboxTex->cube[i], i);
+        }
+        skybox_uniforms_ptr->u_cubeMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
+        skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
       }
-      skybox_uniforms_ptr->u_cubeMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-      skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
 #endif
     }
       break;
@@ -339,18 +345,22 @@ void DemoApp::BindShaderTextures(ModelMesh &mesh, std::shared_ptr<BaseShaderUnif
           skyboxTex->InitIBL();
 
           // irradiance
-          for (int i = 0; i < 6; i++) {
-            uniforms_ptr->u_irradianceMap.SetTexture(&skyboxTex->irradiance[i], i);
+          if (skyboxTex->irradiance_ready) {
+            for (int i = 0; i < 6; i++) {
+              uniforms_ptr->u_irradianceMap.SetTexture(&skyboxTex->irradiance[i], i);
+            }
+            uniforms_ptr->u_irradianceMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
+            uniforms_ptr->u_irradianceMap.SetFilterMode(Filter_LINEAR);
           }
-          uniforms_ptr->u_irradianceMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-          uniforms_ptr->u_irradianceMap.SetFilterMode(Filter_LINEAR);
 
           // prefilter
-          for (int i = 0; i < 6; i++) {
-            uniforms_ptr->u_prefilterMapMap.SetTexture(&skyboxTex->prefilter[i], i);
+          if (skyboxTex->prefilter_ready) {
+            for (int i = 0; i < 6; i++) {
+              uniforms_ptr->u_prefilterMapMap.SetTexture(&skyboxTex->prefilter[i], i);
+            }
+            uniforms_ptr->u_prefilterMapMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
+            uniforms_ptr->u_prefilterMapMap.SetFilterMode(Filter_LINEAR_MIPMAP_LINEAR);
           }
-          uniforms_ptr->u_prefilterMapMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-          uniforms_ptr->u_prefilterMapMap.SetFilterMode(Filter_LINEAR_MIPMAP_LINEAR);
         }
       }
     }
