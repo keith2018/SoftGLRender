@@ -135,7 +135,6 @@ class ModelLoader {
 
  private:
   std::mutex model_load_mutex_;
-  static std::mutex texture_cache_mutex_;
   static std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> texture_cache_;
 };
 

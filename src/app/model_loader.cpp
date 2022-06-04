@@ -13,10 +13,10 @@
 #include <assimp/GltfMaterial.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "utils/stb_image.h"
+#include <stb/stb_image.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "utils/stb_image_write.h"
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
+//#include <stb/stb_image_write.h>
 
 #include "environment.h"
 #include "renderer/thread_pool.h"
@@ -70,7 +70,6 @@ float skyboxVertices[] = {
     1.0f, -1.0f, 1.0f
 };
 
-std::mutex ModelLoader::texture_cache_mutex_;
 std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> ModelLoader::texture_cache_;
 
 void SkyboxTexture::InitIBL() {
@@ -477,12 +476,9 @@ void ModelLoader::PreloadSceneTextureFiles(const aiScene *scene, const std::stri
 }
 
 bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
-  {
-    std::lock_guard<std::mutex> lk(texture_cache_mutex_);
-    if (texture_cache_.find(path) != texture_cache_.end()) {
-      tex.buffer = texture_cache_[path];
-      return true;
-    }
+  if (texture_cache_.find(path) != texture_cache_.end()) {
+    tex.buffer = texture_cache_[path];
+    return true;
   }
 
   printf("load texture, path: %s\n", path);
@@ -535,11 +531,7 @@ bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
   }
 
   stbi_image_free(data);
-
-  {
-    std::lock_guard<std::mutex> lk(texture_cache_mutex_);
-    texture_cache_[path] = tex.buffer;
-  }
+  texture_cache_[path] = tex.buffer;
 
   return true;
 }
