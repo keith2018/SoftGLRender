@@ -25,15 +25,19 @@ class Settings {
   Settings() {
     LoadAssetConfig();
 
-    model_name = model_paths_.begin()->first;
-    model_path = model_paths_.begin()->second;
+    if (!model_paths_.empty()) {
+      model_name = model_paths_.begin()->first;
+      model_path = model_paths_.begin()->second;
+    }
 
-    skybox_name = skybox_paths_.begin()->first;
-    skybox_path = skybox_paths_.begin()->second;
+    if (!skybox_paths_.empty()) {
+      skybox_name = skybox_paths_.begin()->first;
+      skybox_path = skybox_paths_.begin()->second;
+    }
   }
 
   void LoadAssetConfig() {
-    std::cout << "load assets in :" << ASSETS_DIR << std::endl;
+    std::cout << "load assets in : " << ASSETS_DIR << std::endl;
     std::ifstream config(ASSETS_DIR + "assets.json");
     if (!config.is_open()) {
       std::cout << "open config file failed" << std::endl;
