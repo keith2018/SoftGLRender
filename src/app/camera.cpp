@@ -75,9 +75,9 @@ glm::vec3 Camera::GetWorldPositionFromView(glm::vec3 pos) const {
 }
 
 void Camera::Update() {
-  glm::vec3 forward(glm::normalize(eye_ - center_));
-  glm::vec3 side(glm::normalize(cross(up_, forward)));
-  glm::vec3 up(glm::cross(forward, side));
+  glm::vec3 forward(glm::normalize(center_ - eye_));
+  glm::vec3 side(glm::normalize(cross(forward, up_)));
+  glm::vec3 up(glm::cross(side, forward));
 
   float near_height_half = near_ * std::tan(fov_ / 2.f);
   float far_height_half = far_ * std::tan(fov_ / 2.f);
@@ -85,13 +85,13 @@ void Camera::Update() {
   float far_width_half = far_height_half * aspect_;
 
   // near plane
-  glm::vec3 near_center = eye_ - forward * near_;
-  glm::vec3 near_normal = -forward;
+  glm::vec3 near_center = eye_ + forward * near_;
+  glm::vec3 near_normal = forward;
   frustum_.planes[0].Set(near_normal, near_center);
 
   // far plane
-  glm::vec3 far_center = eye_ - forward * far_;
-  glm::vec3 far_normal = forward;
+  glm::vec3 far_center = eye_ + forward * far_;
+  glm::vec3 far_normal = -forward;
   frustum_.planes[1].Set(far_normal, far_center);
 
   // top plane
