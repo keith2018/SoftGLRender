@@ -9,6 +9,8 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 [![CMake Windows](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml)
 [![CMake Linux](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml)
 
+</div>
+
 ![](screenshot/helmet.png)
 
 #### Code structure:
