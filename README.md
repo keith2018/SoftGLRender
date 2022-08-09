@@ -9,19 +9,21 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 [![CMake Windows](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml)
 [![CMake Linux](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml)
 
-</div>
-
-
 ![](screenshot/helmet.png)
 
-## Features
+#### Code structure:
+
+- [renderer](src/renderer): the main software renderer implementation, first preparing input data (Vertexes, Indices), then binding custom shaders, and setup rendering pipeline, after the pipeline finished, graphics will draw to the result framebuffer.
+- [shader](src/shader): the programmable render pipeline simulation, vertex shader and fragment shader are supported, and it is easy to port real GLSL code to this project, several basic shaders are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
+- [app](src/app): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel, and render pass management.
+
+#### Renderer Pipeline Features
+
 - Wireframe
 - View Frustum culling
 - Back-Front culling
 - Orbit Camera Controller
 - Perspective Correct Interpolation
-- Reversed Z
-- Early Z
 - Tangent Space Normal Mapping
 - Basic Lighting
 - Blinn-Phong shading
@@ -32,6 +34,9 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 - Texture filtering and wrapping
 - Shader varying partial derivative `dFdx` `dFdy`
 - Alpha mask & blend
+- Reversed Z, Early Z
+
+#### Texture
 
 Texture Filtering
   - NEAREST
@@ -48,20 +53,38 @@ Texture Wrapping
   - CLAMP_TO_BORDER
   - CLAMP_TO_ZERO
 
-Texture Fetch
-  - Lod
-  - Bias
-  - Offset
+Several commonly used texture fetch parameter are Supported, such as `Lod`, `Bias`, `Offset`, to support texture mipmaps, the renderer pipeline has implement shader varying partial derivative function `dFdx` `dFdy`, rasterization operates on 4 pixels as a Quad, `dFdx` `dFdy` is the difference between adjacent pixel shader variables:
 
-Anti Aliasing
-  - SSAA
-  - FXAA
+```cpp
+/**
+ *   p2--p3
+ *   |   |
+ *   p0--p1
+ */
+PixelContext pixels[4];
+```
 
+The storage of texture supports three modes:
 
-## TODO
-- [ ] MSAA\TAA
-- [ ] Shadow Map
+- Linear: pixel values are stored line by line, commonly used as image RGBA buffer
+- Tiled: block base storage, inside the block pixels are stored as `Linear`
+- Morton: block base storage, inside the block pixels are stored as morton pattern (similar to zigzag)
 
+#### Anti Aliasing
+
+- [x] SSAA
+- [x] FXAA
+- [ ] MSAA
+- [ ] TAA
+
+#### Shading
+
+- [x] Blinn-Phong
+- [x] PBR-BRDF
+
+#### Optimization
+- Multi-Threading: rasterization is block based with multi-threading support, currently the triangle traversal algorithm needs to be optimized.
+- SIMD: SIMD acceleration is used to optimize performance bottlenecks, such as barycentric coordinate calculation, shader's varying interpolation, etc.
 
 ## Showcase
 ### Render Textured
