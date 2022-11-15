@@ -42,9 +42,10 @@ add_subdirectory(${THIRD_PARTY_DIR}/assimp)
 
 # main src
 file(GLOB SOFTGL_SRC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/base/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/soft/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/opengl/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/view/*.cpp
         )
 
 # imgui src

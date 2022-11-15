@@ -6,14 +6,12 @@
 
 #include <iostream>
 #include <sstream>
-#include <utility>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "app/demo_app.h"
-
-std::shared_ptr<SoftGL::App::DemoApp> demoApp = nullptr;
+#include "view/viewer_soft.h"
+std::shared_ptr<SoftGL::View::Viewer> viewer = nullptr;
 
 const unsigned int SCR_WIDTH = 1000;
 const unsigned int SCR_HEIGHT = 800;
@@ -176,15 +174,6 @@ int main() {
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
   glEnableVertexAttribArray(1);
 
-  // init SoftGL::Renderer
-  demoApp = std::make_shared<SoftGL::App::DemoApp>();
-  if (!demoApp->Create(window, SCR_WIDTH, SCR_HEIGHT)) {
-    std::cout << "Failed to initialize SoftGL::Renderer" << std::endl;
-    demoApp.reset();
-    glfwTerminate();
-    return -1;
-  }
-
   // load and create a texture
   // -------------------------
   unsigned int texture;
@@ -200,36 +189,38 @@ int main() {
   glUseProgram(program);
   glUniform1i(glGetUniformLocation(program, "uTexture"), 0);
 
-  /* Loop until the user closes the window */
-  while (!glfwWindowShouldClose(window)) {
-    // check exit app
-    processInput(window);
+  // init SoftGL::Viewer
+  viewer = std::make_shared<SoftGL::View::ViewerSoft>(); // TODO type
+  if (viewer->Create(window, SCR_WIDTH, SCR_HEIGHT, (int) texture)) {
+    /* Loop until the user closes the window */
+    while (!glfwWindowShouldClose(window)) {
+      // check exit app
+      processInput(window);
 
-    // render
-    // ------
-    glClearColor(0.f, 0.f, 0.f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+      // render
+      // ------
+      glClearColor(0.f, 0.f, 0.f, 0.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, texture);
 
-    demoApp->DrawFrame();
-    auto frame = demoApp->GetFrame();
-    if (frame) {
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int) frame->GetWidth(), (int) frame->GetHeight(), 0, GL_RGBA,
-                   GL_UNSIGNED_BYTE, frame->GetRawDataPtr());
+      // draw frame
+      viewer->DrawFrame();
+
+      glUseProgram(program);
+      glBindVertexArray(VAO);
+      glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+      viewer->DrawUI();
+      glfwSwapBuffers(window);
+      glfwPollEvents();
     }
-
-    glUseProgram(program);
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-
-    demoApp->DrawUI();
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+  } else {
+    std::cout << "Failed to initialize Viewer" << std::endl;
   }
 
-  demoApp.reset();
+  viewer.reset();
 
   glDeleteVertexArrays(1, &VAO);
   glDeleteBuffers(1, &VBO);
@@ -246,7 +237,7 @@ int main() {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window) {
-  if (demoApp->WantCaptureKeyboard()) {
+  if (!viewer || viewer->WantCaptureKeyboard()) {
     return;
   }
 
@@ -260,7 +251,7 @@ void processInput(GLFWwindow *window) {
   if (state == GLFW_PRESS) {
     if (!key_h_pressed) {
       key_h_pressed = true;
-      demoApp->ToggleUIShowState();
+      viewer->ToggleUIShowState();
     }
   } else if (state == GLFW_RELEASE) {
     key_h_pressed = false;
@@ -273,13 +264,17 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   // make sure the viewport matches the new window dimensions; note that width and
   // height will be significantly larger than specified on retina displays.
   glViewport(0, 0, width, height);
-  demoApp->UpdateSize(width, height);
+
+  if (!viewer) {
+    return;
+  }
+  viewer->UpdateSize(width, height);
 }
 
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow *window, double xPos, double yPos) {
-  if (demoApp->WantCaptureMouse()) {
+  if (!viewer || viewer->WantCaptureMouse()) {
     return;
   }
 
@@ -294,11 +289,11 @@ void mouse_callback(GLFWwindow *window, double xPos, double yPos) {
     double yOffset = yPos - lastY;
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-      demoApp->GetOrbitController()->panX = xOffset;
-      demoApp->GetOrbitController()->panY = yOffset;
+      viewer->GetOrbitController()->panX = xOffset;
+      viewer->GetOrbitController()->panY = yOffset;
     } else {
-      demoApp->GetOrbitController()->rotateX = xOffset;
-      demoApp->GetOrbitController()->rotateY = yOffset;
+      viewer->GetOrbitController()->rotateX = xOffset;
+      viewer->GetOrbitController()->rotateY = yOffset;
     }
 
     lastX = xPos;
@@ -311,10 +306,10 @@ void mouse_callback(GLFWwindow *window, double xPos, double yPos) {
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow *window, double xOffset, double yOffset) {
-  if (demoApp->WantCaptureMouse()) {
+  if (!viewer || viewer->WantCaptureMouse()) {
     return;
   }
 
-  demoApp->GetOrbitController()->zoomX = xOffset;
-  demoApp->GetOrbitController()->zoomY = yOffset;
+  viewer->GetOrbitController()->zoomX = xOffset;
+  viewer->GetOrbitController()->zoomY = yOffset;
 }
