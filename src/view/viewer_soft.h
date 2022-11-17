@@ -37,13 +37,13 @@ class ViewerSoft : public Viewer {
   static Texture *GetMeshTexture(ModelMesh &mesh, TextureType type);
 
  private:
-  std::shared_ptr<RendererSoft> renderer_;
+  std::shared_ptr<RendererSoft> renderer_ = nullptr;
 
   Buffer<glm::u8vec4> *out_color_ = nullptr;
   AAType aa_type_ = AAType_NONE;
 
   // FXAA
-  std::shared_ptr<QuadFilter> fxaa_filter_;
+  std::shared_ptr<QuadFilter> fxaa_filter_ = nullptr;
   Texture fxaa_tex_;
 };
 

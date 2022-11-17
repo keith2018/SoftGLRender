@@ -11,6 +11,8 @@
 #include <GLFW/glfw3.h>
 
 #include "view/viewer_soft.h"
+#include "view/viewer_opengl.h"
+
 std::shared_ptr<SoftGL::View::Viewer> viewer = nullptr;
 
 const unsigned int SCR_WIDTH = 1000;
@@ -190,7 +192,11 @@ int main() {
   glUniform1i(glGetUniformLocation(program, "uTexture"), 0);
 
   // init SoftGL::Viewer
-  viewer = std::make_shared<SoftGL::View::ViewerSoft>(); // TODO type
+#ifdef SOFTGL_RENDER_OPENGL
+  viewer = std::make_shared<SoftGL::View::ViewerOpenGL>();
+#else
+  viewer = std::make_shared<SoftGL::View::ViewerSoft>();
+#endif
   if (viewer->Create(window, SCR_WIDTH, SCR_HEIGHT, (int) texture)) {
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
