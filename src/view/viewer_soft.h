@@ -40,7 +40,6 @@ class ViewerSoft : public Viewer {
   std::shared_ptr<RendererSoft> renderer_ = nullptr;
 
   Buffer<glm::u8vec4> *out_color_ = nullptr;
-  AAType aa_type_ = AAType_NONE;
 
   // FXAA
   std::shared_ptr<QuadFilter> fxaa_filter_ = nullptr;

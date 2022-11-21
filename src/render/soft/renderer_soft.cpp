@@ -33,7 +33,7 @@ void RendererSoft::Clear(float r, float g, float b, float a) {
   fbo_.depth->SetAll(depth_range.near);
 }
 
-void RendererSoft::DrawMeshTextured(ModelMesh &mesh, glm::mat4 &transform) {
+void RendererSoft::DrawMeshTextured(ModelMesh &mesh) {
   render_ctx_.Prepare(&mesh, shader_context_.varyings_size / sizeof(float));
   ProcessVertexShader();
   ProcessFaceFrustumClip();
@@ -42,7 +42,7 @@ void RendererSoft::DrawMeshTextured(ModelMesh &mesh, glm::mat4 &transform) {
   ProcessFaceRasterization();
 }
 
-void RendererSoft::DrawMeshWireframe(ModelMesh &mesh, glm::mat4 &transform) {
+void RendererSoft::DrawMeshWireframe(ModelMesh &mesh) {
   render_ctx_.Prepare(&mesh, shader_context_.varyings_size / sizeof(float));
   ProcessVertexShader();
   if (wireframe_show_clip) {
@@ -54,11 +54,12 @@ void RendererSoft::DrawMeshWireframe(ModelMesh &mesh, glm::mat4 &transform) {
   }
 }
 
-void RendererSoft::DrawLines(ModelLines &lines, glm::mat4 &transform) {
+void RendererSoft::DrawLines(ModelLines &lines) {
   render_ctx_.Prepare(&lines);
   ProcessVertexShader();
 
-  glm::u8vec4 color{64};
+  glm::u8vec4 color = lines.line_color * 255.f;
+  // line_width not support
   for (int line_idx = 0; line_idx < lines.line_cnt; line_idx++) {
     int idx0 = lines.indices[line_idx * 2];
     int idx1 = lines.indices[line_idx * 2 + 1];
@@ -70,7 +71,7 @@ void RendererSoft::DrawLines(ModelLines &lines, glm::mat4 &transform) {
   }
 }
 
-void RendererSoft::DrawPoints(ModelPoints &points, glm::mat4 &transform) {
+void RendererSoft::DrawPoints(ModelPoints &points) {
   render_ctx_.Prepare(&points);
   ProcessVertexShader();
 
@@ -83,8 +84,8 @@ void RendererSoft::DrawPoints(ModelPoints &points, glm::mat4 &transform) {
     PerspectiveDivide(pt.pos);
     ViewportTransform(pt.pos);
 
-    glm::u8vec4 color = glm::u8vec4(points.colors[pt_idx], 255);
-    int radius = 10;
+    glm::u8vec4 color = points.point_color * 255.f;
+    int radius = (int) points.point_size;
     graphic_.DrawCircle((int) pt.pos.x, (int) pt.pos.y, radius, pt.pos.z, color);
   }
 }

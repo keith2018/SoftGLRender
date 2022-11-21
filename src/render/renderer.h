@@ -22,10 +22,10 @@ class Renderer {
 
   virtual void Clear(float r, float g, float b, float a) {};
 
-  virtual void DrawMeshTextured(ModelMesh &mesh, glm::mat4 &transform) {};
-  virtual void DrawMeshWireframe(ModelMesh &mesh, glm::mat4 &transform) {};
-  virtual void DrawLines(ModelLines &lines, glm::mat4 &transform) {};
-  virtual void DrawPoints(ModelPoints &points, glm::mat4 &transform) {};
+  virtual void DrawMeshTextured(ModelMesh &mesh) {};
+  virtual void DrawMeshWireframe(ModelMesh &mesh) {};
+  virtual void DrawLines(ModelLines &lines) {};
+  virtual void DrawPoints(ModelPoints &points) {};
 
  protected:
   int width_ = 0;

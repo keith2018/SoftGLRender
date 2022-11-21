@@ -30,7 +30,7 @@ void QuadFilter::Clear(float r, float g, float b, float a) {
 
 void QuadFilter::Draw() {
   glm::mat4 transform(1.0f);
-  renderer_->DrawMeshTextured(quad_mesh_, transform);
+  renderer_->DrawMeshTextured(quad_mesh_);
 }
 
 }

@@ -249,17 +249,21 @@ void ModelLoader::LoadWorldAxis() {
     world_axis_.indices.push_back(idx++);
   }
   world_axis_.line_cnt = world_axis_.indices.size() / 2;
+  world_axis_.line_color = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
+  world_axis_.line_width = 1.f;
 }
 
 void ModelLoader::LoadLights() {
   lights_.point_cnt = 1;
   lights_.vertexes.resize(lights_.point_cnt);
-  lights_.colors.resize(lights_.point_cnt);
+  lights_.indices.resize(lights_.point_cnt);
 
   Vertex vertex{};
   vertex.a_position = point_light_position_;
   lights_.vertexes[0] = vertex;
-  lights_.colors[0] = point_light_color_ * 255.f;
+  lights_.indices[0] = 0;
+  lights_.point_color = glm::vec4(point_light_color_, 1.f);
+  lights_.point_size = 10.f;
 }
 
 bool ModelLoader::ProcessNode(const aiNode *ai_node,

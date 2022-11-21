@@ -10,6 +10,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "base/shader_utils.h"
 #include "view/viewer_soft.h"
 #include "view/viewer_opengl.h"
 
@@ -43,9 +44,8 @@ void main()
 
 const char *FS = R"(
 #version 330 core
-out vec4 FragColor;
-
 in vec2 TexCoord;
+out vec4 FragColor;
 
 uniform sampler2D uTexture;
 
@@ -54,26 +54,6 @@ void main()
     FragColor = texture(uTexture, TexCoord);
 }
 )";
-
-void checkCompileErrors(GLuint shader, const std::string &type) {
-  GLint success;
-  GLchar infoLog[1024];
-  if (type != "PROGRAM") {
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-      glGetShaderInfoLog(shader, 1024, nullptr, infoLog);
-      std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog
-                << "\n -- --------------------------------------------------- -- " << std::endl;
-    }
-  } else {
-    glGetProgramiv(shader, GL_LINK_STATUS, &success);
-    if (!success) {
-      glGetProgramInfoLog(shader, 1024, nullptr, infoLog);
-      std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog
-                << "\n -- --------------------------------------------------- -- " << std::endl;
-    }
-  }
-}
 
 static void glfw_error_callback(int error, const char *description) {
   fprintf(stderr, "Glfw Error %d: %s\n", error, description);
@@ -118,30 +98,12 @@ int main() {
     return -1;
   }
 
-  // build and compile our shader program
-  unsigned int vertex, fragment, program;
-
-  // vertex shader
-  vertex = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertex, 1, &VS, nullptr);
-  glCompileShader(vertex);
-  checkCompileErrors(vertex, "VERTEX");
-
-  // fragment Shader
-  fragment = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragment, 1, &FS, nullptr);
-  glCompileShader(fragment);
-  checkCompileErrors(fragment, "FRAGMENT");
-
-  // program
-  program = glCreateProgram();
-  glAttachShader(program, vertex);
-  glAttachShader(program, fragment);
-  glLinkProgram(program);
-  checkCompileErrors(program, "PROGRAM");
-
-  glDeleteShader(vertex);
-  glDeleteShader(fragment);
+  SoftGL::ProgramGLSL program;
+  if(!program.LoadSource(VS, FS)) {
+    std::cout << "Failed to initialize Shader" << std::endl;
+    glfwTerminate();
+    return -1;
+  }
 
   // set up vertex data (and buffer(s)) and configure vertex attributes
   float vertices[] = {
@@ -155,31 +117,30 @@ int main() {
       0, 1, 3, // first triangle
       1, 2, 3  // second triangle
   };
-  unsigned int VAO, VBO, EBO;
+  GLuint VAO, VBO, EBO;
   glGenVertexArrays(1, &VAO);
-  glGenBuffers(1, &VBO);
-  glGenBuffers(1, &EBO);
-
   glBindVertexArray(VAO);
 
+  glGenBuffers(1, &VBO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
+
+  glGenBuffers(1, &EBO);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-  // position attribute
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
-  glEnableVertexAttribArray(0);
-
-  // texture coord attribute
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
-  glEnableVertexAttribArray(1);
+  glBindVertexArray(GL_NONE);
 
   // load and create a texture
   // -------------------------
   unsigned int texture;
   glGenTextures(1, &texture);
+  glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, texture);
   // set the texture wrapping parameters
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -188,8 +149,8 @@ int main() {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  glUseProgram(program);
-  glUniform1i(glGetUniformLocation(program, "uTexture"), 0);
+  program.Use();
+  glUniform1i(glGetUniformLocation(program.GetId(), "uTexture"), 0);
 
   // init SoftGL::Viewer
 #ifdef SOFTGL_RENDER_OPENGL
@@ -214,7 +175,7 @@ int main() {
       // draw frame
       viewer->DrawFrame();
 
-      glUseProgram(program);
+      program.Use();
       glBindVertexArray(VAO);
       glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
@@ -227,12 +188,12 @@ int main() {
   }
 
   viewer.reset();
+  program.Destroy();
 
   glDeleteVertexArrays(1, &VAO);
   glDeleteBuffers(1, &VBO);
   glDeleteBuffers(1, &EBO);
   glDeleteTextures(1, &texture);
-  glDeleteProgram(program);
 
   glfwDestroyWindow(window);
   glfwTerminate();

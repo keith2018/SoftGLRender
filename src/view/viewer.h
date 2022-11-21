@@ -48,6 +48,8 @@ class Viewer {
   int height_ = 0;
   int outTexId_ = 0;
 
+  AAType aa_type_ = AAType_NONE;
+
   std::shared_ptr<Settings> settings_;
   std::shared_ptr<SettingPanel> settingPanel_;
   std::shared_ptr<Camera> camera_;

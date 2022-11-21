@@ -12,19 +12,30 @@
 
 namespace SoftGL {
 
-struct ModelPoints {
-  size_t point_cnt = 0;
-  std::vector<Vertex> vertexes;
-  std::vector<glm::u8vec3> colors;
+class VertexHandler {
 };
 
-struct ModelLines {
+struct ModelBase {
+  std::shared_ptr<VertexHandler> handle = nullptr;
+};
+
+struct ModelPoints : ModelBase {
+  size_t point_cnt = 0;
+  std::vector<Vertex> vertexes;
+  std::vector<int> indices;
+  glm::vec4 point_color;
+  float point_size;
+};
+
+struct ModelLines : ModelBase {
   size_t line_cnt = 0;
   std::vector<Vertex> vertexes;
   std::vector<int> indices;
+  glm::vec4 line_color;
+  float line_width;
 };
 
-struct ModelMesh {
+struct ModelMesh : ModelBase {
   size_t idx = 0;
   size_t face_cnt = 0;
   std::vector<Vertex> vertexes;

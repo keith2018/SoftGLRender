@@ -19,10 +19,10 @@ class RendererSoft : public Renderer {
   void Create(int width, int height, float near, float far) override;
   void Clear(float r, float g, float b, float a) override;
 
-  void DrawMeshTextured(ModelMesh &mesh, glm::mat4 &transform) override;
-  void DrawMeshWireframe(ModelMesh &mesh, glm::mat4 &transform) override;
-  void DrawLines(ModelLines &lines, glm::mat4 &transform) override;
-  void DrawPoints(ModelPoints &points, glm::mat4 &transform) override;
+  void DrawMeshTextured(ModelMesh &mesh) override;
+  void DrawMeshWireframe(ModelMesh &mesh) override;
+  void DrawLines(ModelLines &lines) override;
+  void DrawPoints(ModelPoints &points) override;
 
   inline std::shared_ptr<Buffer<glm::u8vec4>> &GetFrameColor() { return fbo_.color; };
   inline ShaderContext &GetShaderContext() { return shader_context_; }

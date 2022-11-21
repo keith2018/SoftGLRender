@@ -164,7 +164,7 @@ void Environment::CubeRenderDraw(RendererSoft &renderer,
     camera.LookAt(param.eye, param.center, param.up);
     uniforms_ptr->u_modelViewProjectionMatrix = camera.ProjectionMatrix() * camera.ViewMatrix() * model_matrix;
     renderer.Clear(0.f, 0.f, 0.f, 0.f);
-    renderer.DrawMeshTextured(skybox_mesh, model_matrix);
+    renderer.DrawMeshTextured(skybox_mesh);
 
     auto &buff = renderer.GetFrameColor();
     face_cb(i, *buff);

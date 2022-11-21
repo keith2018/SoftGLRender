@@ -168,10 +168,10 @@ void ViewerSoft::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode
 
     if (wireframe) {
       InitShaderBase(shader_context, model_matrix);
-      renderer_->DrawMeshWireframe(mesh, transform);
+      renderer_->DrawMeshWireframe(mesh);
     } else {
       InitShaderTextured(shader_context, mesh, model_matrix);
-      renderer_->DrawMeshTextured(mesh, transform);
+      renderer_->DrawMeshTextured(mesh);
     }
   }
 
@@ -184,19 +184,19 @@ void ViewerSoft::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode
 void ViewerSoft::DrawSkybox(ModelMesh &mesh, glm::mat4 &transform) {
   auto &shader_context = renderer_->GetShaderContext();
   InitShaderSkybox(shader_context, transform);
-  renderer_->DrawMeshTextured(mesh, transform);
+  renderer_->DrawMeshTextured(mesh);
 }
 
 void ViewerSoft::DrawWorldAxis(ModelLines &lines, glm::mat4 &transform) {
   auto &shader_context = renderer_->GetShaderContext();
   InitShaderBase(shader_context, transform);
-  renderer_->DrawLines(lines, transform);
+  renderer_->DrawLines(lines);
 }
 
 void ViewerSoft::DrawLights(ModelPoints &points, glm::mat4 &transform) {
   auto &shader_context = renderer_->GetShaderContext();
   InitShaderBase(shader_context, transform);
-  renderer_->DrawPoints(points, transform);
+  renderer_->DrawPoints(points);
 }
 
 void ViewerSoft::FXAAPostProcess() {
