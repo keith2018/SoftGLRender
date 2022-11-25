@@ -10,6 +10,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "base/logger.h"
 #include "base/shader_utils.h"
 #include "view/viewer_soft.h"
 #include "view/viewer_opengl.h"
@@ -63,7 +64,7 @@ int main() {
   /* Initialize the library */
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit()) {
-    std::cout << "Failed to initialize GLFW" << std::endl;
+    LOGE("Failed to initialize GLFW");
     return -1;
   }
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -77,7 +78,7 @@ int main() {
   /* Create a windowed mode window and its OpenGL context */
   GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "SoftGLRenderer", nullptr, nullptr);
   if (!window) {
-    std::cout << "Failed to create GLFW window" << std::endl;
+    LOGE("Failed to create GLFW window");
     glfwTerminate();
     return -1;
   }
@@ -93,14 +94,14 @@ int main() {
 
   /* Load all OpenGL function pointers */
   if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-    std::cout << "Failed to initialize GLAD" << std::endl;
+    LOGE("Failed to initialize GLAD");
     glfwTerminate();
     return -1;
   }
 
   SoftGL::ProgramGLSL program;
   if(!program.LoadSource(VS, FS)) {
-    std::cout << "Failed to initialize Shader" << std::endl;
+    LOGE("Failed to initialize Shader");
     glfwTerminate();
     return -1;
   }
@@ -184,7 +185,7 @@ int main() {
       glfwPollEvents();
     }
   } else {
-    std::cout << "Failed to initialize Viewer" << std::endl;
+    LOGE("Failed to initialize Viewer");
   }
 
   viewer.reset();

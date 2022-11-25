@@ -21,6 +21,7 @@
 #include "environment.h"
 #include "base/thread_pool.h"
 #include "base/string_utils.h"
+#include "base/logger.h"
 
 namespace SoftGL {
 namespace View {
@@ -79,28 +80,28 @@ void SkyboxTexture::InitIBL() {
   ibl_running = true;
 
   if (!cube_ready && equirectangular_ready) {
-    std::cout << "convert equirectangular to cube map ...\n";
+    LOGD("convert equirectangular to cube map ...");
     Environment::ConvertEquirectangular(equirectangular, cube);
     cube_ready = true;
-    std::cout << "convert equirectangular to cube map done.\n";
+    LOGD("convert equirectangular to cube map done.");
   }
 
   std::thread irradiance_thread([&]() {
     if (!irradiance_ready && cube_ready) {
-      std::cout << "generate irradiance map ...\n";
+      LOGD("generate irradiance map ...");
       Environment::GenerateIrradianceMap(cube, irradiance);
       irradiance_ready = true;
-      std::cout << "generate irradiance map done.\n";
+      LOGD("generate irradiance map done.");
     }
   });
   irradiance_thread.detach();
 
   std::thread prefilter_thread([&]() {
     if (!prefilter_ready && cube_ready) {
-      std::cout << "generate prefilter map ...\n";
+      LOGD("generate prefilter map ...");
       Environment::GeneratePrefilterMap(cube, prefilter);
       prefilter_ready = true;
-      std::cout << "generate prefilter map done.\n";
+      LOGD("generate prefilter map done.");
     }
   });
   prefilter_thread.detach();
@@ -131,12 +132,12 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
   model_cache_[filepath] = ModelContainer();
   curr_model_ = &model_cache_[filepath];
 
-  std::cout << "load model, path: " << filepath << std::endl;
+  LOGD("load model, path: %s", filepath.c_str());
 
   // load model
   Assimp::Importer importer;
   if (filepath.empty()) {
-    std::cerr << "Error:ModelObj::loadModel, empty model file path." << std::endl;
+    LOGE("ModelObj::loadModel, empty model file path.");
     return false;
   }
   const aiScene *scene = importer.ReadFile(filepath,
@@ -146,8 +147,7 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
   if (!scene
       || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE
       || !scene->mRootNode) {
-    std::cerr << "Error:ModelObj::loadModel, description: "
-              << importer.GetErrorString() << std::endl;
+    LOGE("ModelObj::loadModel, description: %s", importer.GetErrorString());
     return false;
   }
   curr_model_->model_file_dir = filepath.substr(0, filepath.find_last_of(FILE_SEPARATOR));
@@ -157,7 +157,7 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
 
   auto curr_transform = glm::mat4(1.f);
   if (!ProcessNode(scene->mRootNode, scene, curr_model_->root_node, curr_transform)) {
-    std::cerr << "Error:ModelObj::loadModel, process node failed." << std::endl;
+    LOGE("ModelObj::loadModel, process node failed.");
     return false;
   }
 
@@ -178,7 +178,7 @@ void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
   skybox_tex_cache_[filepath] = SkyboxTexture();
   curr_skybox_tex_ = &skybox_tex_cache_[filepath];
 
-  std::cout << "load skybox, path: " << filepath << std::endl;
+  LOGD("load skybox, path: %s", filepath.c_str());
 
   if (StringUtils::EndsWith(filepath, "/")) {
     curr_skybox_tex_->type = Skybox_Cube;
@@ -338,7 +338,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
   for (size_t i = 0; i < ai_mesh->mNumFaces; i++) {
     aiFace face = ai_mesh->mFaces[i];
     if (face.mNumIndices != 3) {
-      std::cerr << "Error:ModelObj::processMesh, mesh not transformed to triangle mesh." << std::endl;
+      LOGE("ModelObj::processMesh, mesh not transformed to triangle mesh.");
       return false;
     }
     for (size_t j = 0; j < face.mNumIndices; ++j) {
@@ -394,28 +394,32 @@ bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
     aiString text_path;
     aiReturn retStatus = ai_material->GetTexture(texture_type, i, &text_path);
     if (retStatus != aiReturn_SUCCESS || text_path.length == 0) {
-      std::cerr << "Warning, load texture type=" << texture_type
-                << "index= " << i << " failed with return value= "
-                << retStatus << std::endl;
+      LOGW("load texture type=%d, index=%d failed with return value=%d", texture_type, i, retStatus);
       continue;
     }
     std::string absolutePath = curr_model_->model_file_dir + FILE_SEPARATOR + text_path.C_Str();
     TextureType type;
     switch (texture_type) {
-      case aiTextureType_DIFFUSE: type = TextureType_DIFFUSE;
+      case aiTextureType_DIFFUSE: 
+        type = TextureType_DIFFUSE;
         break;
-      case aiTextureType_NORMALS: type = TextureType_NORMALS;
+      case aiTextureType_NORMALS: 
+        type = TextureType_NORMALS;
         break;
-      case aiTextureType_EMISSIVE: type = TextureType_EMISSIVE;
+      case aiTextureType_EMISSIVE: 
+        type = TextureType_EMISSIVE;
         break;
-      case aiTextureType_BASE_COLOR: type = TextureType_PBR_ALBEDO;
+      case aiTextureType_BASE_COLOR: 
+        type = TextureType_PBR_ALBEDO;
         break;
-      case aiTextureType_UNKNOWN: type = TextureType_PBR_METAL_ROUGHNESS;
+      case aiTextureType_UNKNOWN: 
+        type = TextureType_PBR_METAL_ROUGHNESS;
         break;
-      case aiTextureType_LIGHTMAP: type = TextureType_PBR_AMBIENT_OCCLUSION;
+      case aiTextureType_LIGHTMAP: 
+        type = TextureType_PBR_AMBIENT_OCCLUSION;
         break;
       default:
-        std::cerr << "Warning, texture type: " << TextureTypeToString(texture_type) << " not support" << std::endl;
+        LOGW("texture type: %s not support", aiTextureTypeToString(texture_type));
         return true;  // not support
     }
 
@@ -425,8 +429,7 @@ bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
     if (load_ok) {
       textures[text.type] = text;
     } else {
-      std::cerr << "load texture failed: " << Texture::TextureTypeString(type) << ", path: " << absolutePath
-                << std::endl;
+      LOGE("load texture failed: %s, path: %s", Texture::TextureTypeString(type), absolutePath.c_str());
     }
   }
   return true;
@@ -485,7 +488,7 @@ bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
     return true;
   }
 
-  printf("load texture, path: %s\n", path);
+  LOGD("load texture, path: %s", path);
 
   int iw = 0, ih = 0, n = 0;
   stbi_set_flip_vertically_on_load(true);

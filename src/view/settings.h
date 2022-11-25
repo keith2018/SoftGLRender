@@ -11,6 +11,7 @@
 #include <fstream>
 #include <streambuf>
 
+#include "base/logger.h"
 #include "model_loader.h"
 #include "orbit_controller.h"
 #include "json11.hpp"
@@ -37,10 +38,10 @@ class Settings {
   }
 
   void LoadAssetConfig() {
-    std::cout << "load assets in : " << ASSETS_DIR << std::endl;
+    LOGE("load assets in: %s", ASSETS_DIR.c_str());
     std::ifstream config(ASSETS_DIR + "assets.json");
     if (!config.is_open()) {
-      std::cout << "open config file failed" << std::endl;
+      LOGE("open config file failed");
       return;
     }
     std::string config_str((std::istreambuf_iterator<char>(config)), std::istreambuf_iterator<char>());
@@ -54,7 +55,7 @@ class Settings {
     }
 
     if (model_paths_.empty()) {
-      std::cout << "load models failed" << std::endl;
+      LOGE("load models failed");
     }
   }
 

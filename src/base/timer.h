@@ -9,6 +9,8 @@
 #include <chrono>
 #include <string>
 
+#include "logger.h"
+
 namespace SoftGL {
 
 class Timer {
@@ -38,7 +40,7 @@ class ScopedTimer {
 
   ~ScopedTimer() {
     timer_.Stop();
-    printf("%s: %lld ms\n", tag_.c_str(), timer_.ElapseMillis());
+    LOGD("%s: %lld ms\n", tag_.c_str(), timer_.ElapseMillis());
   }
 
   operator bool() {
