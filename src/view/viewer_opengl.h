@@ -28,6 +28,9 @@ class ViewerOpenGL : public Viewer {
   void DrawWorldAxis(ModelLines &lines, glm::mat4 &transform);
   void DrawLights(ModelPoints &points, glm::mat4 &transform);
 
+  void UpdateUniformMVP(UniformsMVP &uniforms, glm::mat4 &transform);
+  void UpdateUniformLight(UniformsLight &uniforms);
+
  private:
   std::shared_ptr<RendererOpenGL> renderer_ = nullptr;
   GLuint fbo_ = 0;

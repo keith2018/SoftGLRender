@@ -8,14 +8,14 @@
 
 #include "../renderer.h"
 #include "glad/glad.h"
-#include "base/shader_utils.h"
-
+#include "material.h"
 
 namespace SoftGL {
 
-class VertexGLSL : public VertexHandler {
+class VertexGLSL {
  public:
   void Create(std::vector<Vertex> &vertexes, std::vector<int> &indices);
+  void UpdateVertexData(std::vector<Vertex> &vertexes);
   bool Empty() const;
   void BindVAO();
   virtual ~VertexGLSL();
@@ -26,28 +26,11 @@ class VertexGLSL : public VertexHandler {
   GLuint ebo_ = 0;
 };
 
-class UniformsGLSL {
+class OpenGLRenderHandler : public RenderHandler {
  public:
-  bool Empty() const;
-  virtual ~UniformsGLSL();
-  virtual void Init(GLuint program) = 0;
-  virtual void UpdateData() = 0;
-
- protected:
-  void Create(GLuint program, const char *blockName, GLint blockSize);
-
- public:
-  GLuint ubo_ = GL_NONE;
-};
-
-class BasicUniforms : public UniformsGLSL {
- public:
-  void Init(GLuint program) override;
-  void UpdateData() override;
-
- public:
-  glm::mat4 u_modelViewProjectionMatrix;
-  glm::vec4 u_fragColor;
+  std::shared_ptr<VertexGLSL> vertex_handler;
+  std::shared_ptr<BaseMaterial> material_handler;
+  std::unordered_map<TextureType, std::shared_ptr<TextureGLSL>> texture_handler;
 };
 
 class RendererOpenGL : public Renderer {
@@ -60,17 +43,21 @@ class RendererOpenGL : public Renderer {
   void DrawLines(ModelLines &lines) override;
   void DrawPoints(ModelPoints &points) override;
 
-  BasicUniforms &GetPointUniforms() {
-    return uniforms_basic;
-  }
-
-  BasicUniforms &GetLineUniforms() {
-    return uniforms_basic;
+  RendererUniforms &GetRendererUniforms() {
+    return uniforms_;
   }
 
  private:
-  ProgramGLSL program_basic;
-  BasicUniforms uniforms_basic;
+  void InitVertex(ModelBase &model, bool needUpdate = false);
+  void InitTextures(ModelMesh &mesh);
+  void InitMaterial(ModelBase &model);
+  void InitMeshMaterial(ModelMesh &mesh, MaterialType type);
+
+  MaterialType GetMaterialType(ModelBase &model);
+  void DrawImpl(ModelBase &model, GLenum mode);
+
+ private:
+  RendererUniforms uniforms_;
 };
 
 }

@@ -5,9 +5,6 @@ project(SoftGLRender)
 set(CMAKE_CXX_STANDARD 11)
 set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
-# texture tiled memory
-add_definitions("-DSOFTGL_TEXTURE_TILED")
-
 # SIMD
 add_definitions("-DSOFTGL_SIMD_OPT")
 
@@ -44,7 +41,9 @@ add_subdirectory(${THIRD_PARTY_DIR}/assimp)
 file(GLOB SOFTGL_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/base/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/render/soft/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/soft/shader/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/render/opengl/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/opengl/shader/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/view/*.cpp
         )
 

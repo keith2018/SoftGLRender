@@ -5,7 +5,7 @@
  */
 
 
-#include "Viewer.h"
+#include "viewer.h"
 
 namespace SoftGL {
 namespace View {

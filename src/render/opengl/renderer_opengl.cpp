@@ -5,11 +5,15 @@
  */
 
 #include "renderer_opengl.h"
-#include "shader/basic_glsl.h"
+#include "opengl_utils.h"
 
 namespace SoftGL {
 
 void VertexGLSL::Create(std::vector<Vertex> &vertexes, std::vector<int> &indices) {
+  if (vertexes.empty() || indices.empty()) {
+    return;
+  }
+
   // vao
   glGenVertexArrays(1, &vao_);
   glBindVertexArray(vao_);
@@ -17,24 +21,26 @@ void VertexGLSL::Create(std::vector<Vertex> &vertexes, std::vector<int> &indices
   // vbo
   glGenBuffers(1, &vbo_);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-  glBufferData(GL_ARRAY_BUFFER, vertexes.size() * sizeof(Vertex), vertexes.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertexes.size() * sizeof(Vertex), &vertexes[0], GL_STATIC_DRAW);
 
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) 0);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, a_texCoord));
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) (sizeof(glm::vec3)));
+  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, a_normal));
   glEnableVertexAttribArray(2);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) (sizeof(glm::vec3) + sizeof(glm::vec2)));
+  glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, a_tangent));
   glEnableVertexAttribArray(3);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void *) (2 * sizeof(glm::vec3) + sizeof(glm::vec2)));
 
   // ebo
   glGenBuffers(1, &ebo_);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), &indices[0], GL_STATIC_DRAW);
+}
 
-  glBindVertexArray(0);
+void VertexGLSL::UpdateVertexData(std::vector<Vertex> &vertexes) {
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+  glBufferData(GL_ARRAY_BUFFER, vertexes.size() * sizeof(Vertex), &vertexes[0], GL_STATIC_DRAW);
 }
 
 bool VertexGLSL::Empty() const {
@@ -42,48 +48,25 @@ bool VertexGLSL::Empty() const {
 }
 
 void VertexGLSL::BindVAO() {
+  if (Empty()) {
+    return;
+  }
   glBindVertexArray(vao_);
 }
 
 VertexGLSL::~VertexGLSL() {
+  if (Empty()) {
+    return;
+  }
+
   glDeleteBuffers(1, &vbo_);
   glDeleteBuffers(1, &ebo_);
   glDeleteVertexArrays(1, &vao_);
 }
 
-void UniformsGLSL::Create(GLuint program, const char *blockName, GLint blockSize) {
-  GLuint uniformBlockIndex = glGetUniformBlockIndex(program, blockName);
-  glUniformBlockBinding(program, uniformBlockIndex, 0);
-
-  // ubo
-  glGenBuffers(1, &ubo_);
-  glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-  glBufferData(GL_UNIFORM_BUFFER, blockSize, nullptr, GL_STATIC_DRAW);
-  glBindBufferRange(GL_UNIFORM_BUFFER, 0, ubo_, 0, blockSize);
-  glBindBuffer(GL_UNIFORM_BUFFER, 0);
-}
-
-bool UniformsGLSL::Empty() const {
-  return 0 == ubo_;
-}
-
-UniformsGLSL::~UniformsGLSL() {
-  glDeleteBuffers(1, &ubo_);
-}
-
-void BasicUniforms::Init(GLuint program) {
-  Create(program, "Uniforms", sizeof(glm::mat4) + sizeof(glm::vec4));
-}
-
-void BasicUniforms::UpdateData() {
-  glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &u_modelViewProjectionMatrix[0][0]);
-  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::vec4), &u_fragColor[0]);
-  glBindBuffer(GL_UNIFORM_BUFFER, 0);
-}
-
 void RendererOpenGL::Create(int w, int h, float near, float far) {
   Renderer::Create(w, h, near, far);
+  uniforms_.Init();
 }
 
 void RendererOpenGL::Clear(float r, float g, float b, float a) {
@@ -92,57 +75,151 @@ void RendererOpenGL::Clear(float r, float g, float b, float a) {
 }
 
 void RendererOpenGL::DrawMeshTextured(ModelMesh &mesh) {
-
+  if (!mesh.render_handle) {
+    mesh.render_handle = std::make_shared<OpenGLRenderHandler>();
+  }
+  InitVertex(mesh);
+  InitTextures(mesh);
+  InitMaterial(mesh);
+  DrawImpl(mesh, GL_TRIANGLES);
 }
 
 void RendererOpenGL::DrawMeshWireframe(ModelMesh &mesh) {
-
+  // TODO
 }
 
 void RendererOpenGL::DrawLines(ModelLines &lines) {
-  if (!lines.handle) {
-    auto handle = std::make_shared<VertexGLSL>();
-    handle->Create(lines.vertexes, lines.indices);
-    lines.handle = std::move(handle);
-  }
-
-  if (program_basic.Empty()) {
-    program_basic.LoadSource(BASIC_VS, BASIC_FS);
-  }
-
-  if (uniforms_basic.Empty()) {
-    uniforms_basic.Init(program_basic.GetId());
-  }
-
-  program_basic.Use();
-  uniforms_basic.UpdateData();
-  ((VertexGLSL *) (lines.handle.get()))->BindVAO();
-
   glLineWidth(lines.line_width);
-  glDrawElements(GL_LINES, lines.indices.size(), GL_UNSIGNED_INT, nullptr);
+
+  if (!lines.render_handle) {
+    lines.render_handle = std::make_shared<OpenGLRenderHandler>();
+  }
+  InitVertex(lines);
+  InitMaterial(lines);
+  DrawImpl(lines, GL_LINES);
 }
 
 void RendererOpenGL::DrawPoints(ModelPoints &points) {
-  if (!points.handle) {
-    auto handle = std::make_shared<VertexGLSL>();
-    handle->Create(points.vertexes, points.indices);
-    points.handle = std::move(handle);
-  }
-
-  if (program_basic.Empty()) {
-    program_basic.LoadSource(BASIC_VS, BASIC_FS);
-  }
-
-  if (uniforms_basic.Empty()) {
-    uniforms_basic.Init(program_basic.GetId());
-  }
-
-  program_basic.Use();
-  uniforms_basic.UpdateData();
-  ((VertexGLSL *) (points.handle.get()))->BindVAO();
-
   glPointSize(points.point_size);
-  glDrawElements(GL_POINTS, points.indices.size(), GL_UNSIGNED_INT, nullptr);
+
+  if (!points.render_handle) {
+    points.render_handle = std::make_shared<OpenGLRenderHandler>();
+  }
+  InitVertex(points, true);
+  InitMaterial(points);
+  DrawImpl(points, GL_POINTS);
+}
+
+void RendererOpenGL::InitVertex(ModelBase &model, bool needUpdate) {
+  auto *render_handle = (OpenGLRenderHandler *) (model.render_handle.get());
+  if (!render_handle->vertex_handler) {
+    auto handle = std::make_shared<VertexGLSL>();
+    handle->Create(model.vertexes, model.indices);
+    render_handle->vertex_handler = std::move(handle);
+  }
+
+  if (needUpdate) {
+    render_handle->vertex_handler->UpdateVertexData(model.vertexes);
+  }
+}
+
+MaterialType RendererOpenGL::GetMaterialType(ModelBase &model) {
+  MaterialType material_type = MaterialType_BaseColor;
+  switch (model.shading_type) {
+    case ShadingType_PBR_BRDF:
+// TODO
+//    {
+//      if (uniforms_.uniforms_light.show_light) {
+//        material_type = MaterialType_PbrLight;
+//      } else {
+//        material_type = MaterialType_PbrBase;
+//      }
+//      break;
+//    }
+    case ShadingType_BLINN_PHONG: {
+      if (uniforms_.uniforms_light.show_light) {
+        material_type = MaterialType_BlinnPhong;
+      } else {
+        material_type = MaterialType_BaseTexture;
+      }
+      break;
+    }
+    default:break;
+  }
+  return material_type;
+}
+
+void RendererOpenGL::DrawImpl(ModelBase &model, GLenum mode) {
+  auto *render_handle = (OpenGLRenderHandler *) (model.render_handle.get());
+  render_handle->vertex_handler->BindVAO();
+  render_handle->material_handler->Use(uniforms_, render_handle->texture_handler);
+  glDrawElements(mode, model.indices.size(), GL_UNSIGNED_INT, nullptr);
+  CheckGLError();
+}
+
+void RendererOpenGL::InitTextures(ModelMesh &mesh) {
+  auto *render_handle = (OpenGLRenderHandler *) (mesh.render_handle.get());
+  if (render_handle->texture_handler.empty()) {
+    for (auto &kv : mesh.textures) {
+      auto texture = std::make_shared<TextureGLSL>();
+      texture->Create(kv.second);
+      render_handle->texture_handler[kv.first] = std::move(texture);
+    }
+  }
+}
+
+void RendererOpenGL::InitMaterial(ModelBase &model) {
+  auto *render_handle = (OpenGLRenderHandler *) (model.render_handle.get());
+
+  // if material type not equal, reset material_handler
+  MaterialType material_type = GetMaterialType(model);
+  if (render_handle->material_handler && render_handle->material_handler->Type() != material_type) {
+    render_handle->material_handler = nullptr;
+  }
+
+  if (!render_handle->material_handler) {
+    if (material_type != MaterialType_BaseColor) {
+      InitMeshMaterial(static_cast<ModelMesh &>(model), material_type);
+    } else {
+      auto material = std::make_shared<MaterialBaseColor>();
+      material->Init();
+      render_handle->material_handler = std::move(material);
+    }
+  }
+}
+
+void RendererOpenGL::InitMeshMaterial(ModelMesh &mesh, MaterialType type) {
+  auto *render_handle = (OpenGLRenderHandler *) (mesh.render_handle.get());
+  auto &tex_handler = render_handle->texture_handler;
+  std::shared_ptr<MaterialBaseTexture> material = nullptr;
+
+  switch (type) {
+    case MaterialType_BaseTexture: {
+      material = std::make_shared<MaterialBaseTexture>();
+      break;
+    }
+    case MaterialType_BlinnPhong: {
+      material = std::make_shared<MaterialBlinnPhong>();
+      break;
+    }
+    case MaterialType_PbrBase: {
+      //TODO
+      break;
+    }
+    case MaterialType_PbrLight: {
+      //TODO
+      break;
+    }
+    default:break;
+  }
+
+  material->SetEnableNormalMap(tex_handler.find(TextureType_NORMALS) != tex_handler.end());
+  material->SetEnableAoMap(tex_handler.find(TextureType_PBR_AMBIENT_OCCLUSION) != tex_handler.end());
+  material->SetEnableEmissiveMap(tex_handler.find(TextureType_EMISSIVE) != tex_handler.end());
+  material->SetEnableAlphaDiscard(mesh.alpha_mode == Alpha_Mask);
+
+  material->Init();
+  render_handle->material_handler = std::move(material);
 }
 
 }

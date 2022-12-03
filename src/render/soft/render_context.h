@@ -81,7 +81,7 @@ struct RenderContext {
       }
     }
 
-    faces.resize(mesh->face_cnt);
+    faces.resize(mesh->primitive_cnt);
     for (int i = 0; i < faces.size(); i++) {
       for (int j = 0; j < 3; j++) {
         faces[i].indices[j] = mesh->indices[i * 3 + j];

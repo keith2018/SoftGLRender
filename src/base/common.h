@@ -56,7 +56,7 @@ struct Vertex {
 };
 
 enum ShadingType {
-  ShadingType_UNKNOWN = 0,
+  ShadingType_BASE_COLOR = 0,
   ShadingType_BLINN_PHONG,
   ShadingType_PBR_BRDF,
 };

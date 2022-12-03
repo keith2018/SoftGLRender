@@ -10,7 +10,7 @@ namespace SoftGL {
 namespace View {
 
 QuadFilter::QuadFilter(int width, int height) : width_(width), height_(height) {
-  quad_mesh_.face_cnt = 2;
+  quad_mesh_.primitive_cnt = 2;
   quad_mesh_.vertexes.push_back({{1.f, -1.f, 0.f}, {1.f, 0.f}});
   quad_mesh_.vertexes.push_back({{-1.f, -1.f, 0.f}, {0.f, 0.f}});
   quad_mesh_.vertexes.push_back({{1.f, 1.f, 0.f}, {1.f, 1.f}});

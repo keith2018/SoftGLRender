@@ -60,7 +60,7 @@ void RendererSoft::DrawLines(ModelLines &lines) {
 
   glm::u8vec4 color = lines.line_color * 255.f;
   // line_width not support
-  for (int line_idx = 0; line_idx < lines.line_cnt; line_idx++) {
+  for (int line_idx = 0; line_idx < lines.primitive_cnt; line_idx++) {
     int idx0 = lines.indices[line_idx * 2];
     int idx1 = lines.indices[line_idx * 2 + 1];
 
@@ -75,7 +75,7 @@ void RendererSoft::DrawPoints(ModelPoints &points) {
   render_ctx_.Prepare(&points);
   ProcessVertexShader();
 
-  for (int pt_idx = 0; pt_idx < points.point_cnt; pt_idx++) {
+  for (int pt_idx = 0; pt_idx < points.primitive_cnt; pt_idx++) {
     auto pt = render_ctx_.vertexes[pt_idx];
     if (pt.clip_mask != 0) {
       continue;

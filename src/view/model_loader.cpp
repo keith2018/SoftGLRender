@@ -143,6 +143,7 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
   const aiScene *scene = importer.ReadFile(filepath,
                                            aiProcess_Triangulate |
                                                aiProcess_CalcTangentSpace |
+                                               aiProcess_GenNormals |
                                                aiProcess_GenBoundingBoxes);
   if (!scene
       || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE
@@ -207,8 +208,8 @@ void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
 }
 
 void ModelLoader::LoadSkyboxMesh() {
-  if (skybox_mash_.face_cnt <= 0) {
-    skybox_mash_.face_cnt = 12;
+  if (skybox_mash_.primitive_cnt <= 0) {
+    skybox_mash_.primitive_cnt = 12;
     for (int i = 0; i < 12; i++) {
       for (int j = 0; j < 3; j++) {
         Vertex vertex{};
@@ -223,7 +224,7 @@ void ModelLoader::LoadSkyboxMesh() {
 }
 
 void ModelLoader::LoadWorldAxis() {
-  if (world_axis_.line_cnt > 0) {
+  if (world_axis_.primitive_cnt > 0) {
     return;
   }
 
@@ -248,15 +249,15 @@ void ModelLoader::LoadWorldAxis() {
     world_axis_.indices.push_back(idx++);
     world_axis_.indices.push_back(idx++);
   }
-  world_axis_.line_cnt = world_axis_.indices.size() / 2;
+  world_axis_.primitive_cnt = world_axis_.indices.size() / 2;
   world_axis_.line_color = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
   world_axis_.line_width = 1.f;
 }
 
 void ModelLoader::LoadLights() {
-  lights_.point_cnt = 1;
-  lights_.vertexes.resize(lights_.point_cnt);
-  lights_.indices.resize(lights_.point_cnt);
+  lights_.primitive_cnt = 1;
+  lights_.vertexes.resize(lights_.primitive_cnt);
+  lights_.indices.resize(lights_.primitive_cnt);
 
   Vertex vertex{};
   vertex.a_position = point_light_position_;
@@ -283,7 +284,7 @@ bool ModelLoader::ProcessNode(const aiNode *ai_node,
       ModelMesh mesh;
       if (ProcessMesh(meshPtr, ai_scene, mesh)) {
         curr_model_->mesh_count++;
-        curr_model_->face_count += mesh.face_cnt;
+        curr_model_->face_count += mesh.primitive_cnt;
         curr_model_->vertex_count += mesh.vertexes.size();
         mesh.idx = curr_model_->mesh_count - 1;
 
@@ -307,7 +308,7 @@ bool ModelLoader::ProcessNode(const aiNode *ai_node,
 
 bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &out_mesh) {
   std::vector<Vertex> vertexes;
-  std::unordered_map<int, Texture> textures;
+  std::unordered_map<TextureType, Texture> textures;
   std::vector<int> indices;
 
   for (size_t i = 0; i < ai_mesh->mNumVertices; i++) {
@@ -367,7 +368,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     } else if (aiShadingMode_PBR_BRDF == shading_mode) {
       out_mesh.shading_type = ShadingType_PBR_BRDF;
     } else {
-      out_mesh.shading_type = ShadingType_UNKNOWN;
+      out_mesh.shading_type = ShadingType_BLINN_PHONG;  // default
     }
 
     for (int i = 0; i <= AI_TEXTURE_TYPE_MAX; i++) {
@@ -375,7 +376,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     }
   }
 
-  out_mesh.face_cnt = ai_mesh->mNumFaces;
+  out_mesh.primitive_cnt = ai_mesh->mNumFaces;
   out_mesh.vertexes = std::move(vertexes);
   out_mesh.indices = std::move(indices);
   out_mesh.textures = std::move(textures);
@@ -386,7 +387,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
 
 bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
                                   aiTextureType texture_type,
-                                  std::unordered_map<int, Texture> &textures) {
+                                  std::unordered_map<TextureType, Texture> &textures) {
   if (ai_material->GetTextureCount(texture_type) <= 0) {
     return true;
   }

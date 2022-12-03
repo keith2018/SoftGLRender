@@ -6,15 +6,25 @@
 
 #include "shader_utils.h"
 #include <vector>
-#include "file_utils.h"
+#include "base/file_utils.h"
 
 namespace SoftGL {
 
+
+void ShaderGLSL::SetHeader(const std::string &header) {
+  header_ = header;
+}
+
+void ShaderGLSL::AddDefines(const std::string &def) {
+  defines_ = def;
+}
+
 bool ShaderGLSL::LoadSource(const std::string &source) {
   id_ = glCreateShader(type_);
-  const char *source_str = source.c_str();
-  GLint length = source.length();
-  glShaderSource(id_, 1, &source_str, &length);
+  std::string shader_str = header_ + defines_ + source;
+  const char *shader_str_ptr = shader_str.c_str();
+  GLint length = shader_str.length();
+  glShaderSource(id_, 1, &shader_str_ptr, &length);
   glCompileShader(id_);
 
   GLint isCompiled = 0;
@@ -47,6 +57,10 @@ void ShaderGLSL::Destroy() {
   glDeleteShader(id_);
 }
 
+void ProgramGLSL::AddDefine(const std::string &def) {
+  defines_ += ("#define " + def + " \n");
+}
+
 bool ProgramGLSL::LoadShader(ShaderGLSL &vs, ShaderGLSL &fs) {
   id_ = glCreateProgram();
   glAttachShader(id_, vs.GetId());
@@ -75,6 +89,9 @@ bool ProgramGLSL::LoadSource(const std::string &vsSource, const std::string &fsS
   ShaderGLSL vs(GL_VERTEX_SHADER);
   ShaderGLSL fs(GL_FRAGMENT_SHADER);
 
+  vs.AddDefines(defines_);
+  fs.AddDefines(defines_);
+
   if (!vs.LoadSource(vsSource)) {
     LOGE("load vertex shader source failed");
     return false;
@@ -91,6 +108,9 @@ bool ProgramGLSL::LoadSource(const std::string &vsSource, const std::string &fsS
 bool ProgramGLSL::LoadFile(const std::string &vsPath, const std::string &fsPath) {
   ShaderGLSL vs(GL_VERTEX_SHADER);
   ShaderGLSL fs(GL_FRAGMENT_SHADER);
+
+  vs.AddDefines(defines_);
+  fs.AddDefines(defines_);
 
   if (!vs.LoadFile(vsPath)) {
     LOGE("load vertex shader file failed: %s", vsPath.c_str());

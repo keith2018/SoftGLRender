@@ -11,7 +11,7 @@
 #include <GLFW/glfw3.h>
 
 #include "base/logger.h"
-#include "base/shader_utils.h"
+#include "render/opengl/shader_utils.h"
 #include "view/viewer_soft.h"
 #include "view/viewer_opengl.h"
 
@@ -30,7 +30,6 @@ void scroll_callback(GLFWwindow *window, double xOffset, double yOffset);
 void processInput(GLFWwindow *window);
 
 const char *VS = R"(
-#version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aTexCoord;
 
@@ -44,7 +43,6 @@ void main()
 )";
 
 const char *FS = R"(
-#version 330 core
 in vec2 TexCoord;
 out vec4 FragColor;
 
@@ -68,7 +66,7 @@ int main() {
     return -1;
   }
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 #ifdef __APPLE__
@@ -126,10 +124,10 @@ int main() {
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-  glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
-  glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(0);
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
+  glEnableVertexAttribArray(1);
 
   glGenBuffers(1, &EBO);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -165,16 +163,20 @@ int main() {
       // check exit app
       processInput(window);
 
-      // render
-      // ------
+      // draw frame
+      viewer->DrawFrame();
+
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+      glDisable(GL_BLEND);
+      glDisable(GL_DEPTH_TEST);
+      glDisable(GL_CULL_FACE);
+
       glClearColor(0.f, 0.f, 0.f, 0.0f);
       glClear(GL_COLOR_BUFFER_BIT);
 
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, texture);
-
-      // draw frame
-      viewer->DrawFrame();
 
       program.Use();
       glBindVertexArray(VAO);
