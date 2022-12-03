@@ -308,7 +308,7 @@ bool ModelLoader::ProcessNode(const aiNode *ai_node,
 
 bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &out_mesh) {
   std::vector<Vertex> vertexes;
-  std::unordered_map<TextureType, Texture> textures;
+  std::unordered_map<TextureType, Texture, EnumClassHash> textures;
   std::vector<int> indices;
 
   for (size_t i = 0; i < ai_mesh->mNumVertices; i++) {
@@ -387,7 +387,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
 
 bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
                                   aiTextureType texture_type,
-                                  std::unordered_map<TextureType, Texture> &textures) {
+                                  std::unordered_map<TextureType, Texture, EnumClassHash> &textures) {
   if (ai_material->GetTextureCount(texture_type) <= 0) {
     return true;
   }

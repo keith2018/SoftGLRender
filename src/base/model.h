@@ -36,7 +36,7 @@ struct ModelLines : ModelBase {
 
 struct ModelMesh : ModelBase {
   size_t idx = 0;
-  std::unordered_map<TextureType, Texture> textures;
+  std::unordered_map<TextureType, Texture, EnumClassHash> textures;
   BoundingBox bounding_box{};
 
   // material param

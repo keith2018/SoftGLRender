@@ -30,7 +30,7 @@ class OpenGLRenderHandler : public RenderHandler {
  public:
   std::shared_ptr<VertexGLSL> vertex_handler;
   std::shared_ptr<BaseMaterial> material_handler;
-  std::unordered_map<TextureType, std::shared_ptr<TextureGLSL>> texture_handler;
+  TextureMap texture_handler;
 };
 
 class RendererOpenGL : public Renderer {

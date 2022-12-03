@@ -14,7 +14,7 @@
 #include "render/opengl/shader_utils.h"
 #include "view/viewer_soft.h"
 #include "view/viewer_opengl.h"
-
+#define SOFTGL_RENDER_OPENGL
 std::shared_ptr<SoftGL::View::Viewer> viewer = nullptr;
 
 const unsigned int SCR_WIDTH = 1000;

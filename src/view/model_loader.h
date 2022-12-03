@@ -105,7 +105,7 @@ class ModelLoader {
   bool ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &out_mesh);
   bool ProcessMaterial(const aiMaterial *ai_material,
                        aiTextureType texture_type,
-                       std::unordered_map<TextureType, Texture> &textures);
+                       std::unordered_map<TextureType, Texture, EnumClassHash> &textures);
   static glm::mat4 ConvertMatrix(const aiMatrix4x4 &m);
   static BoundingBox ConvertBoundingBox(const aiAABB &aabb);
 

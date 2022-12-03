@@ -164,7 +164,7 @@ enum MaterialType {
   MaterialType_PbrLight,
 };
 
-using TextureMap = std::unordered_map<TextureType, std::shared_ptr<TextureGLSL>>;
+using TextureMap = std::unordered_map<TextureType, std::shared_ptr<TextureGLSL>, EnumClassHash>;
 
 class BaseMaterial {
  public:
@@ -179,7 +179,7 @@ class BaseMaterial {
   GLint uniforms_loc_light = 0;
   GLint uniforms_loc_alpha_mask = 0;
 
-  std::unordered_map<TextureType, GLint> sampler_loc;
+  std::unordered_map<TextureType, GLint, EnumClassHash> sampler_loc;
 };
 
 class MaterialBaseColor : public BaseMaterial {
