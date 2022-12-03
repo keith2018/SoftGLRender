@@ -14,7 +14,7 @@
 #include "render/opengl/shader_utils.h"
 #include "view/viewer_soft.h"
 #include "view/viewer_opengl.h"
-#define SOFTGL_RENDER_OPENGL
+
 std::shared_ptr<SoftGL::View::Viewer> viewer = nullptr;
 
 const unsigned int SCR_WIDTH = 1000;
@@ -158,6 +158,10 @@ int main() {
   viewer = std::make_shared<SoftGL::View::ViewerSoft>();
 #endif
   if (viewer->Create(window, SCR_WIDTH, SCR_HEIGHT, (int) texture)) {
+    // real frame buffer size
+    int frame_width, frame_height;
+    glfwGetFramebufferSize(window, &frame_width, &frame_height);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
       // check exit app
@@ -167,6 +171,7 @@ int main() {
       viewer->DrawFrame();
 
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glViewport(0, 0, frame_width, frame_height);
 
       glDisable(GL_BLEND);
       glDisable(GL_DEPTH_TEST);

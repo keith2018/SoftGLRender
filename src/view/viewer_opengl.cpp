@@ -40,13 +40,13 @@ bool ViewerOpenGL::Create(void *window, int width, int height, int outTexId) {
     return false;
   }
 
-  glViewport(0, 0, width_, height_);
   return true;
 }
 
 void ViewerOpenGL::DrawFrame() {
   Viewer::DrawFrame();
   glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+  glViewport(0, 0, width_, height_);
   DrawFrameInternal();
 }
 
