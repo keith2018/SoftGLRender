@@ -9,21 +9,20 @@
 
 namespace SoftGL {
 
-void TextureGLSL::Create(Texture &tex) {
-  if (tex.buffer->Empty()) {
-    return;
-  }
+#define MATERIAL_BIND_TEXTURE(type, idx) textures[type]->BindProgram(sampler_loc[type], idx)
 
+void TextureGLSL::Create2D(Texture &tex) {
+  target_ = GL_TEXTURE_2D;
   glGenTextures(1, &texId_);
-  glBindTexture(GL_TEXTURE_2D, texId_);
+  glBindTexture(target_, texId_);
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(target_, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(target_, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   auto &buffer = tex.buffer;
-  glTexImage2D(GL_TEXTURE_2D,
+  glTexImage2D(target_,
                0,
                GL_RGBA,
                buffer->GetWidth(),
@@ -32,7 +31,33 @@ void TextureGLSL::Create(Texture &tex) {
                GL_RGBA,
                GL_UNSIGNED_BYTE,
                buffer->GetRawDataPtr());
-  glGenerateMipmap(GL_TEXTURE_2D);
+  glGenerateMipmap(target_);
+}
+
+void TextureGLSL::CreateCube(Texture tex[6]) {
+  target_ = GL_TEXTURE_CUBE_MAP;
+  glGenTextures(1, &texId_);
+  glBindTexture(target_, texId_);
+
+  glTexParameteri(target_, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(target_, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(target_, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+  glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  for (int i = 0; i < 6; i++) {
+    auto &buffer = tex[i].buffer;
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                 0,
+                 GL_RGBA,
+                 buffer->GetWidth(),
+                 buffer->GetHeight(),
+                 0,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 buffer->GetRawDataPtr());
+  }
+  glGenerateMipmap(target_);
 }
 
 bool TextureGLSL::Empty() const {
@@ -58,7 +83,7 @@ void TextureGLSL::BindProgram(GLint samplerLoc, GLuint binding) const {
       break;
     }
   }
-  glBindTexture(GL_TEXTURE_2D, texId_);
+  glBindTexture(target_, texId_);
   glUniform1i(samplerLoc, binding);
 }
 
@@ -134,22 +159,20 @@ void MaterialBaseTexture::Use(RendererUniforms &uniforms, TextureMap &textures) 
     uniforms.uniforms_alpha_mask.UpdateData();
   }
 
-#define MATERIAL_BIND_TEXTURE(type) textures[type]->BindProgram(sampler_loc[type], samplerIdx++)
-
   // uniform samplers
   GLint samplerIdx = 0;
-  MATERIAL_BIND_TEXTURE(TextureType_DIFFUSE);
+  MATERIAL_BIND_TEXTURE(TextureType_DIFFUSE, samplerIdx++);
 
   if (enable_normal_map_) {
-    MATERIAL_BIND_TEXTURE(TextureType_NORMALS);
+    MATERIAL_BIND_TEXTURE(TextureType_NORMALS, samplerIdx++);
   }
 
   if (enable_emissive_map_) {
-    MATERIAL_BIND_TEXTURE(TextureType_EMISSIVE);
+    MATERIAL_BIND_TEXTURE(TextureType_EMISSIVE, samplerIdx++);
   }
 
   if (enable_ao_map_) {
-    MATERIAL_BIND_TEXTURE(TextureType_PBR_AMBIENT_OCCLUSION);
+    MATERIAL_BIND_TEXTURE(TextureType_PBR_AMBIENT_OCCLUSION, samplerIdx++);
   }
 }
 
@@ -159,6 +182,37 @@ void MaterialBlinnPhong::Init() {
   }
   program.AddDefine("POINT_LIGHT");
   MaterialBaseTexture::Init();
+}
+
+void MaterialSkybox::Init() {
+  if (!program.Empty()) {
+    return;
+  }
+
+  if (enable_equirectangular_map_) {
+    program.AddDefine("EQUIRECTANGULAR_MAP");
+  }
+
+  program.LoadSource(SKYBOX_VS, SKYBOX_FS);
+  uniforms_loc_mvp = glGetUniformBlockIndex(program.GetId(), "UniformsMVP");
+
+  sampler_loc[TextureType_CUBE] = glGetUniformLocation(program.GetId(), "u_cubeMap");
+  sampler_loc[TextureType_EQUIRECTANGULAR] = glGetUniformLocation(program.GetId(), "u_equirectangularMap");
+}
+
+void MaterialSkybox::Use(RendererUniforms &uniforms, TextureMap &textures) {
+  program.Use();
+
+  // uniform blocks
+  GLint ubIdx = 0;
+  uniforms.uniforms_mvp.BindProgram(program.GetId(), uniforms_loc_mvp, ubIdx++);
+  uniforms.uniforms_mvp.UpdateData();
+
+  if (enable_equirectangular_map_) {
+    MATERIAL_BIND_TEXTURE(TextureType_EQUIRECTANGULAR, 0);
+  } else {
+    MATERIAL_BIND_TEXTURE(TextureType_CUBE, 0);
+  }
 }
 
 }

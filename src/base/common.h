@@ -59,6 +59,7 @@ enum ShadingType {
   ShadingType_BASE_COLOR = 0,
   ShadingType_BLINN_PHONG,
   ShadingType_PBR_BRDF,
+  ShadingType_SKYBOX,
 };
 
 enum FrustumClipMask {
@@ -137,6 +138,11 @@ enum AAType {
   AAType_NONE,
   AAType_SSAA,
   AAType_FXAA,
+};
+
+enum RendererType {
+  Renderer_SOFT,
+  Renderer_OPENGL,
 };
 
 }

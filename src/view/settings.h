@@ -134,6 +134,8 @@ class Settings {
   glm::vec3 light_position{};
   float light_position_angle = glm::radians(0.f);
 
+  int renderer_type = Renderer_SOFT;
+
  private:
   ModelLoader *model_loader_ = nullptr;
   OrbitController *orbit_controller_ = nullptr;

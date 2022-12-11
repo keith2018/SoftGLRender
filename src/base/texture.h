@@ -40,6 +40,7 @@ enum TextureType {
   TextureType_CUBE_MAP_POSITIVE_Z,
   TextureType_CUBE_MAP_NEGATIVE_Z,
 
+  TextureType_CUBE,
   TextureType_EQUIRECTANGULAR,
 };
 
@@ -82,6 +83,7 @@ class BaseTexture {
       TextureType_STR(TextureType_CUBE_MAP_POSITIVE_Z);
       TextureType_STR(TextureType_CUBE_MAP_NEGATIVE_Z);
 
+      TextureType_STR(TextureType_CUBE);
       TextureType_STR(TextureType_EQUIRECTANGULAR);
 
       default:break;

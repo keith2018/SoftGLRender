@@ -15,17 +15,7 @@
 namespace SoftGL {
 namespace View {
 
-enum SkyboxTextureType {
-  Skybox_Cube,
-  Skybox_Equirectangular,
-};
-
-struct SkyboxTexture {
-  SkyboxTextureType type;
-  Texture cube[6];  // +x, -x, +y, -y, +z, -z
-  Texture equirectangular;
-
-  // IBL
+struct SkyboxTextureIBL : public SkyboxTexture {
   Texture irradiance[6];
   Texture prefilter[6];
 
@@ -75,12 +65,11 @@ class ModelLoader {
     return curr_model_ ? curr_model_->vertex_count : 0;
   }
 
-  inline static ModelMesh &GetSkyBoxMesh() {
-    LoadSkyboxMesh();
+  inline static std::shared_ptr<ModelMesh> GetSkyBoxMesh() {
     return skybox_mash_;
   }
 
-  inline SkyboxTexture *GetSkyBoxTexture() {
+  inline SkyboxTextureIBL *GetSkyBoxTexture() {
     return curr_skybox_tex_;
   }
 
@@ -111,7 +100,7 @@ class ModelLoader {
 
   void LoadWorldAxis();
   void LoadLights();
-  static void LoadSkyboxMesh();
+  static void ReloadSkyboxMesh();
 
   static void PreloadSceneTextureFiles(const aiScene *scene, const std::string &res_dir);
   static bool LoadTextureFile(Texture &tex, const char *path);
@@ -122,9 +111,9 @@ class ModelLoader {
   std::unordered_map<std::string, ModelContainer> model_cache_;
 
   // skybox
-  static ModelMesh skybox_mash_;
-  SkyboxTexture *curr_skybox_tex_ = nullptr;
-  std::unordered_map<std::string, SkyboxTexture> skybox_tex_cache_;
+  static std::shared_ptr<ModelMesh> skybox_mash_;
+  static SkyboxTextureIBL *curr_skybox_tex_;
+  std::unordered_map<std::string, SkyboxTextureIBL> skybox_tex_cache_;
 
   // world axis
   ModelLines world_axis_;

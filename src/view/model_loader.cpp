@@ -73,7 +73,7 @@ float skyboxVertices[] = {
 
 std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> ModelLoader::texture_cache_;
 
-void SkyboxTexture::InitIBL() {
+void SkyboxTextureIBL::InitIBL() {
   if (ibl_running) {
     return;
   }
@@ -107,7 +107,8 @@ void SkyboxTexture::InitIBL() {
   prefilter_thread.detach();
 }
 
-ModelMesh ModelLoader::skybox_mash_;
+std::shared_ptr<ModelMesh> ModelLoader::skybox_mash_ = nullptr;
+SkyboxTextureIBL *ModelLoader::curr_skybox_tex_ = nullptr;
 
 ModelLoader::ModelLoader() {
   // world axis
@@ -143,7 +144,7 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
   const aiScene *scene = importer.ReadFile(filepath,
                                            aiProcess_Triangulate |
                                                aiProcess_CalcTangentSpace |
-                                               aiProcess_GenNormals |
+                                               aiProcess_FlipUVs |
                                                aiProcess_GenBoundingBoxes);
   if (!scene
       || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE
@@ -173,10 +174,11 @@ void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
   auto it = skybox_tex_cache_.find(filepath);
   if (it != skybox_tex_cache_.end()) {
     curr_skybox_tex_ = &it->second;
+    ReloadSkyboxMesh();
     return;
   }
 
-  skybox_tex_cache_[filepath] = SkyboxTexture();
+  skybox_tex_cache_[filepath] = SkyboxTextureIBL();
   curr_skybox_tex_ = &skybox_tex_cache_[filepath];
 
   LOGD("load skybox, path: %s", filepath.c_str());
@@ -205,22 +207,26 @@ void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
     LoadTextureFile(curr_skybox_tex_->equirectangular, filepath.c_str());
     curr_skybox_tex_->equirectangular_ready = true;
   }
+
+  // reset skybox mesh
+  ReloadSkyboxMesh();
 }
 
-void ModelLoader::LoadSkyboxMesh() {
-  if (skybox_mash_.primitive_cnt <= 0) {
-    skybox_mash_.primitive_cnt = 12;
-    for (int i = 0; i < 12; i++) {
-      for (int j = 0; j < 3; j++) {
-        Vertex vertex{};
-        vertex.a_position.x = skyboxVertices[i * 9 + j * 3 + 0];
-        vertex.a_position.y = skyboxVertices[i * 9 + j * 3 + 1];
-        vertex.a_position.z = skyboxVertices[i * 9 + j * 3 + 2];
-        skybox_mash_.vertexes.push_back(vertex);
-        skybox_mash_.indices.push_back(i * 3 + j);
-      }
+void ModelLoader::ReloadSkyboxMesh() {
+  skybox_mash_ = std::make_shared<ModelMesh>();
+  skybox_mash_->shading_type = ShadingType_SKYBOX;
+  skybox_mash_->primitive_cnt = 12;
+  for (int i = 0; i < 12; i++) {
+    for (int j = 0; j < 3; j++) {
+      Vertex vertex{};
+      vertex.a_position.x = skyboxVertices[i * 9 + j * 3 + 0];
+      vertex.a_position.y = skyboxVertices[i * 9 + j * 3 + 1];
+      vertex.a_position.z = skyboxVertices[i * 9 + j * 3 + 2];
+      skybox_mash_->vertexes.push_back(vertex);
+      skybox_mash_->indices.push_back(i * 3 + j);
     }
   }
+  skybox_mash_->skybox_tex = curr_skybox_tex_;
 }
 
 void ModelLoader::LoadWorldAxis() {
@@ -492,7 +498,6 @@ bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
   LOGD("load texture, path: %s", path);
 
   int iw = 0, ih = 0, n = 0;
-  stbi_set_flip_vertically_on_load(true);
   unsigned char *data = stbi_load(path, &iw, &ih, &n, STBI_default);
   if (data == nullptr) {
     return false;

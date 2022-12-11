@@ -81,11 +81,23 @@ void RendererOpenGL::DrawMeshTextured(ModelMesh &mesh) {
   InitVertex(mesh);
   InitTextures(mesh);
   InitMaterial(mesh);
+
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   DrawImpl(mesh, GL_TRIANGLES);
 }
 
 void RendererOpenGL::DrawMeshWireframe(ModelMesh &mesh) {
-  // TODO
+  if (!mesh.render_handle) {
+    mesh.render_handle = std::make_shared<OpenGLRenderHandler>();
+  }
+  InitVertex(mesh);
+  InitTextures(mesh);
+  InitMaterialWithType(mesh, MaterialType_BaseColor);
+
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glLineWidth(1.f);
+  DrawImpl(mesh, GL_TRIANGLES);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void RendererOpenGL::DrawLines(ModelLines &lines) {
@@ -144,6 +156,10 @@ MaterialType RendererOpenGL::GetMaterialType(ModelBase &model) {
       }
       break;
     }
+    case ShadingType_SKYBOX: {
+      material_type = MaterialType_Skybox;
+      break;
+    }
     default:break;
   }
   return material_type;
@@ -160,35 +176,68 @@ void RendererOpenGL::DrawImpl(ModelBase &model, GLenum mode) {
 void RendererOpenGL::InitTextures(ModelMesh &mesh) {
   auto *render_handle = (OpenGLRenderHandler *) (mesh.render_handle.get());
   if (render_handle->texture_handler.empty()) {
+    // normal textures
     for (auto &kv : mesh.textures) {
       auto texture = std::make_shared<TextureGLSL>();
-      texture->Create(kv.second);
+      texture->Create2D(kv.second);
       render_handle->texture_handler[kv.first] = std::move(texture);
+    }
+
+    // skybox textures
+    if (mesh.skybox_tex) {
+      auto texture = std::make_shared<TextureGLSL>();
+      if (mesh.skybox_tex->type == Skybox_Cube) {
+        texture->CreateCube(mesh.skybox_tex->cube);
+        render_handle->texture_handler[TextureType_CUBE] = std::move(texture);
+      } else {
+        texture->Create2D(mesh.skybox_tex->equirectangular);
+        render_handle->texture_handler[TextureType_EQUIRECTANGULAR] = std::move(texture);
+      }
     }
   }
 }
 
 void RendererOpenGL::InitMaterial(ModelBase &model) {
+  MaterialType material_type = GetMaterialType(model);
+  InitMaterialWithType(model, material_type);
+}
+
+void RendererOpenGL::InitMaterialWithType(ModelBase &model, MaterialType material_type) {
   auto *render_handle = (OpenGLRenderHandler *) (model.render_handle.get());
 
   // if material type not equal, reset material_handler
-  MaterialType material_type = GetMaterialType(model);
   if (render_handle->material_handler && render_handle->material_handler->Type() != material_type) {
     render_handle->material_handler = nullptr;
   }
 
   if (!render_handle->material_handler) {
-    if (material_type != MaterialType_BaseColor) {
-      InitMeshMaterial(static_cast<ModelMesh &>(model), material_type);
-    } else {
-      auto material = std::make_shared<MaterialBaseColor>();
-      material->Init();
-      render_handle->material_handler = std::move(material);
+    std::shared_ptr<BaseMaterial> material = nullptr;
+    switch (material_type) {
+      case MaterialType_BaseColor: {
+        material = std::make_shared<MaterialBaseColor>();
+        break;
+      }
+      case MaterialType_Skybox: {
+        auto materialSkybox = std::make_shared<MaterialSkybox>();
+        SkyboxTexture *skybox_tex = ((ModelMesh &) model).skybox_tex;
+        if (skybox_tex->type == Skybox_Equirectangular) {
+          materialSkybox->SetEnableEquirectangularMap(true);
+        }
+        material = materialSkybox;
+        break;
+      }
+      default: {
+        material = CreateMeshMaterial((ModelMesh &) model, material_type);
+        break;
+      }
     }
+
+    material->Init();
+    render_handle->material_handler = std::move(material);
   }
 }
 
-void RendererOpenGL::InitMeshMaterial(ModelMesh &mesh, MaterialType type) {
+std::shared_ptr<BaseMaterial> RendererOpenGL::CreateMeshMaterial(ModelMesh &mesh, MaterialType type) {
   auto *render_handle = (OpenGLRenderHandler *) (mesh.render_handle.get());
   auto &tex_handler = render_handle->texture_handler;
   std::shared_ptr<MaterialBaseTexture> material = nullptr;
@@ -217,9 +266,7 @@ void RendererOpenGL::InitMeshMaterial(ModelMesh &mesh, MaterialType type) {
   material->SetEnableAoMap(tex_handler.find(TextureType_PBR_AMBIENT_OCCLUSION) != tex_handler.end());
   material->SetEnableEmissiveMap(tex_handler.find(TextureType_EMISSIVE) != tex_handler.end());
   material->SetEnableAlphaDiscard(mesh.alpha_mode == Alpha_Mask);
-
-  material->Init();
-  render_handle->material_handler = std::move(material);
+  return material;
 }
 
 }

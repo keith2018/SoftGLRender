@@ -8,9 +8,6 @@ set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 # SIMD
 add_definitions("-DSOFTGL_SIMD_OPT")
 
-# OpenGL Renderer
-# add_definitions("-DSOFTGL_RENDER_OPENGL")
-
 include_directories(
         "${THIRD_PARTY_DIR}/glfw/include"
         "${THIRD_PARTY_DIR}/glad/include"

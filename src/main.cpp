@@ -15,7 +15,10 @@
 #include "view/viewer_soft.h"
 #include "view/viewer_opengl.h"
 
-std::shared_ptr<SoftGL::View::Viewer> viewer = nullptr;
+
+std::shared_ptr<SoftGL::View::Viewer> viewer_soft = nullptr;
+std::shared_ptr<SoftGL::View::Viewer> viewer_opengl = nullptr;
+SoftGL::View::Viewer *curr_viewer = nullptr;
 
 const unsigned int SCR_WIDTH = 1000;
 const unsigned int SCR_HEIGHT = 800;
@@ -151,51 +154,70 @@ int main() {
   program.Use();
   glUniform1i(glGetUniformLocation(program.GetId(), "uTexture"), 0);
 
-  // init SoftGL::Viewer
-#ifdef SOFTGL_RENDER_OPENGL
-  viewer = std::make_shared<SoftGL::View::ViewerOpenGL>();
-#else
-  viewer = std::make_shared<SoftGL::View::ViewerSoft>();
-#endif
-  if (viewer->Create(window, SCR_WIDTH, SCR_HEIGHT, (int) texture)) {
-    // real frame buffer size
-    int frame_width, frame_height;
-    glfwGetFramebufferSize(window, &frame_width, &frame_height);
-
-    /* Loop until the user closes the window */
-    while (!glfwWindowShouldClose(window)) {
-      // check exit app
-      processInput(window);
-
-      // draw frame
-      viewer->DrawFrame();
-
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-      glViewport(0, 0, frame_width, frame_height);
-
-      glDisable(GL_BLEND);
-      glDisable(GL_DEPTH_TEST);
-      glDisable(GL_CULL_FACE);
-
-      glClearColor(0.f, 0.f, 0.f, 0.0f);
-      glClear(GL_COLOR_BUFFER_BIT);
-
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, texture);
-
-      program.Use();
-      glBindVertexArray(VAO);
-      glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-
-      viewer->DrawUI();
-      glfwSwapBuffers(window);
-      glfwPollEvents();
-    }
-  } else {
-    LOGE("Failed to initialize Viewer");
+  // init Viewer
+  bool init_success = false;
+  viewer_soft = std::make_shared<SoftGL::View::ViewerSoft>();
+  init_success = viewer_soft->Create(window, SCR_WIDTH, SCR_HEIGHT, (int) texture);
+  if (!init_success) {
+    LOGE("Failed to create Viewer Software");
   }
 
-  viewer.reset();
+  viewer_opengl = std::make_shared<SoftGL::View::ViewerOpenGL>();
+  init_success = viewer_opengl->Create(window, SCR_WIDTH, SCR_HEIGHT, (int) texture);
+  if (!init_success) {
+    LOGE("Failed to create Viewer OpenGL");
+  }
+
+  // default renderer: software
+  curr_viewer = viewer_soft.get();
+
+  // real frame buffer size
+  int frame_width, frame_height;
+  glfwGetFramebufferSize(window, &frame_width, &frame_height);
+
+  /* Loop until the user closes the window */
+  while (!glfwWindowShouldClose(window)) {
+    // check exit app
+    processInput(window);
+
+    switch (curr_viewer->GetSettings()->renderer_type) {
+      case SoftGL::Renderer_SOFT:
+        curr_viewer = viewer_soft.get();
+        break;
+      case SoftGL::Renderer_OPENGL:
+        curr_viewer = viewer_opengl.get();
+        break;
+      default:break;
+    }
+
+    // draw frame
+    curr_viewer->DrawFrame();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, frame_width, frame_height);
+
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    glClearColor(0.f, 0.f, 0.f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    program.Use();
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+    curr_viewer->DrawUI();
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
+
+  viewer_soft = nullptr;
+  viewer_opengl = nullptr;
+  curr_viewer = nullptr;
   program.Destroy();
 
   glDeleteVertexArrays(1, &VAO);
@@ -212,7 +234,7 @@ int main() {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window) {
-  if (!viewer || viewer->WantCaptureKeyboard()) {
+  if (!curr_viewer || curr_viewer->WantCaptureKeyboard()) {
     return;
   }
 
@@ -226,7 +248,7 @@ void processInput(GLFWwindow *window) {
   if (state == GLFW_PRESS) {
     if (!key_h_pressed) {
       key_h_pressed = true;
-      viewer->ToggleUIShowState();
+      curr_viewer->ToggleUIShowState();
     }
   } else if (state == GLFW_RELEASE) {
     key_h_pressed = false;
@@ -240,16 +262,16 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   // height will be significantly larger than specified on retina displays.
   glViewport(0, 0, width, height);
 
-  if (!viewer) {
+  if (!curr_viewer) {
     return;
   }
-  viewer->UpdateSize(width, height);
+  curr_viewer->UpdateSize(width, height);
 }
 
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow *window, double xPos, double yPos) {
-  if (!viewer || viewer->WantCaptureMouse()) {
+  if (!curr_viewer || curr_viewer->WantCaptureMouse()) {
     return;
   }
 
@@ -264,11 +286,11 @@ void mouse_callback(GLFWwindow *window, double xPos, double yPos) {
     double yOffset = yPos - lastY;
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-      viewer->GetOrbitController()->panX = xOffset;
-      viewer->GetOrbitController()->panY = yOffset;
+      curr_viewer->GetOrbitController()->panX = xOffset;
+      curr_viewer->GetOrbitController()->panY = yOffset;
     } else {
-      viewer->GetOrbitController()->rotateX = xOffset;
-      viewer->GetOrbitController()->rotateY = yOffset;
+      curr_viewer->GetOrbitController()->rotateX = xOffset;
+      curr_viewer->GetOrbitController()->rotateY = yOffset;
     }
 
     lastX = xPos;
@@ -281,10 +303,10 @@ void mouse_callback(GLFWwindow *window, double xPos, double yPos) {
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow *window, double xOffset, double yOffset) {
-  if (!viewer || viewer->WantCaptureMouse()) {
+  if (!curr_viewer || curr_viewer->WantCaptureMouse()) {
     return;
   }
 
-  viewer->GetOrbitController()->zoomX = xOffset;
-  viewer->GetOrbitController()->zoomY = yOffset;
+  curr_viewer->GetOrbitController()->zoomX = xOffset;
+  curr_viewer->GetOrbitController()->zoomY = yOffset;
 }
