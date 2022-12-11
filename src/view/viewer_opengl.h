@@ -15,10 +15,9 @@ namespace View {
 
 class ViewerOpenGL : public Viewer {
  public:
-  ~ViewerOpenGL() { Destroy(); };
   bool Create(void *window, int width, int height, int outTexId) override;
   void DrawFrame() override;
-  void Destroy();
+  void Destroy() override;
 
  private:
   void DrawFrameInternal();

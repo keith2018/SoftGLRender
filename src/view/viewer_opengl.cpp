@@ -52,6 +52,7 @@ void ViewerOpenGL::DrawFrame() {
 
 void ViewerOpenGL::Destroy() {
   glDeleteFramebuffers(1, &fbo_);
+  Viewer::Destroy();
 }
 
 void ViewerOpenGL::DrawFrameInternal() {
