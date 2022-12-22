@@ -17,7 +17,7 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 
 - [renderer](src/renderer): the main software renderer implementation, first preparing input data (Vertexes, Indices), then binding custom shaders, and setup rendering pipeline, after the pipeline finished, graphics will draw to the result framebuffer.
 - [shader](src/shader): the programmable render pipeline simulation, vertex shader and fragment shader are supported, and it is easy to port real GLSL code to this project, several basic shaders are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
-- [app](src/app): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel, and render pass management.
+- [view](src/view): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel, and render pass management.
 
 #### Renderer Pipeline Features
 

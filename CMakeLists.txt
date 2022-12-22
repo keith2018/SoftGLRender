@@ -5,11 +5,11 @@ project(SoftGLRender)
 set(CMAKE_CXX_STANDARD 11)
 set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
-# texture tiled memory
-add_definitions("-DSOFTGL_TEXTURE_TILED")
-
 # SIMD
 add_definitions("-DSOFTGL_SIMD_OPT")
+
+# OpenGL Renderer
+# add_definitions("-DSOFTGL_RENDER_OPENGL")
 
 include_directories(
         "${THIRD_PARTY_DIR}/glfw/include"
@@ -42,9 +42,12 @@ add_subdirectory(${THIRD_PARTY_DIR}/assimp)
 
 # main src
 file(GLOB SOFTGL_SRC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/base/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/soft/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/soft/shader/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/opengl/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/render/opengl/shader/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/view/*.cpp
         )
 
 # imgui src
