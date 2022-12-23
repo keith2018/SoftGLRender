@@ -55,6 +55,15 @@ void SettingPanel::OnDraw() {
 }
 
 void SettingPanel::DrawSettings() {
+  // renderer
+  const char *rendererItems[] = {
+      "Software",
+      "OpenGL",
+  };
+  ImGui::Separator();
+  ImGui::Text("renderer");
+  ImGui::Combo("##renderer", &settings_.renderer_type, rendererItems, IM_ARRAYSIZE(rendererItems));
+
   // reset camera
   ImGui::Separator();
   ImGui::Text("camera:");

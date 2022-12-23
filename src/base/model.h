@@ -12,6 +12,17 @@
 
 namespace SoftGL {
 
+enum SkyboxTextureType {
+  Skybox_Cube,
+  Skybox_Equirectangular,
+};
+
+struct SkyboxTexture {
+  SkyboxTextureType type;
+  Texture cube[6];  // +x, -x, +y, -y, +z, -z
+  Texture equirectangular;
+};
+
 class RenderHandler {
 };
 
@@ -43,6 +54,9 @@ struct ModelMesh : ModelBase {
   AlphaMode alpha_mode = Alpha_Opaque;
   float alpha_cutoff = 0.5f;
   bool double_sided = false;
+
+  // skybox
+  SkyboxTexture *skybox_tex = nullptr;
 
   ModelMesh(ModelMesh &&o) = default;
   ModelMesh() = default;

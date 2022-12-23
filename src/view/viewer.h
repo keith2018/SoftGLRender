@@ -14,33 +14,48 @@
 namespace SoftGL {
 namespace View {
 
+class ViewerSharedData {
+ public:
+  std::shared_ptr<Settings> settings_;
+  std::shared_ptr<SettingPanel> settingPanel_;
+  std::shared_ptr<Camera> camera_;
+  std::shared_ptr<SmoothOrbitController> orbitController_;
+  std::shared_ptr<ModelLoader> model_loader_;
+};
+
 class Viewer {
  public:
+  virtual ~Viewer() { Destroy(); }
   virtual bool Create(void *window, int width, int height, int outTexId);
   virtual void DrawFrame();
+  virtual void Destroy();
 
   inline void DrawUI() {
-    settingPanel_->OnDraw();
+    viewer_->settingPanel_->OnDraw();
   }
 
   inline void UpdateSize(int width, int height) {
-    settingPanel_->UpdateSize(width, height);
+    viewer_->settingPanel_->UpdateSize(width, height);
   }
 
   inline void ToggleUIShowState() {
-    settingPanel_->ToggleShowState();
+    viewer_->settingPanel_->ToggleShowState();
   }
 
   inline bool WantCaptureKeyboard() {
-    return settingPanel_->WantCaptureKeyboard();
+    return viewer_->settingPanel_->WantCaptureKeyboard();
   }
 
   inline bool WantCaptureMouse() {
-    return settingPanel_->WantCaptureMouse();
+    return viewer_->settingPanel_->WantCaptureMouse();
   }
 
   inline SmoothOrbitController *GetOrbitController() {
-    return orbitController_.get();
+    return viewer_->orbitController_.get();
+  }
+
+  inline Settings *GetSettings() {
+    return viewer_->settings_.get();
   }
 
  protected:
@@ -50,11 +65,7 @@ class Viewer {
 
   AAType aa_type_ = AAType_NONE;
 
-  std::shared_ptr<Settings> settings_;
-  std::shared_ptr<SettingPanel> settingPanel_;
-  std::shared_ptr<Camera> camera_;
-  std::shared_ptr<SmoothOrbitController> orbitController_;
-  std::shared_ptr<ModelLoader> model_loader_;
+  static std::shared_ptr<ViewerSharedData> viewer_;
 };
 
 }

@@ -56,58 +56,58 @@ void ViewerSoft::DrawFrame() {
 }
 
 void ViewerSoft::DrawFrameInternal() {
-  aa_type_ = (AAType) settings_->aa_type;
-  if (settings_->wireframe) {
+  aa_type_ = (AAType) viewer_->settings_->aa_type;
+  if (viewer_->settings_->wireframe) {
     aa_type_ = AAType_NONE;
   }
   switch (aa_type_) {
     case AAType_FXAA: {
-      renderer_->Create(width_, height_, camera_->Near(), camera_->Far());
+      renderer_->Create(width_, height_, viewer_->camera_->Near(), viewer_->camera_->Far());
       fxaa_tex_.buffer = renderer_->GetFrameColor();
       out_color_ = fxaa_filter_->GetFrameColor().get();
     }
       break;
     case AAType_SSAA: {
-      renderer_->Create(width_ * 2, height_ * 2, camera_->Near(), camera_->Far());
+      renderer_->Create(width_ * 2, height_ * 2, viewer_->camera_->Near(), viewer_->camera_->Far());
       out_color_ = renderer_->GetFrameColor().get();
     }
       break;
     default: {
-      renderer_->Create(width_, height_, camera_->Near(), camera_->Far());
+      renderer_->Create(width_, height_, viewer_->camera_->Near(), viewer_->camera_->Far());
       out_color_ = renderer_->GetFrameColor().get();
     }
       break;
   }
 
-  renderer_->depth_test = settings_->depth_test;
+  renderer_->depth_test = viewer_->settings_->depth_test;
   renderer_->depth_func = Depth_GREATER;  // Reversed-Z
   renderer_->depth_mask = true;
-  renderer_->cull_face_back = settings_->cull_face;
-  renderer_->wireframe_show_clip = settings_->wireframe_show_clip;
+  renderer_->cull_face_back = viewer_->settings_->cull_face;
+  renderer_->wireframe_show_clip = viewer_->settings_->wireframe_show_clip;
 
-  auto clear_color = settings_->clear_color;
+  auto clear_color = viewer_->settings_->clear_color;
   renderer_->Clear(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
 
   // world axis
-  if (settings_->world_axis && !settings_->show_skybox) {
+  if (viewer_->settings_->world_axis && !viewer_->settings_->show_skybox) {
     glm::mat4 axis_transform(1.0f);
-    ModelLines &axis_lines = model_loader_->GetWorldAxisLines();
+    ModelLines &axis_lines = viewer_->model_loader_->GetWorldAxisLines();
     DrawWorldAxis(axis_lines, axis_transform);
   }
 
   // light
-  if (!settings_->wireframe && settings_->show_light) {
+  if (!viewer_->settings_->wireframe && viewer_->settings_->show_light) {
     glm::mat4 light_transform(1.0f);
-    ModelPoints &light_points = model_loader_->GetLights();
+    ModelPoints &light_points = viewer_->model_loader_->GetLights();
     DrawLights(light_points, light_transform);
   }
 
   // model root
-  ModelNode *model_node = model_loader_->GetRootNode();
+  ModelNode *model_node = viewer_->model_loader_->GetRootNode();
   glm::mat4 model_transform(1.0f);
   if (model_node != nullptr) {
     // adjust model center
-    auto bounds = model_loader_->GetRootBoundingBox();
+    auto bounds = viewer_->model_loader_->GetRootBoundingBox();
     glm::vec3 trans = (bounds->max + bounds->min) / -2.f;
     trans.y = -bounds->min.y;
     float bounds_len = glm::length(bounds->max - bounds->min);
@@ -115,20 +115,22 @@ void ViewerSoft::DrawFrameInternal() {
     model_transform = glm::translate(model_transform, trans);
 
     // draw nodes opaque
-    renderer_->early_z = settings_->early_z;
-    DrawModelNodes(*model_node, model_transform, Alpha_Opaque, settings_->wireframe);
-    DrawModelNodes(*model_node, model_transform, Alpha_Mask, settings_->wireframe);
+    renderer_->early_z = viewer_->settings_->early_z;
+    DrawModelNodes(*model_node, model_transform, Alpha_Opaque, viewer_->settings_->wireframe);
+    DrawModelNodes(*model_node, model_transform, Alpha_Mask, viewer_->settings_->wireframe);
     renderer_->early_z = false;
   }
 
   // skybox
-  if (settings_->show_skybox) {
+  if (viewer_->settings_->show_skybox) {
     renderer_->depth_func = Depth_GEQUAL;
     renderer_->depth_mask = false;
 
     glm::mat4 skybox_matrix(1.f);
-    ModelMesh &skybox_node = model_loader_->GetSkyBoxMesh();
-    DrawSkybox(skybox_node, skybox_matrix);
+    auto skybox_node = viewer_->model_loader_->GetSkyBoxMesh();
+    if (skybox_node) {
+      DrawSkybox(*skybox_node, skybox_matrix);
+    }
 
     renderer_->depth_func = Depth_GREATER;
     renderer_->depth_mask = true;
@@ -137,7 +139,7 @@ void ViewerSoft::DrawFrameInternal() {
   if (model_node != nullptr) {
     // draw nodes blend
     renderer_->depth_mask = false;
-    DrawModelNodes(*model_node, model_transform, Alpha_Blend, settings_->wireframe);
+    DrawModelNodes(*model_node, model_transform, Alpha_Blend, viewer_->settings_->wireframe);
   }
 
   // FXAA
@@ -148,7 +150,7 @@ void ViewerSoft::DrawFrameInternal() {
 
 bool ViewerSoft::CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform) {
   BoundingBox bbox = mesh.bounding_box.Transform(transform);
-  return camera_->GetFrustum().Intersects(bbox);
+  return viewer_->camera_->GetFrustum().Intersects(bbox);
 }
 
 void ViewerSoft::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe) {
@@ -203,7 +205,7 @@ void ViewerSoft::FXAAPostProcess() {
   auto &shader_context = fxaa_filter_->GetShaderContext();
   InitShaderFXAA(shader_context);
 
-  auto clear_color = settings_->clear_color;
+  auto clear_color = viewer_->settings_->clear_color;
   fxaa_filter_->Clear(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
   fxaa_filter_->Draw();
 }
@@ -242,10 +244,10 @@ void ViewerSoft::InitShaderSkybox(ShaderContext &shader_context, glm::mat4 &mode
   auto *skybox_uniforms_ptr = (SkyboxShaderUniforms *) shader_context.uniforms.get();
 
   // only rotation
-  glm::mat4 view_matrix = glm::mat3(camera_->ViewMatrix());
-  skybox_uniforms_ptr->u_modelViewProjectionMatrix = camera_->ProjectionMatrix() * view_matrix * model_matrix;
+  glm::mat4 view_matrix = glm::mat3(viewer_->camera_->ViewMatrix());
+  skybox_uniforms_ptr->u_modelViewProjectionMatrix = viewer_->camera_->ProjectionMatrix() * view_matrix * model_matrix;
 
-  auto skyboxTex = model_loader_->GetSkyBoxTexture();
+  auto skyboxTex = viewer_->model_loader_->GetSkyBoxTexture();
   if (skyboxTex == nullptr) {
     return;
   }
@@ -304,14 +306,15 @@ void ViewerSoft::BindShaderUniforms(ShaderContext &shader_context, glm::mat4 &mo
   auto *uniforms_ptr = (BaseShaderUniforms *) shader_context.uniforms.get();
 
   uniforms_ptr->u_modelMatrix = model_matrix;
-  uniforms_ptr->u_modelViewProjectionMatrix = camera_->ProjectionMatrix() * camera_->ViewMatrix() * model_matrix;
+  uniforms_ptr->u_modelViewProjectionMatrix =
+      viewer_->camera_->ProjectionMatrix() * viewer_->camera_->ViewMatrix() * model_matrix;
   uniforms_ptr->u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(model_matrix)));
 
-  uniforms_ptr->u_cameraPosition = camera_->Eye();
-  uniforms_ptr->u_ambientColor = settings_->ambient_color;
-  uniforms_ptr->u_showPointLight = settings_->show_light;
-  uniforms_ptr->u_pointLightPosition = settings_->light_position;
-  uniforms_ptr->u_pointLightColor = settings_->light_color;
+  uniforms_ptr->u_cameraPosition = viewer_->camera_->Eye();
+  uniforms_ptr->u_ambientColor = viewer_->settings_->ambient_color;
+  uniforms_ptr->u_showPointLight = viewer_->settings_->show_light;
+  uniforms_ptr->u_pointLightPosition = viewer_->settings_->light_position;
+  uniforms_ptr->u_pointLightColor = viewer_->settings_->light_color;
 
   uniforms_ptr->u_alpha_cutoff = alpha_cutoff;
 }
@@ -333,8 +336,8 @@ void ViewerSoft::BindShaderTextures(ModelMesh &mesh, std::shared_ptr<BaseShaderU
       samplers.push_back(&uniforms_ptr->u_metalRoughnessMap);
       samplers.push_back(&uniforms_ptr->u_aoMap);
 
-      if (settings_->show_skybox) {
-        auto skyboxTex = model_loader_->GetSkyBoxTexture();
+      if (viewer_->settings_->show_skybox) {
+        auto skyboxTex = viewer_->model_loader_->GetSkyBoxTexture();
         if (skyboxTex != nullptr) {
           skyboxTex->InitIBL();
 

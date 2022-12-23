@@ -155,7 +155,7 @@ void Environment::CubeRenderDraw(RendererSoft &renderer,
 
   auto &shader_context = renderer.GetShaderContext();
   auto *uniforms_ptr = (BaseShaderUniforms *) shader_context.uniforms.get();
-  ModelMesh &skybox_mesh = ModelLoader::GetSkyBoxMesh();
+  auto skybox_mesh = ModelLoader::GetSkyBoxMesh();
   glm::mat4 model_matrix(1.f);
 
   // draw cube 6 faces
@@ -164,7 +164,7 @@ void Environment::CubeRenderDraw(RendererSoft &renderer,
     camera.LookAt(param.eye, param.center, param.up);
     uniforms_ptr->u_modelViewProjectionMatrix = camera.ProjectionMatrix() * camera.ViewMatrix() * model_matrix;
     renderer.Clear(0.f, 0.f, 0.f, 0.f);
-    renderer.DrawMeshTextured(skybox_mesh);
+    renderer.DrawMeshTextured(*skybox_mesh);
 
     auto &buff = renderer.GetFrameColor();
     face_cb(i, *buff);

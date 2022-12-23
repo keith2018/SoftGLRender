@@ -420,6 +420,9 @@ void BaseSamplerCube<T>::ConvertXYZ2UV(float x, float y, float z, int *index, fl
     *index = 5;
   }
 
+  // flip y
+  vc = -vc;
+
   // Convert range from -1 to 1 to 0 to 1
   *u = 0.5f * (uc / maxAxis + 1.0f);
   *v = 0.5f * (vc / maxAxis + 1.0f);

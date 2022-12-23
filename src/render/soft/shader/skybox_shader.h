@@ -45,7 +45,7 @@ struct SkyboxFragmentShader : BaseFragmentShader {
 
   const glm::vec2 invAtan = glm::vec2(0.1591f, 0.3183f);
   glm::vec2 SampleSphericalMap(glm::vec3 dir) {
-    glm::vec2 uv = glm::vec2(glm::atan(dir.z, dir.x), asin(dir.y));
+    glm::vec2 uv = glm::vec2(glm::atan(dir.z, dir.x), asin(-dir.y));
     uv *= invAtan;
     uv += 0.5f;
     return uv;

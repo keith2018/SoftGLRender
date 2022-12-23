@@ -147,12 +147,14 @@ class RendererUniforms {
 
 class TextureGLSL {
  public:
-  void Create(Texture &tex);
+  void Create2D(Texture &tex);
+  void CreateCube(Texture tex[6]);  // +x, -x, +y, -y, +z, -z
   bool Empty() const;
   void BindProgram(GLint samplerLoc, GLuint binding) const;
   virtual ~TextureGLSL();
 
  private:
+  GLenum target_ = 0;
   GLuint texId_ = 0;
 };
 
@@ -162,6 +164,7 @@ enum MaterialType {
   MaterialType_BlinnPhong,
   MaterialType_PbrBase,
   MaterialType_PbrLight,
+  MaterialType_Skybox,
 };
 
 using TextureMap = std::unordered_map<TextureType, std::shared_ptr<TextureGLSL>, EnumClassHash>;
@@ -219,6 +222,20 @@ class MaterialBlinnPhong : public MaterialBaseTexture {
  public:
   inline MaterialType Type() override { return MaterialType_BlinnPhong; };
   void Init() override;
+};
+
+class MaterialSkybox : public BaseMaterial {
+ public:
+  inline MaterialType Type() override { return MaterialType_Skybox; };
+  void Init() override;
+  void Use(RendererUniforms &uniforms, TextureMap &textures) override;
+
+  void SetEnableEquirectangularMap(bool enabled) {
+    enable_equirectangular_map_ = enabled;
+  }
+
+ private:
+  bool enable_equirectangular_map_ = false;
 };
 
 }

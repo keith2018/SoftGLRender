@@ -51,10 +51,11 @@ class RendererOpenGL : public Renderer {
   void InitVertex(ModelBase &model, bool needUpdate = false);
   void InitTextures(ModelMesh &mesh);
   void InitMaterial(ModelBase &model);
-  void InitMeshMaterial(ModelMesh &mesh, MaterialType type);
+  void InitMaterialWithType(ModelBase &model, MaterialType material_type);
+  void DrawImpl(ModelBase &model, GLenum mode);
 
   MaterialType GetMaterialType(ModelBase &model);
-  void DrawImpl(ModelBase &model, GLenum mode);
+  std::shared_ptr<BaseMaterial> CreateMeshMaterial(ModelMesh &mesh, MaterialType type);
 
  private:
   RendererUniforms uniforms_;
