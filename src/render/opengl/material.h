@@ -94,14 +94,14 @@ class UniformsLight : public UniformsBlockGLSL {
 
  public:
   struct {
+    int u_showPointLight;
+
     glm::vec3 u_ambientColor;
 
     glm::vec3 u_cameraPosition;
     glm::vec3 u_pointLightPosition;
     glm::vec3 u_pointLightColor;
   } data;
-
-  bool show_light = false;
 };
 
 class UniformsAlphaMask : public UniformsBlockGLSL {
@@ -160,10 +160,9 @@ class TextureGLSL {
 
 enum MaterialType {
   MaterialType_BaseColor = 0,
-  MaterialType_BaseTexture,
   MaterialType_BlinnPhong,
   MaterialType_PbrBase,
-  MaterialType_PbrLight,
+  MaterialType_PbrIBL,
   MaterialType_Skybox,
 };
 
@@ -172,6 +171,8 @@ using TextureMap = std::unordered_map<TextureType, std::shared_ptr<TextureGLSL>,
 class BaseMaterial {
  public:
   virtual MaterialType Type() = 0;
+  virtual const char *GetVertexShader() = 0;
+  virtual const char *GetFragmentShader() = 0;
   virtual void Init() = 0;
   virtual void Use(RendererUniforms &uniforms, TextureMap &textures) = 0;
  public:
@@ -188,16 +189,25 @@ class BaseMaterial {
 class MaterialBaseColor : public BaseMaterial {
  public:
   inline MaterialType Type() override { return MaterialType_BaseColor; };
+  inline const char *GetVertexShader() override { return BASIC_VS; };
+  inline const char *GetFragmentShader() override { return BASIC_FS; };
+
   void Init() override;
   void Use(RendererUniforms &uniforms, TextureMap &textures) override;
 };
 
-class MaterialBaseTexture : public BaseMaterial {
+class MaterialBlinnPhong : public BaseMaterial {
  public:
-  inline MaterialType Type() override { return MaterialType_BaseTexture; };
+  inline MaterialType Type() override { return MaterialType_BlinnPhong; };
+  inline const char *GetVertexShader() override { return BLINN_PHONG_VS; };
+  inline const char *GetFragmentShader() override { return BLINN_PHONG_FS; };
+
   void Init() override;
   void Use(RendererUniforms &uniforms, TextureMap &textures) override;
 
+  void SetEnableDiffuseMap(bool enabled) {
+    enable_diffuse_map_ = enabled;
+  }
   void SetEnableNormalMap(bool enabled) {
     enable_normal_map_ = enabled;
   }
@@ -211,22 +221,40 @@ class MaterialBaseTexture : public BaseMaterial {
     enable_alpha_discard_ = enabled;
   }
 
- private:
+ protected:
+  bool enable_diffuse_map_ = false;
   bool enable_normal_map_ = false;
   bool enable_emissive_map_ = false;
   bool enable_ao_map_ = false;
   bool enable_alpha_discard_ = false;
+
+  GLint samplerIdx = 0;
 };
 
-class MaterialBlinnPhong : public MaterialBaseTexture {
+class MaterialPbrBase : public MaterialBlinnPhong {
  public:
-  inline MaterialType Type() override { return MaterialType_BlinnPhong; };
+  inline MaterialType Type() override { return MaterialType_PbrBase; };
+  inline const char *GetVertexShader() override { return PBR_IBL_VS; };
+  inline const char *GetFragmentShader() override { return PBR_IBL_FS; };
+
   void Init() override;
+  void Use(RendererUniforms &uniforms, TextureMap &textures) override;
+};
+
+class MaterialPbrIBL : public MaterialPbrBase {
+ public:
+  inline MaterialType Type() override { return MaterialType_PbrIBL; };
+
+  void Init() override;
+  void Use(RendererUniforms &uniforms, TextureMap &textures) override;
 };
 
 class MaterialSkybox : public BaseMaterial {
  public:
   inline MaterialType Type() override { return MaterialType_Skybox; };
+  inline const char *GetVertexShader() override { return SKYBOX_VS; };
+  inline const char *GetFragmentShader() override { return SKYBOX_FS; };
+
   void Init() override;
   void Use(RendererUniforms &uniforms, TextureMap &textures) override;
 

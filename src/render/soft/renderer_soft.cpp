@@ -24,8 +24,8 @@ void RendererSoft::Create(int w, int h, float near, float far) {
   viewport_ = Viewport(0, 0, (float) width_, (float) height_);
   depth_range.Set(near, far);
 
-  graphic_.DrawPoint = std::bind(&RendererSoft::DrawFramePointWithDepth, this, std::placeholders::_1,
-                                 std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+  graphic_.DrawImpl = std::bind(&RendererSoft::DrawFramePointWithDepth, this, std::placeholders::_1,
+                                std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 }
 
 void RendererSoft::Clear(float r, float g, float b, float a) {
@@ -85,8 +85,7 @@ void RendererSoft::DrawPoints(ModelPoints &points) {
     ViewportTransform(pt.pos);
 
     glm::u8vec4 color = points.point_color * 255.f;
-    int radius = (int) points.point_size;
-    graphic_.DrawCircle((int) pt.pos.x, (int) pt.pos.y, radius, pt.pos.z, color);
+    graphic_.DrawPoint(pt.pos, points.point_size, pt.pos.z, color);
   }
 }
 

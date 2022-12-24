@@ -11,11 +11,8 @@ namespace SoftGL {
 void *Logger::logContext_ = nullptr;
 LogFunc Logger::logFunc_ = nullptr;
 
-#if DEBUG
+// default level: LOG_INFO
 LogLevel Logger::minLevel_ = LOG_INFO;
-#else
-LogLevel Logger::minLevel_ = LOG_WARNING;
-#endif
 
 char Logger::buf_[MAX_LOG_LENGTH] = {};
 

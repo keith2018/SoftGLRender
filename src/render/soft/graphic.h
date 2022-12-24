@@ -20,12 +20,9 @@ class Graphic {
 
   void DrawLine(glm::vec4 v0, glm::vec4 v1, const glm::u8vec4 &color);
 
-  void DrawCircle(int xc, int yc, int r, float depth, const glm::u8vec4 &color, bool fill = true);
+  void DrawPoint(glm::vec2 pos, float size, float depth, const glm::u8vec4 &color);
 
-  std::function<void(int x, int y, float depth, const glm::u8vec4 &color)> DrawPoint;
-
- private:
-  void DrawCirclePoint(int xc, int yc, int x, int y, float depth, const glm::u8vec4 &color);
+  std::function<void(int x, int y, float depth, const glm::u8vec4 &color)> DrawImpl;
 };
 
 }

@@ -78,9 +78,9 @@ void Graphic::DrawLine(glm::vec4 v0, glm::vec4 v1, const glm::u8vec4 &color) {
   for (int x = x0; x <= x1; x++) {
     z += dz;
     if (steep) {
-      DrawPoint(y, x, z, color);
+      DrawImpl(y, x, z, color);
     } else {
-      DrawPoint(x, y, z, color);
+      DrawImpl(x, y, z, color);
     }
 
     error += dError;
@@ -91,47 +91,17 @@ void Graphic::DrawLine(glm::vec4 v0, glm::vec4 v1, const glm::u8vec4 &color) {
   }
 }
 
-void Graphic::DrawCircle(int xc, int yc, int r, float depth, const glm::u8vec4 &color, bool fill) {
-  int x = 0, y = r, yi, d;
-  d = 3 - 2 * r;
+void Graphic::DrawPoint(glm::vec2 pos, float size, float depth, const glm::u8vec4 &color) {
+  int left = pos.x - size / 2.f + 0.5f;
+  int right = left + size;
+  int top = pos.y - size / 2.f + 0.5f;
+  int bottom = top + size;
 
-  if (fill) {
-    while (x <= y) {
-      for (yi = x; yi <= y; yi++)
-        DrawCirclePoint(xc, yc, x, yi, depth, color);
-
-      if (d < 0) {
-        d = d + 4 * x + 6;
-      } else {
-        d = d + 4 * (x - y) + 10;
-        y--;
-      }
-      x++;
-    }
-  } else {
-    while (x <= y) {
-      DrawCirclePoint(xc, yc, x, y, depth, color);
-
-      if (d < 0) {
-        d = d + 4 * x + 6;
-      } else {
-        d = d + 4 * (x - y) + 10;
-        y--;
-      }
-      x++;
+  for (int x = left; x < right; x++) {
+    for (int y = top; y < bottom; y++) {
+      DrawImpl(x, y, depth, color);
     }
   }
-}
-
-void Graphic::DrawCirclePoint(int xc, int yc, int x, int y, float depth, const glm::u8vec4 &color) {
-  DrawPoint(xc + x, yc + y, depth, color);
-  DrawPoint(xc - x, yc + y, depth, color);
-  DrawPoint(xc + x, yc - y, depth, color);
-  DrawPoint(xc - x, yc - y, depth, color);
-  DrawPoint(xc + y, yc + x, depth, color);
-  DrawPoint(xc - y, yc + x, depth, color);
-  DrawPoint(xc + y, yc - x, depth, color);
-  DrawPoint(xc - y, yc - x, depth, color);
 }
 
 }

@@ -426,7 +426,7 @@ bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
         type = TextureType_PBR_AMBIENT_OCCLUSION;
         break;
       default:
-        LOGW("texture type: %s not support", aiTextureTypeToString(texture_type));
+//        LOGW("texture type: %s not support", aiTextureTypeToString(texture_type));
         return true;  // not support
     }
 

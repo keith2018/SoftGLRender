@@ -138,22 +138,13 @@ void RendererOpenGL::InitVertex(ModelBase &model, bool needUpdate) {
 MaterialType RendererOpenGL::GetMaterialType(ModelBase &model) {
   MaterialType material_type = MaterialType_BaseColor;
   switch (model.shading_type) {
-    case ShadingType_PBR_BRDF:
-// TODO
-//    {
-//      if (uniforms_.uniforms_light.show_light) {
-//        material_type = MaterialType_PbrLight;
-//      } else {
-//        material_type = MaterialType_PbrBase;
-//      }
-//      break;
-//    }
+    case ShadingType_PBR_BRDF: {
+      bool ibl_enabled = false;  // TODO
+      material_type = ibl_enabled ? MaterialType_PbrIBL : MaterialType_PbrBase;
+      break;
+    }
     case ShadingType_BLINN_PHONG: {
-      if (uniforms_.uniforms_light.show_light) {
-        material_type = MaterialType_BlinnPhong;
-      } else {
-        material_type = MaterialType_BaseTexture;
-      }
+      material_type = MaterialType_BlinnPhong;
       break;
     }
     case ShadingType_SKYBOX: {
@@ -240,28 +231,25 @@ void RendererOpenGL::InitMaterialWithType(ModelBase &model, MaterialType materia
 std::shared_ptr<BaseMaterial> RendererOpenGL::CreateMeshMaterial(ModelMesh &mesh, MaterialType type) {
   auto *render_handle = (OpenGLRenderHandler *) (mesh.render_handle.get());
   auto &tex_handler = render_handle->texture_handler;
-  std::shared_ptr<MaterialBaseTexture> material = nullptr;
+  std::shared_ptr<MaterialBlinnPhong> material = nullptr;
 
   switch (type) {
-    case MaterialType_BaseTexture: {
-      material = std::make_shared<MaterialBaseTexture>();
-      break;
-    }
     case MaterialType_BlinnPhong: {
       material = std::make_shared<MaterialBlinnPhong>();
       break;
     }
     case MaterialType_PbrBase: {
-      //TODO
+      material = std::make_shared<MaterialPbrBase>();
       break;
     }
-    case MaterialType_PbrLight: {
-      //TODO
+    case MaterialType_PbrIBL: {
+      material = std::make_shared<MaterialPbrIBL>();
       break;
     }
     default:break;
   }
 
+  material->SetEnableDiffuseMap(tex_handler.find(TextureType_DIFFUSE) != tex_handler.end());
   material->SetEnableNormalMap(tex_handler.find(TextureType_NORMALS) != tex_handler.end());
   material->SetEnableAoMap(tex_handler.find(TextureType_PBR_AMBIENT_OCCLUSION) != tex_handler.end());
   material->SetEnableEmissiveMap(tex_handler.find(TextureType_EMISSIVE) != tex_handler.end());
