@@ -27,7 +27,7 @@ struct PBRShaderUniforms : BaseShaderUniforms {
 
 struct PBRShaderVaryings : BaseShaderVaryings {
   glm::vec2 v_texCoord;
-  glm::vec3 v_normal;
+  glm::vec3 v_normalVector;
   glm::vec3 v_worldPos;
 
   glm::vec3 v_cameraDirection;
@@ -43,12 +43,11 @@ struct PBRVertexShader : BaseVertexShader {
 
     glm::vec4 position = glm::vec4(a->a_position, 1.0f);
     gl_Position = u->u_modelViewProjectionMatrix * position;
-
     v->v_texCoord = a->a_texCoord;
-    v->v_worldPos = glm::vec3(u->u_modelMatrix * position);
-    v->v_normal = glm::mat3(u->u_modelMatrix) * a->a_normal;
 
     // world space
+    v->v_worldPos = glm::vec3(u->u_modelMatrix * position);
+    v->v_normalVector = glm::mat3(u->u_modelMatrix) * a->a_normal;
     v->v_lightDirection = u->u_pointLightPosition - v->v_worldPos;
     v->v_cameraDirection = u->u_cameraPosition - v->v_worldPos;
   }
@@ -63,7 +62,7 @@ struct PBRFragmentShader : BaseFragmentShader {
   float pointLightRangeInverse = 1.0f / 5.f;
 
   glm::vec3 GetNormalFromMap() const {
-    glm::vec3 N = normalize(v->v_normal);
+    glm::vec3 N = normalize(v->v_normalVector);
     if (u->u_normalMap.Empty()) {
       return N;
     }

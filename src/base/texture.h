@@ -42,6 +42,9 @@ enum TextureType {
 
   TextureType_CUBE,
   TextureType_EQUIRECTANGULAR,
+
+  TextureType_IBL_IRRADIANCE,
+  TextureType_IBL_PREFILTER,
 };
 
 enum WrapMode {

@@ -15,11 +15,8 @@ layout(location = 3) in vec3 a_tangent;
 
 out vec2 v_texCoord;
 out vec3 v_normalVector;
-
-#if defined(POINT_LIGHT)
 out vec3 v_cameraDirection;
 out vec3 v_lightDirection;
-#endif
 
 layout (std140) uniform UniformsMVP {
   mat4 u_modelMatrix;
@@ -28,6 +25,8 @@ layout (std140) uniform UniformsMVP {
 };
 
 layout(std140) uniform UniformsLight {
+  bool u_showPointLight;
+
   vec3 u_ambientColor;
 
   vec3 u_cameraPosition;
@@ -40,11 +39,9 @@ void main() {
   gl_Position = u_modelViewProjectionMatrix * position;
   v_texCoord = a_texCoord;
 
-  vec3 fragWorldPos = vec3(u_modelMatrix * position);
   // world space
+  vec3 fragWorldPos = vec3(u_modelMatrix * position);
   v_normalVector = normalize(u_inverseTransposeModelMatrix * a_normal);
-
-#if defined(POINT_LIGHT)
   v_lightDirection = u_pointLightPosition - fragWorldPos;
   v_cameraDirection = u_cameraPosition - fragWorldPos;
 
@@ -60,19 +57,14 @@ void main() {
   v_lightDirection = TBN * v_lightDirection;
   v_cameraDirection = TBN * v_cameraDirection;
 #endif
-
-#endif
 }
 )";
 
 const char *BLINN_PHONG_FS = R"(
 in vec2 v_texCoord;
 in vec3 v_normalVector;
-
-#if defined(POINT_LIGHT)
 in vec3 v_cameraDirection;
 in vec3 v_lightDirection;
-#endif
 
 out vec4 FragColor;
 
@@ -83,6 +75,8 @@ layout (std140) uniform UniformsMVP {
 };
 
 layout(std140) uniform UniformsLight {
+  bool u_showPointLight;
+
   vec3 u_ambientColor;
 
   vec3 u_cameraPosition;
@@ -136,21 +130,21 @@ void main() {
   vec3 specularColor = vec3(0.f);
   vec3 emissiveColor = vec3(0.f);
 
-#if defined(POINT_LIGHT)
-  // diffuse
-  vec3 lDir = v_lightDirection * pointLightRangeInverse;
-  float attenuation = clamp(1.0f - dot(lDir, lDir), 0.0f, 1.0f);
+  if (u_showPointLight) {
+    // diffuse
+    vec3 lDir = v_lightDirection * pointLightRangeInverse;
+    float attenuation = clamp(1.0f - dot(lDir, lDir), 0.0f, 1.0f);
 
-  vec3 lightDirection = normalize(v_lightDirection);
-  float diffuse = max(dot(normalVector, lightDirection), 0.0f);
-  diffuseColor = u_pointLightColor * baseColor.rgb * diffuse * attenuation;
+    vec3 lightDirection = normalize(v_lightDirection);
+    float diffuse = max(dot(normalVector, lightDirection), 0.0f);
+    diffuseColor = u_pointLightColor * baseColor.rgb * diffuse * attenuation;
 
-  // specular
-  vec3 cameraDirection = normalize(v_cameraDirection);
-  vec3 halfVector = normalize(lightDirection + cameraDirection);
-  float specularAngle = max(dot(normalVector, halfVector), 0.0f);
-  specularColor = vec3(pow(specularAngle, specularExponent));
-#endif
+    // specular
+    vec3 cameraDirection = normalize(v_cameraDirection);
+    vec3 halfVector = normalize(lightDirection + cameraDirection);
+    float specularAngle = max(dot(normalVector, halfVector), 0.0f);
+    specularColor = vec3(pow(specularAngle, specularExponent));
+  }
 
 #if defined(EMISSIVE_MAP)
   emissiveColor = texture(u_emissiveMap, v_texCoord).rgb;

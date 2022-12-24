@@ -99,7 +99,7 @@ void MaterialBaseColor::Init() {
     return;
   }
 
-  program.LoadSource(BASIC_VS, BASIC_FS);
+  program.LoadSource(GetVertexShader(), GetFragmentShader());
   uniforms_loc_mvp = glGetUniformBlockIndex(program.GetId(), "UniformsMVP");
   uniforms_loc_color = glGetUniformBlockIndex(program.GetId(), "UniformsColor");
 }
@@ -114,7 +114,7 @@ void MaterialBaseColor::Use(RendererUniforms &uniforms, TextureMap &textures) {
   uniforms.uniforms_color.UpdateData();
 }
 
-void MaterialBaseTexture::Init() {
+void MaterialBlinnPhong::Init() {
   if (!program.Empty()) {
     return;
   }
@@ -131,7 +131,9 @@ void MaterialBaseTexture::Init() {
   if (enable_alpha_discard_) {
     program.AddDefine("ALPHA_DISCARD");
   }
-  program.LoadSource(BLINN_PHONG_VS, BLINN_PHONG_FS);
+
+  program.LoadSource(GetVertexShader(), GetFragmentShader());
+
   uniforms_loc_mvp = glGetUniformBlockIndex(program.GetId(), "UniformsMVP");
   uniforms_loc_color = glGetUniformBlockIndex(program.GetId(), "UniformsColor");
   uniforms_loc_light = glGetUniformBlockIndex(program.GetId(), "UniformsLight");
@@ -143,7 +145,7 @@ void MaterialBaseTexture::Init() {
   sampler_loc[TextureType_PBR_AMBIENT_OCCLUSION] = glGetUniformLocation(program.GetId(), "u_aoMap");
 }
 
-void MaterialBaseTexture::Use(RendererUniforms &uniforms, TextureMap &textures) {
+void MaterialBlinnPhong::Use(RendererUniforms &uniforms, TextureMap &textures) {
   program.Use();
 
   // uniform blocks
@@ -160,8 +162,11 @@ void MaterialBaseTexture::Use(RendererUniforms &uniforms, TextureMap &textures) 
   }
 
   // uniform samplers
-  GLint samplerIdx = 0;
-  MATERIAL_BIND_TEXTURE(TextureType_DIFFUSE, samplerIdx++);
+  samplerIdx = 0;
+
+  if (enable_diffuse_map_) {
+    MATERIAL_BIND_TEXTURE(TextureType_DIFFUSE, samplerIdx++);
+  }
 
   if (enable_normal_map_) {
     MATERIAL_BIND_TEXTURE(TextureType_NORMALS, samplerIdx++);
@@ -176,12 +181,30 @@ void MaterialBaseTexture::Use(RendererUniforms &uniforms, TextureMap &textures) 
   }
 }
 
-void MaterialBlinnPhong::Init() {
+void MaterialPbrBase::Init() {
+  MaterialBlinnPhong::Init();
+  sampler_loc[TextureType_PBR_ALBEDO] = glGetUniformLocation(program.GetId(), "u_albedoMap");
+  sampler_loc[TextureType_PBR_METAL_ROUGHNESS] = glGetUniformLocation(program.GetId(), "u_metalRoughnessMap");
+}
+
+void MaterialPbrBase::Use(RendererUniforms &uniforms, TextureMap &textures) {
+  MaterialBlinnPhong::Use(uniforms, textures);
+  MATERIAL_BIND_TEXTURE(TextureType_PBR_ALBEDO, samplerIdx++);
+  MATERIAL_BIND_TEXTURE(TextureType_PBR_METAL_ROUGHNESS, samplerIdx++);
+}
+
+void MaterialPbrIBL::Init() {
   if (!program.Empty()) {
     return;
   }
-  program.AddDefine("POINT_LIGHT");
-  MaterialBaseTexture::Init();
+  program.AddDefine("PBR_IBL");
+  MaterialPbrBase::Init();
+}
+
+void MaterialPbrIBL::Use(RendererUniforms &uniforms, TextureMap &textures) {
+  MaterialPbrBase::Use(uniforms, textures);
+  MATERIAL_BIND_TEXTURE(TextureType_IBL_IRRADIANCE, samplerIdx++);
+  MATERIAL_BIND_TEXTURE(TextureType_IBL_PREFILTER, samplerIdx++);
 }
 
 void MaterialSkybox::Init() {
@@ -193,7 +216,7 @@ void MaterialSkybox::Init() {
     program.AddDefine("EQUIRECTANGULAR_MAP");
   }
 
-  program.LoadSource(SKYBOX_VS, SKYBOX_FS);
+  program.LoadSource(GetVertexShader(), GetFragmentShader());
   uniforms_loc_mvp = glGetUniformBlockIndex(program.GetId(), "UniformsMVP");
 
   sampler_loc[TextureType_CUBE] = glGetUniformLocation(program.GetId(), "u_cubeMap");

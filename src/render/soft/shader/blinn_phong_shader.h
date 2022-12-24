@@ -38,8 +38,8 @@ struct BlinnPhongVertexShader : BaseVertexShader {
     gl_Position = u->u_modelViewProjectionMatrix * position;
     v->v_texCoord = a->a_texCoord;
 
-    glm::vec3 fragWorldPos = glm::vec3(u->u_modelMatrix * position);
     // world space
+    glm::vec3 fragWorldPos = glm::vec3(u->u_modelMatrix * position);
     v->v_normalVector = glm::normalize(u->u_inverseTransposeModelMatrix * a->a_normal);
     v->v_lightDirection = u->u_pointLightPosition - fragWorldPos;
     v->v_cameraDirection = u->u_cameraPosition - fragWorldPos;
