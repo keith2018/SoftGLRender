@@ -210,6 +210,7 @@ void ViewerOpenGL::UpdateUniformMVP(UniformsMVP &uniforms, glm::mat4 &transform)
 
 void ViewerOpenGL::UpdateUniformLight(UniformsLight &uniforms) {
   uniforms.data.u_showPointLight = viewer_->settings_->show_light;
+  uniforms.data.u_enableIBL = false;  // TODO
   uniforms.data.u_ambientColor = viewer_->settings_->ambient_color;
   uniforms.data.u_cameraPosition = viewer_->camera_->Eye();
   uniforms.data.u_pointLightPosition = viewer_->settings_->light_position;

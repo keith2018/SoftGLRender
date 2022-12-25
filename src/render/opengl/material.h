@@ -95,6 +95,7 @@ class UniformsLight : public UniformsBlockGLSL {
  public:
   struct {
     int u_showPointLight;
+    int u_enableIBL;
 
     glm::vec3 u_ambientColor;
 
@@ -161,8 +162,7 @@ class TextureGLSL {
 enum MaterialType {
   MaterialType_BaseColor = 0,
   MaterialType_BlinnPhong,
-  MaterialType_PbrBase,
-  MaterialType_PbrIBL,
+  MaterialType_PBR,
   MaterialType_Skybox,
 };
 
@@ -231,19 +231,11 @@ class MaterialBlinnPhong : public BaseMaterial {
   GLint samplerIdx = 0;
 };
 
-class MaterialPbrBase : public MaterialBlinnPhong {
+class MaterialPBR : public MaterialBlinnPhong {
  public:
-  inline MaterialType Type() override { return MaterialType_PbrBase; };
+  inline MaterialType Type() override { return MaterialType_PBR; };
   inline const char *GetVertexShader() override { return PBR_IBL_VS; };
   inline const char *GetFragmentShader() override { return PBR_IBL_FS; };
-
-  void Init() override;
-  void Use(RendererUniforms &uniforms, TextureMap &textures) override;
-};
-
-class MaterialPbrIBL : public MaterialPbrBase {
- public:
-  inline MaterialType Type() override { return MaterialType_PbrIBL; };
 
   void Init() override;
   void Use(RendererUniforms &uniforms, TextureMap &textures) override;

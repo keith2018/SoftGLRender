@@ -139,8 +139,7 @@ MaterialType RendererOpenGL::GetMaterialType(ModelBase &model) {
   MaterialType material_type = MaterialType_BaseColor;
   switch (model.shading_type) {
     case ShadingType_PBR_BRDF: {
-      bool ibl_enabled = false;  // TODO
-      material_type = ibl_enabled ? MaterialType_PbrIBL : MaterialType_PbrBase;
+      material_type = MaterialType_PBR;
       break;
     }
     case ShadingType_BLINN_PHONG: {
@@ -238,12 +237,8 @@ std::shared_ptr<BaseMaterial> RendererOpenGL::CreateMeshMaterial(ModelMesh &mesh
       material = std::make_shared<MaterialBlinnPhong>();
       break;
     }
-    case MaterialType_PbrBase: {
-      material = std::make_shared<MaterialPbrBase>();
-      break;
-    }
-    case MaterialType_PbrIBL: {
-      material = std::make_shared<MaterialPbrIBL>();
+    case MaterialType_PBR: {
+      material = std::make_shared<MaterialPBR>();
       break;
     }
     default:break;

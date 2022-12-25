@@ -6,7 +6,7 @@
 
 #include "shader_utils.h"
 #include <vector>
-#include "base/file_utils.h"
+#include "utils/file_utils.h"
 
 namespace SoftGL {
 

@@ -181,30 +181,24 @@ void MaterialBlinnPhong::Use(RendererUniforms &uniforms, TextureMap &textures) {
   }
 }
 
-void MaterialPbrBase::Init() {
+void MaterialPBR::Init() {
   MaterialBlinnPhong::Init();
   sampler_loc[TextureType_PBR_ALBEDO] = glGetUniformLocation(program.GetId(), "u_albedoMap");
   sampler_loc[TextureType_PBR_METAL_ROUGHNESS] = glGetUniformLocation(program.GetId(), "u_metalRoughnessMap");
 }
 
-void MaterialPbrBase::Use(RendererUniforms &uniforms, TextureMap &textures) {
+void MaterialPBR::Use(RendererUniforms &uniforms, TextureMap &textures) {
   MaterialBlinnPhong::Use(uniforms, textures);
   MATERIAL_BIND_TEXTURE(TextureType_PBR_ALBEDO, samplerIdx++);
   MATERIAL_BIND_TEXTURE(TextureType_PBR_METAL_ROUGHNESS, samplerIdx++);
-}
 
-void MaterialPbrIBL::Init() {
-  if (!program.Empty()) {
-    return;
+  if (textures.find(TextureType_IBL_IRRADIANCE) != textures.end()) {
+    MATERIAL_BIND_TEXTURE(TextureType_IBL_IRRADIANCE, samplerIdx++);
   }
-  program.AddDefine("PBR_IBL");
-  MaterialPbrBase::Init();
-}
 
-void MaterialPbrIBL::Use(RendererUniforms &uniforms, TextureMap &textures) {
-  MaterialPbrBase::Use(uniforms, textures);
-  MATERIAL_BIND_TEXTURE(TextureType_IBL_IRRADIANCE, samplerIdx++);
-  MATERIAL_BIND_TEXTURE(TextureType_IBL_PREFILTER, samplerIdx++);
+  if (textures.find(TextureType_IBL_PREFILTER) != textures.end()) {
+    MATERIAL_BIND_TEXTURE(TextureType_IBL_PREFILTER, samplerIdx++);
+  }
 }
 
 void MaterialSkybox::Init() {

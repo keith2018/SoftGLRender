@@ -19,8 +19,8 @@
 //#include <stb/stb_image_write.h>
 
 #include "environment.h"
-#include "base/thread_pool.h"
-#include "base/string_utils.h"
+#include "utils/thread_utils.h"
+#include "utils/string_utils.h"
 #include "base/logger.h"
 
 namespace SoftGL {
@@ -212,20 +212,25 @@ void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
   ReloadSkyboxMesh();
 }
 
-void ModelLoader::ReloadSkyboxMesh() {
-  skybox_mash_ = std::make_shared<ModelMesh>();
-  skybox_mash_->shading_type = ShadingType_SKYBOX;
-  skybox_mash_->primitive_cnt = 12;
+std::shared_ptr<ModelMesh> ModelLoader::CreateCubeMesh() {
+  auto mesh = std::make_shared<ModelMesh>();
+  mesh->primitive_cnt = 12;
   for (int i = 0; i < 12; i++) {
     for (int j = 0; j < 3; j++) {
       Vertex vertex{};
       vertex.a_position.x = skyboxVertices[i * 9 + j * 3 + 0];
       vertex.a_position.y = skyboxVertices[i * 9 + j * 3 + 1];
       vertex.a_position.z = skyboxVertices[i * 9 + j * 3 + 2];
-      skybox_mash_->vertexes.push_back(vertex);
-      skybox_mash_->indices.push_back(i * 3 + j);
+      mesh->vertexes.push_back(vertex);
+      mesh->indices.push_back(i * 3 + j);
     }
   }
+  return mesh;
+}
+
+void ModelLoader::ReloadSkyboxMesh() {
+  skybox_mash_ = CreateCubeMesh();
+  skybox_mash_->shading_type = ShadingType_SKYBOX;
   skybox_mash_->skybox_tex = curr_skybox_tex_;
 }
 

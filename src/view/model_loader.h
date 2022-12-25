@@ -41,6 +41,8 @@ class ModelLoader {
  public:
   ModelLoader();
 
+  static std::shared_ptr<ModelMesh> CreateCubeMesh();
+
   bool LoadModel(const std::string &filepath);
 
   void LoadSkyBoxTex(const std::string &filepath);

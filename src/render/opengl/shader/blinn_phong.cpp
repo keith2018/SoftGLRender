@@ -26,6 +26,7 @@ layout (std140) uniform UniformsMVP {
 
 layout(std140) uniform UniformsLight {
   bool u_showPointLight;
+  bool u_enableIBL;
 
   vec3 u_ambientColor;
 
@@ -76,6 +77,7 @@ layout (std140) uniform UniformsMVP {
 
 layout(std140) uniform UniformsLight {
   bool u_showPointLight;
+  bool u_enableIBL;
 
   vec3 u_ambientColor;
 

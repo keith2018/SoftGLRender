@@ -12,14 +12,10 @@
 
 namespace SoftGL {
 
-#define LOG_SOURCE_LINE
-
-#define SoftGL_FILENAME (strrchr(__FILE__, '/') ? (strrchr(__FILE__, '/') + 1) : __FILE__)
-
-#define LOGI(...) SoftGL::Logger::log(SoftGL::LOG_INFO,     SoftGL_FILENAME, __LINE__, __VA_ARGS__)
-#define LOGD(...) SoftGL::Logger::log(SoftGL::LOG_DEBUG,    SoftGL_FILENAME, __LINE__, __VA_ARGS__)
-#define LOGW(...) SoftGL::Logger::log(SoftGL::LOG_WARNING,  SoftGL_FILENAME, __LINE__, __VA_ARGS__)
-#define LOGE(...) SoftGL::Logger::log(SoftGL::LOG_ERROR,    SoftGL_FILENAME, __LINE__, __VA_ARGS__)
+#define LOGI(...) SoftGL::Logger::log(SoftGL::LOG_INFO,     __FILE__, __LINE__, __VA_ARGS__)
+#define LOGD(...) SoftGL::Logger::log(SoftGL::LOG_DEBUG,    __FILE__, __LINE__, __VA_ARGS__)
+#define LOGW(...) SoftGL::Logger::log(SoftGL::LOG_WARNING,  __FILE__, __LINE__, __VA_ARGS__)
+#define LOGE(...) SoftGL::Logger::log(SoftGL::LOG_ERROR,    __FILE__, __LINE__, __VA_ARGS__)
 
 static constexpr int MAX_LOG_LENGTH = 1024;
 
