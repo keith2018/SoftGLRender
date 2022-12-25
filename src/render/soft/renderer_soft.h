@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../renderer.h"
-#include "base/thread_pool.h"
+#include "utils/thread_utils.h"
 #include "shader.h"
 #include "graphic.h"
 #include "render_context.h"

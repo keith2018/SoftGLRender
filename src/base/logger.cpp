@@ -43,18 +43,19 @@ void Logger::log(LogLevel level, const char *file, int line, const char *message
 
   switch (level) {
 #ifdef LOG_SOURCE_LINE
-    case LOG_INFO:    fprintf(stdout, "[SoftGL][INFO] %s:%d: %s\n", file, line, buf_);    break;
-    case LOG_DEBUG:   fprintf(stdout, "[SoftGL][DEBUG] %s:%d: %s\n", file, line, buf_);   break;
-    case LOG_WARNING: fprintf(stdout, "[SoftGL][WARNING] %s:%d: %s\n", file, line, buf_); break;
-    case LOG_ERROR:   fprintf(stdout, "[SoftGL][ERROR] %s:%d: %s\n", file, line, buf_);   break;
+    case LOG_INFO:    fprintf(stdout, "[INFO] %s:%d: %s\n", file, line, buf_);    break;
+    case LOG_DEBUG:   fprintf(stdout, "[DEBUG] %s:%d: %s\n", file, line, buf_);   break;
+    case LOG_WARNING: fprintf(stdout, "[WARNING] %s:%d: %s\n", file, line, buf_); break;
+    case LOG_ERROR:   fprintf(stdout, "[ERROR] %s:%d: %s\n", file, line, buf_);   break;
 #else
-    case LOG_INFO:    fprintf(stdout, "[SoftGL][INFO] : %s\n", buf_);    break;
-    case LOG_DEBUG:   fprintf(stdout, "[SoftGL][DEBUG] : %s\n", buf_);   break;
-    case LOG_WARNING: fprintf(stdout, "[SoftGL][WARNING] : %s\n", buf_); break;
-    case LOG_ERROR:   fprintf(stdout, "[SoftGL][ERROR] : %s\n", buf_);   break;
+    case LOG_INFO:    fprintf(stdout, "[INFO] : %s\n", buf_);    break;
+    case LOG_DEBUG:   fprintf(stdout, "[DEBUG] : %s\n", buf_);   break;
+    case LOG_WARNING: fprintf(stdout, "[WARNING] : %s\n", buf_); break;
+    case LOG_ERROR:   fprintf(stderr, "[ERROR] : %s\n", buf_);   break;
 #endif
   }
   fflush(stdout);
+  fflush(stderr);
 }
 
 }

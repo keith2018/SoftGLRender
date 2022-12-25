@@ -12,6 +12,7 @@
 #include <streambuf>
 
 #include "base/logger.h"
+#include "utils/file_utils.h"
 #include "model_loader.h"
 #include "orbit_controller.h"
 #include "json11.hpp"
@@ -38,13 +39,8 @@ class Settings {
   }
 
   void LoadAssetConfig() {
-    LOGE("load assets in: %s", ASSETS_DIR.c_str());
-    std::ifstream config(ASSETS_DIR + "assets.json");
-    if (!config.is_open()) {
-      LOGE("open config file failed");
-      return;
-    }
-    std::string config_str((std::istreambuf_iterator<char>(config)), std::istreambuf_iterator<char>());
+    LOGD("load assets in: %s", ASSETS_DIR.c_str());
+    std::string config_str = FileUtils::ReadAll(ASSETS_DIR + "assets.json");
     std::string err;
     const auto json = json11::Json::parse(config_str, err);
     for (auto &kv : json["model"].object_items()) {

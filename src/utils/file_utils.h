@@ -8,7 +8,7 @@
 
 #include <fstream>
 #include <sstream>
-#include "logger.h"
+#include "base/logger.h"
 
 namespace SoftGL {
 
