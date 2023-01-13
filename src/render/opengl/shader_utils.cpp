@@ -6,7 +6,7 @@
 
 #include "shader_utils.h"
 #include <vector>
-#include "utils/file_utils.h"
+#include "base/file_utils.h"
 
 namespace SoftGL {
 
@@ -58,6 +58,9 @@ void ShaderGLSL::Destroy() {
 }
 
 void ProgramGLSL::AddDefine(const std::string &def) {
+  if (def.empty()) {
+    return;
+  }
   defines_ += ("#define " + def + " \n");
 }
 

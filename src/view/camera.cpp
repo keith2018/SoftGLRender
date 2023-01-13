@@ -5,6 +5,7 @@
  */
 
 #include "camera.h"
+#include <algorithm>
 
 namespace SoftGL {
 namespace View {

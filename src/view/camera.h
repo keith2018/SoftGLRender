@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "base/common.h"
-#include "base/geometry.h"
+#include "render/geometry.h"
 
 namespace SoftGL {
 namespace View {

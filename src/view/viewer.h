@@ -6,66 +6,90 @@
 
 #pragma once
 
+#include "base/glm_inc.h"
+#include "render/renderer.h"
+#include "model.h"
+#include "config.h"
 #include "camera.h"
-#include "orbit_controller.h"
-#include "settings.h"
-#include "setting_panel.h"
 
 namespace SoftGL {
 namespace View {
 
-class ViewerSharedData {
- public:
-  std::shared_ptr<Settings> settings_;
-  std::shared_ptr<SettingPanel> settingPanel_;
-  std::shared_ptr<Camera> camera_;
-  std::shared_ptr<SmoothOrbitController> orbitController_;
-  std::shared_ptr<ModelLoader> model_loader_;
+struct UniformsScene {
+  glm::int32_t u_enablePointLight;
+  glm::int32_t u_enableIBL;
+
+  glm::vec3 u_ambientColor;
+  glm::vec3 u_cameraPosition;
+  glm::vec3 u_pointLightPosition;
+  glm::vec3 u_pointLightColor;
+};
+
+struct UniformsMVP {
+  glm::mat4 u_modelMatrix;
+  glm::mat4 u_modelViewProjectionMatrix;
+  glm::mat3 u_inverseTransposeModelMatrix;
+};
+
+struct UniformsColor {
+  glm::vec4 u_baseColor;
 };
 
 class Viewer {
  public:
-  virtual ~Viewer() { Destroy(); }
-  virtual bool Create(void *window, int width, int height, int outTexId);
-  virtual void DrawFrame();
+  Viewer(Config &config, Camera &camera) : config_(config), camera_(camera) {}
+
+  virtual void Create(int width, int height, int outTexId);
+
+  virtual void DrawFrame(DemoScene &scene);
+
   virtual void Destroy();
 
-  inline void DrawUI() {
-    viewer_->settingPanel_->OnDraw();
-  }
+ private:
+  void DrawPoints(ModelPoints &points, glm::mat4 &transform);
+  void DrawLines(ModelLines &lines, glm::mat4 &transform);
+  void DrawMeshWireframe(ModelMesh &mesh);
+  void DrawMeshTextured(ModelMesh &mesh);
+  void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
 
-  inline void UpdateSize(int width, int height) {
-    viewer_->settingPanel_->UpdateSize(width, height);
-  }
+  void SetupVertexArray(VertexArray &vertexes);
+  void SetupRenderStates(RenderState &rs, bool blend = false) const;
+  void SetupUniforms(Material &material, const std::vector<std::vector<std::shared_ptr<Uniform>>> &uniforms);
+  void SetupTextures(TexturedMaterial &material, std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
+                     std::vector<std::string> &shader_defines);
+  void SetupShaderProgram(Material &material, ShadingModel shading_model,
+                          const std::vector<std::string> &shader_defines = {});
 
-  inline void ToggleUIShowState() {
-    viewer_->settingPanel_->ToggleShowState();
-  }
+  void StartRenderPipeline(VertexArray &vertexes, Material &material);
 
-  inline bool WantCaptureKeyboard() {
-    return viewer_->settingPanel_->WantCaptureKeyboard();
-  }
+  void UpdateUniformScene();
+  void UpdateUniformMVP(const glm::mat4 &transform);
+  void UpdateUniformColor(const glm::vec4 &color);
 
-  inline bool WantCaptureMouse() {
-    return viewer_->settingPanel_->WantCaptureMouse();
-  }
-
-  inline SmoothOrbitController *GetOrbitController() {
-    return viewer_->orbitController_.get();
-  }
-
-  inline Settings *GetSettings() {
-    return viewer_->settings_.get();
-  }
-
+  glm::mat4 AdjustModelCenter(BoundingBox &bounds);
+  bool CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
  protected:
   int width_ = 0;
   int height_ = 0;
   int outTexId_ = 0;
 
-  AAType aa_type_ = AAType_NONE;
+  Config &config_;
+  Camera &camera_;
 
-  static std::shared_ptr<ViewerSharedData> viewer_;
+  std::shared_ptr<Renderer> renderer_;
+  std::shared_ptr<FrameBuffer> fbo_;
+
+  ClearState clear_state_;
+
+  UniformsScene uniforms_scene_;
+  UniformsMVP uniforms_mvp_;
+  UniformsColor uniforms_color_;
+
+  std::shared_ptr<UniformBlock> uniform_block_scene_;
+  std::shared_ptr<UniformBlock> uniforms_block_mvp_;
+  std::shared_ptr<UniformBlock> uniforms_block_color_;
+
+  std::vector<std::shared_ptr<Uniform>> common_uniforms;
 };
 
 }

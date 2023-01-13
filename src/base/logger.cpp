@@ -15,6 +15,7 @@ LogFunc Logger::logFunc_ = nullptr;
 LogLevel Logger::minLevel_ = LOG_INFO;
 
 char Logger::buf_[MAX_LOG_LENGTH] = {};
+std::mutex Logger::mutex_;
 
 void Logger::setLogFunc(void *ctx, LogFunc func) {
   logContext_ = ctx;
@@ -26,6 +27,7 @@ void Logger::setLogLevel(LogLevel level) {
 }
 
 void Logger::log(LogLevel level, const char *file, int line, const char *message, ...) {
+  std::lock_guard<std::mutex> lock_guard(mutex_);
   if (level < minLevel_) {
     return;
   }

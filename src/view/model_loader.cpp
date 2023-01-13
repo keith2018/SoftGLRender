@@ -18,127 +18,94 @@
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
 //#include <stb/stb_image_write.h>
 
-#include "environment.h"
-#include "utils/thread_utils.h"
-#include "utils/string_utils.h"
+#include "base/thread_pool.h"
 #include "base/logger.h"
 
 namespace SoftGL {
 namespace View {
 
-float skyboxVertices[] = {
-    // positions
-    -1.0f, 1.0f, -1.0f,
-    -1.0f, -1.0f, -1.0f,
-    1.0f, -1.0f, -1.0f,
-    1.0f, -1.0f, -1.0f,
-    1.0f, 1.0f, -1.0f,
-    -1.0f, 1.0f, -1.0f,
+ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
+    : config_(config), config_panel_(panel) {
+  LoadWorldAxis();
+  LoadLights();
 
-    -1.0f, -1.0f, 1.0f,
-    -1.0f, -1.0f, -1.0f,
-    -1.0f, 1.0f, -1.0f,
-    -1.0f, 1.0f, -1.0f,
-    -1.0f, 1.0f, 1.0f,
-    -1.0f, -1.0f, 1.0f,
-
-    1.0f, -1.0f, -1.0f,
-    1.0f, -1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, -1.0f,
-    1.0f, -1.0f, -1.0f,
-
-    -1.0f, -1.0f, 1.0f,
-    -1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    1.0f, -1.0f, 1.0f,
-    -1.0f, -1.0f, 1.0f,
-
-    -1.0f, 1.0f, -1.0f,
-    1.0f, 1.0f, -1.0f,
-    1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    -1.0f, 1.0f, 1.0f,
-    -1.0f, 1.0f, -1.0f,
-
-    -1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f, 1.0f,
-    1.0f, -1.0f, -1.0f,
-    1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f, 1.0f,
-    1.0f, -1.0f, 1.0f
-};
-
-std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> ModelLoader::texture_cache_;
-
-void SkyboxTextureIBL::InitIBL() {
-  if (ibl_running) {
-    return;
-  }
-  ibl_running = true;
-
-  if (!cube_ready && equirectangular_ready) {
-    LOGD("convert equirectangular to cube map ...");
-    Environment::ConvertEquirectangular(equirectangular, cube);
-    cube_ready = true;
-    LOGD("convert equirectangular to cube map done.");
-  }
-
-  std::thread irradiance_thread([&]() {
-    if (!irradiance_ready && cube_ready) {
-      LOGD("generate irradiance map ...");
-      Environment::GenerateIrradianceMap(cube, irradiance);
-      irradiance_ready = true;
-      LOGD("generate irradiance map done.");
-    }
+  config_panel_.SetReloadModelFunc([&](const std::string &path) -> void {
+    LoadModel(path);
   });
-  irradiance_thread.detach();
-
-  std::thread prefilter_thread([&]() {
-    if (!prefilter_ready && cube_ready) {
-      LOGD("generate prefilter map ...");
-      Environment::GeneratePrefilterMap(cube, prefilter);
-      prefilter_ready = true;
-      LOGD("generate prefilter map done.");
-    }
+  config_panel_.SetReloadSkyboxFunc([&](const std::string &path) -> void {
+    // TODO
   });
-  prefilter_thread.detach();
+  config_panel_.SetUpdateLightFunc([&](glm::vec3 &position, glm::vec3 &color) -> void {
+    scene_.point_light.vertexes[0].a_position = position;
+    scene_.point_light.UpdateVertexData();
+    scene_.point_light.material.base_color = glm::vec4(color, 1.f);
+  });
 }
 
-std::shared_ptr<ModelMesh> ModelLoader::skybox_mash_ = nullptr;
-SkyboxTextureIBL *ModelLoader::curr_skybox_tex_ = nullptr;
+void ModelLoader::LoadWorldAxis() {
+  float axis_y = -0.01f;
+  int idx = 0;
+  for (int i = -10; i <= 10; i++) {
+    Vertex vertex_x0;
+    Vertex vertex_x1;
+    vertex_x0.a_position = glm::vec3(-2, axis_y, 0.2f * (float) i);
+    vertex_x1.a_position = glm::vec3(2, axis_y, 0.2f * (float) i);
+    scene_.world_axis.vertexes.push_back(vertex_x0);
+    scene_.world_axis.vertexes.push_back(vertex_x1);
+    scene_.world_axis.indices.push_back(idx++);
+    scene_.world_axis.indices.push_back(idx++);
 
-ModelLoader::ModelLoader() {
-  // world axis
-  LoadWorldAxis();
+    Vertex vertex_y0;
+    Vertex vertex_y1;
+    vertex_y0.a_position = glm::vec3(0.2f * (float) i, axis_y, -2);
+    vertex_y1.a_position = glm::vec3(0.2f * (float) i, axis_y, 2);
+    scene_.world_axis.vertexes.push_back(vertex_y0);
+    scene_.world_axis.vertexes.push_back(vertex_y1);
+    scene_.world_axis.indices.push_back(idx++);
+    scene_.world_axis.indices.push_back(idx++);
+  }
 
-  // lights
-  LoadLights();
+  scene_.world_axis.primitive_type = Primitive_LINES;
+  scene_.world_axis.primitive_cnt = scene_.world_axis.indices.size() / 2;
+  scene_.world_axis.material.base_color = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
+  scene_.world_axis.line_width = 1.f;
+}
+
+void ModelLoader::LoadLights() {
+  scene_.point_light.primitive_type = Primitive_POINTS;
+  scene_.point_light.primitive_cnt = 1;
+  scene_.point_light.vertexes.resize(scene_.point_light.primitive_cnt);
+  scene_.point_light.indices.resize(scene_.point_light.primitive_cnt);
+
+  Vertex vertex;
+  vertex.a_position = config_.point_light_position;
+  scene_.point_light.vertexes[0] = vertex;
+  scene_.point_light.indices[0] = 0;
+  scene_.point_light.material.base_color = glm::vec4(config_.point_light_color, 1.f);
+  scene_.point_light.point_size = 10.f;
 }
 
 bool ModelLoader::LoadModel(const std::string &filepath) {
-  std::lock_guard<std::mutex> lk(model_load_mutex_);
+  std::lock_guard<std::mutex> lk(load_mutex_);
   if (filepath.empty()) {
     return false;
   }
 
   auto it = model_cache_.find(filepath);
   if (it != model_cache_.end()) {
-    curr_model_ = &it->second;
+    scene_.model = it->second;
     return true;
   }
 
-  model_cache_[filepath] = ModelContainer();
-  curr_model_ = &model_cache_[filepath];
+  model_cache_[filepath] = std::make_shared<Model>();
+  scene_.model = model_cache_[filepath];
 
   LOGD("load model, path: %s", filepath.c_str());
 
   // load model
   Assimp::Importer importer;
   if (filepath.empty()) {
-    LOGE("ModelObj::loadModel, empty model file path.");
+    LOGE("ModelLoader::loadModel, empty model file path.");
     return false;
   }
   const aiScene *scene = importer.ReadFile(filepath,
@@ -149,133 +116,21 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
   if (!scene
       || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE
       || !scene->mRootNode) {
-    LOGE("ModelObj::loadModel, description: %s", importer.GetErrorString());
+    LOGE("ModelLoader::loadModel, description: %s", importer.GetErrorString());
     return false;
   }
-  curr_model_->model_file_dir = filepath.substr(0, filepath.find_last_of(FILE_SEPARATOR));
+  scene_.model->res_dir = filepath.substr(0, filepath.find_last_of('/'));
 
   // preload textures
-  PreloadSceneTextureFiles(scene, curr_model_->model_file_dir);
+  PreloadTextureFiles(scene, scene_.model->res_dir);
 
   auto curr_transform = glm::mat4(1.f);
-  if (!ProcessNode(scene->mRootNode, scene, curr_model_->root_node, curr_transform)) {
-    LOGE("ModelObj::loadModel, process node failed.");
+  if (!ProcessNode(scene->mRootNode, scene, scene_.model->root_node, curr_transform)) {
+    LOGE("ModelLoader::loadModel, process node failed.");
     return false;
   }
 
   return true;
-}
-
-void ModelLoader::LoadSkyBoxTex(const std::string &filepath) {
-  if (filepath.empty()) {
-    return;
-  }
-
-  auto it = skybox_tex_cache_.find(filepath);
-  if (it != skybox_tex_cache_.end()) {
-    curr_skybox_tex_ = &it->second;
-    ReloadSkyboxMesh();
-    return;
-  }
-
-  skybox_tex_cache_[filepath] = SkyboxTextureIBL();
-  curr_skybox_tex_ = &skybox_tex_cache_[filepath];
-
-  LOGD("load skybox, path: %s", filepath.c_str());
-
-  if (StringUtils::EndsWith(filepath, "/")) {
-    curr_skybox_tex_->type = Skybox_Cube;
-    curr_skybox_tex_->cube[0].type = TextureType_CUBE_MAP_POSITIVE_X;
-    curr_skybox_tex_->cube[1].type = TextureType_CUBE_MAP_NEGATIVE_X;
-    curr_skybox_tex_->cube[2].type = TextureType_CUBE_MAP_POSITIVE_Y;
-    curr_skybox_tex_->cube[3].type = TextureType_CUBE_MAP_NEGATIVE_Y;
-    curr_skybox_tex_->cube[4].type = TextureType_CUBE_MAP_POSITIVE_Z;
-    curr_skybox_tex_->cube[5].type = TextureType_CUBE_MAP_NEGATIVE_Z;
-
-    ThreadPool pool(6);
-    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[0], (filepath + "right.jpg").c_str()); });
-    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[1], (filepath + "left.jpg").c_str()); });
-    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[2], (filepath + "top.jpg").c_str()); });
-    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[3], (filepath + "bottom.jpg").c_str()); });
-    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[4], (filepath + "front.jpg").c_str()); });
-    pool.PushTask([&](int thread_id) { LoadTextureFile(curr_skybox_tex_->cube[5], (filepath + "back.jpg").c_str()); });
-    pool.WaitTasksFinish();
-    curr_skybox_tex_->cube_ready = true;
-  } else {
-    curr_skybox_tex_->type = Skybox_Equirectangular;
-    curr_skybox_tex_->equirectangular.type = TextureType_EQUIRECTANGULAR;
-    LoadTextureFile(curr_skybox_tex_->equirectangular, filepath.c_str());
-    curr_skybox_tex_->equirectangular_ready = true;
-  }
-
-  // reset skybox mesh
-  ReloadSkyboxMesh();
-}
-
-std::shared_ptr<ModelMesh> ModelLoader::CreateCubeMesh() {
-  auto mesh = std::make_shared<ModelMesh>();
-  mesh->primitive_cnt = 12;
-  for (int i = 0; i < 12; i++) {
-    for (int j = 0; j < 3; j++) {
-      Vertex vertex{};
-      vertex.a_position.x = skyboxVertices[i * 9 + j * 3 + 0];
-      vertex.a_position.y = skyboxVertices[i * 9 + j * 3 + 1];
-      vertex.a_position.z = skyboxVertices[i * 9 + j * 3 + 2];
-      mesh->vertexes.push_back(vertex);
-      mesh->indices.push_back(i * 3 + j);
-    }
-  }
-  return mesh;
-}
-
-void ModelLoader::ReloadSkyboxMesh() {
-  skybox_mash_ = CreateCubeMesh();
-  skybox_mash_->shading_type = ShadingType_SKYBOX;
-  skybox_mash_->skybox_tex = curr_skybox_tex_;
-}
-
-void ModelLoader::LoadWorldAxis() {
-  if (world_axis_.primitive_cnt > 0) {
-    return;
-  }
-
-  float axis_y = -0.01f;
-  int idx = 0;
-  for (int i = -10; i <= 10; i++) {
-    Vertex vertex_x0{};
-    Vertex vertex_x1{};
-    vertex_x0.a_position = glm::vec3(-2, axis_y, 0.2f * (float) i);
-    vertex_x1.a_position = glm::vec3(2, axis_y, 0.2f * (float) i);
-    world_axis_.vertexes.push_back(vertex_x0);
-    world_axis_.vertexes.push_back(vertex_x1);
-    world_axis_.indices.push_back(idx++);
-    world_axis_.indices.push_back(idx++);
-
-    Vertex vertex_y0{};
-    Vertex vertex_y1{};
-    vertex_y0.a_position = glm::vec3(0.2f * (float) i, axis_y, -2);
-    vertex_y1.a_position = glm::vec3(0.2f * (float) i, axis_y, 2);
-    world_axis_.vertexes.push_back(vertex_y0);
-    world_axis_.vertexes.push_back(vertex_y1);
-    world_axis_.indices.push_back(idx++);
-    world_axis_.indices.push_back(idx++);
-  }
-  world_axis_.primitive_cnt = world_axis_.indices.size() / 2;
-  world_axis_.line_color = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
-  world_axis_.line_width = 1.f;
-}
-
-void ModelLoader::LoadLights() {
-  lights_.primitive_cnt = 1;
-  lights_.vertexes.resize(lights_.primitive_cnt);
-  lights_.indices.resize(lights_.primitive_cnt);
-
-  Vertex vertex{};
-  vertex.a_position = point_light_position_;
-  lights_.vertexes[0] = vertex;
-  lights_.indices[0] = 0;
-  lights_.point_color = glm::vec4(point_light_color_, 1.f);
-  lights_.point_size = 10.f;
 }
 
 bool ModelLoader::ProcessNode(const aiNode *ai_node,
@@ -294,14 +149,13 @@ bool ModelLoader::ProcessNode(const aiNode *ai_node,
     if (meshPtr) {
       ModelMesh mesh;
       if (ProcessMesh(meshPtr, ai_scene, mesh)) {
-        curr_model_->mesh_count++;
-        curr_model_->face_count += mesh.primitive_cnt;
-        curr_model_->vertex_count += mesh.vertexes.size();
-        mesh.idx = curr_model_->mesh_count - 1;
+        scene_.model->mesh_cnt++;
+        scene_.model->primitive_cnt += mesh.primitive_cnt;
+        scene_.model->vertex_cnt += mesh.vertexes.size();
 
         // bounding box
-        auto bounds = mesh.bounding_box.Transform(curr_transform);
-        curr_model_->root_bounding_box.Merge(bounds);
+        auto bounds = mesh.aabb.Transform(curr_transform);
+        scene_.model->root_aabb.Merge(bounds);
 
         out_node.meshes.push_back(std::move(mesh));
       }
@@ -319,7 +173,6 @@ bool ModelLoader::ProcessNode(const aiNode *ai_node,
 
 bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &out_mesh) {
   std::vector<Vertex> vertexes;
-  std::unordered_map<TextureType, Texture, EnumClassHash> textures;
   std::vector<int> indices;
 
   for (size_t i = 0; i < ai_mesh->mNumVertices; i++) {
@@ -350,7 +203,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
   for (size_t i = 0; i < ai_mesh->mNumFaces; i++) {
     aiFace face = ai_mesh->mFaces[i];
     if (face.mNumIndices != 3) {
-      LOGE("ModelObj::processMesh, mesh not transformed to triangle mesh.");
+      LOGE("ModelLoader::processMesh, mesh not transformed to triangle mesh.");
       return false;
     }
     for (size_t j = 0; j < face.mNumIndices; ++j) {
@@ -362,45 +215,41 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     const aiMaterial *material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
     aiString alphaMode;
     material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode);
-    if (aiString("MASK") == alphaMode) {
-      out_mesh.alpha_mode = Alpha_Mask;
-    } else if (aiString("BLEND") == alphaMode) {
-      out_mesh.alpha_mode = Alpha_Blend;
+    // "MASK" not support
+    if (aiString("BLEND") == alphaMode) {
+      out_mesh.material_textured.alpha_mode = Alpha_Blend;
     } else {
-      out_mesh.alpha_mode = Alpha_Opaque;
+      out_mesh.material_textured.alpha_mode = Alpha_Opaque;
     }
-    material->Get(AI_MATKEY_GLTF_ALPHACUTOFF, out_mesh.alpha_cutoff);
-    material->Get(AI_MATKEY_TWOSIDED, out_mesh.double_sided);
+    material->Get(AI_MATKEY_TWOSIDED, out_mesh.material_textured.double_sided);
 
     aiShadingMode shading_mode;
     material->Get(AI_MATKEY_SHADING_MODEL, shading_mode);
-    if (aiShadingMode_Blinn == shading_mode) {
-      out_mesh.shading_type = ShadingType_BLINN_PHONG;
-    } else if (aiShadingMode_PBR_BRDF == shading_mode) {
-      out_mesh.shading_type = ShadingType_PBR_BRDF;
-    } else {
-      out_mesh.shading_type = ShadingType_BLINN_PHONG;  // default
+    out_mesh.material_textured.shading = Shading_BlinnPhong;  // default
+    if (aiShadingMode_PBR_BRDF == shading_mode) {
+      out_mesh.material_textured.shading = Shading_PBR;
     }
 
     for (int i = 0; i <= AI_TEXTURE_TYPE_MAX; i++) {
-      ProcessMaterial(material, static_cast<aiTextureType>(i), textures);
+      ProcessMaterial(material, static_cast<aiTextureType>(i), out_mesh.material_textured);
     }
   }
 
+  out_mesh.material_wireframe.base_color = glm::vec4(1.f);
+  out_mesh.material_wireframe.shading = Shading_BaseColor;
+
+  out_mesh.primitive_type = Primitive_TRIANGLES;
   out_mesh.primitive_cnt = ai_mesh->mNumFaces;
   out_mesh.vertexes = std::move(vertexes);
   out_mesh.indices = std::move(indices);
-  out_mesh.textures = std::move(textures);
-  out_mesh.bounding_box = ConvertBoundingBox(ai_mesh->mAABB);
+  out_mesh.aabb = ConvertBoundingBox(ai_mesh->mAABB);
 
   return true;
 }
 
-bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
-                                  aiTextureType texture_type,
-                                  std::unordered_map<TextureType, Texture, EnumClassHash> &textures) {
+void ModelLoader::ProcessMaterial(const aiMaterial *ai_material, aiTextureType texture_type, TexturedMaterial &material) {
   if (ai_material->GetTextureCount(texture_type) <= 0) {
-    return true;
+    return;
   }
   for (size_t i = 0; i < ai_material->GetTextureCount(texture_type); i++) {
     aiString text_path;
@@ -409,42 +258,37 @@ bool ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
       LOGW("load texture type=%d, index=%d failed with return value=%d", texture_type, i, retStatus);
       continue;
     }
-    std::string absolutePath = curr_model_->model_file_dir + FILE_SEPARATOR + text_path.C_Str();
-    TextureType type;
+    std::string absolutePath = scene_.model->res_dir + "/" + text_path.C_Str();
+    TextureType type = TextureType_NONE;
     switch (texture_type) {
-      case aiTextureType_DIFFUSE: 
-        type = TextureType_DIFFUSE;
+      case aiTextureType_BASE_COLOR:
+      case aiTextureType_DIFFUSE:
+        type = TextureType_ALBEDO;
         break;
-      case aiTextureType_NORMALS: 
-        type = TextureType_NORMALS;
+      case aiTextureType_NORMALS:
+        type = TextureType_NORMAL;
         break;
-      case aiTextureType_EMISSIVE: 
+      case aiTextureType_EMISSIVE:
         type = TextureType_EMISSIVE;
         break;
-      case aiTextureType_BASE_COLOR: 
-        type = TextureType_PBR_ALBEDO;
+      case aiTextureType_LIGHTMAP:
+        type = TextureType_AMBIENT_OCCLUSION;
         break;
-      case aiTextureType_UNKNOWN: 
-        type = TextureType_PBR_METAL_ROUGHNESS;
-        break;
-      case aiTextureType_LIGHTMAP: 
-        type = TextureType_PBR_AMBIENT_OCCLUSION;
+      case aiTextureType_UNKNOWN:
+        type = TextureType_METAL_ROUGHNESS;
         break;
       default:
 //        LOGW("texture type: %s not support", aiTextureTypeToString(texture_type));
-        return true;  // not support
+        continue;  // not support
     }
 
-    Texture text;
-    text.type = type;
-    bool load_ok = LoadTextureFile(text, absolutePath.c_str());
-    if (load_ok) {
-      textures[text.type] = text;
+    auto buffer = LoadTextureFile(absolutePath);
+    if (buffer) {
+      material.texture_data[type] = std::move(buffer);
     } else {
-      LOGE("load texture failed: %s, path: %s", Texture::TextureTypeString(type), absolutePath.c_str());
+      LOGE("load texture failed: %s, path: %s", Material::TextureTypeStr(type), absolutePath.c_str());
     }
   }
-  return true;
 }
 
 glm::mat4 ModelLoader::ConvertMatrix(const aiMatrix4x4 &m) {
@@ -464,7 +308,7 @@ BoundingBox ModelLoader::ConvertBoundingBox(const aiAABB &aabb) {
   return ret;
 }
 
-void ModelLoader::PreloadSceneTextureFiles(const aiScene *scene, const std::string &res_dir) {
+void ModelLoader::PreloadTextureFiles(const aiScene *scene, const std::string &res_dir) {
   std::set<std::string> tex_paths;
   for (int material_idx = 0; material_idx < scene->mNumMaterials; material_idx++) {
     aiMaterial *material = scene->mMaterials[material_idx];
@@ -477,7 +321,7 @@ void ModelLoader::PreloadSceneTextureFiles(const aiScene *scene, const std::stri
         if (retStatus != aiReturn_SUCCESS || text_path.length == 0) {
           continue;
         }
-        tex_paths.insert(res_dir + FILE_SEPARATOR + text_path.C_Str());
+        tex_paths.insert(res_dir + "/" + text_path.C_Str());
       }
     }
   }
@@ -488,29 +332,32 @@ void ModelLoader::PreloadSceneTextureFiles(const aiScene *scene, const std::stri
   ThreadPool pool(std::min(tex_paths.size(), (size_t) std::thread::hardware_concurrency()));
   for (auto &path : tex_paths) {
     pool.PushTask([&](int thread_id) {
-      Texture tex;
-      LoadTextureFile(tex, path.c_str());
+      LoadTextureFile(path);
     });
   }
 }
 
-bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
+std::shared_ptr<BufferRGBA> ModelLoader::LoadTextureFile(const std::string &path) {
+  tex_cache_mutex_.lock();
   if (texture_cache_.find(path) != texture_cache_.end()) {
-    tex.buffer = texture_cache_[path];
-    return true;
+    auto &buffer = texture_cache_[path];
+    tex_cache_mutex_.unlock();
+    return buffer;
   }
+  tex_cache_mutex_.unlock();
 
-  LOGD("load texture, path: %s", path);
+  LOGD("load texture, path: %s", path.c_str());
 
   int iw = 0, ih = 0, n = 0;
-  unsigned char *data = stbi_load(path, &iw, &ih, &n, STBI_default);
+  unsigned char *data = stbi_load(path.c_str(), &iw, &ih, &n, STBI_default);
   if (data == nullptr) {
-    return false;
+    LOGD("load texture failed, path: %s", path.c_str());
+    return nullptr;
   }
-  tex.buffer = Texture::CreateBufferDefault();
-  tex.buffer->Create(iw, ih);
-  auto &buffer = tex.buffer;
+  auto buffer = BufferRGBA::MakeDefault();
+  buffer->Create(iw, ih);
 
+  // convert to rgba
   for (size_t y = 0; y < ih; y++) {
     for (size_t x = 0; x < iw; x++) {
       auto &to = *buffer->Get(x, y);
@@ -549,9 +396,12 @@ bool ModelLoader::LoadTextureFile(SoftGL::Texture &tex, const char *path) {
   }
 
   stbi_image_free(data);
-  texture_cache_[path] = tex.buffer;
 
-  return true;
+  tex_cache_mutex_.lock();
+  texture_cache_[path] = std::move(buffer);
+  tex_cache_mutex_.unlock();
+
+  return buffer;
 }
 
 }
