@@ -8,6 +8,7 @@
 
 #include "render/renderer.h"
 
+
 namespace SoftGL {
 
 class RendererOpenGL : public Renderer {
@@ -18,6 +19,7 @@ class RendererOpenGL : public Renderer {
   // texture
   std::shared_ptr<Texture2D> CreateTexture2DRef(int refId) override;
   std::shared_ptr<Texture2D> CreateTexture2D() override;
+  std::shared_ptr<TextureCube> CreateTextureCube() override;
   std::shared_ptr<TextureDepth> CreateDepthTexture() override;
 
   // vertex

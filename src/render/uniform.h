@@ -17,12 +17,9 @@ class ShaderProgram;
 
 class Uniform {
  public:
-  explicit Uniform(const std::string &name) : name(name) {}
+  explicit Uniform(const std::string &name) : name(name), uuid_(uuid_counter_++) {}
 
-  int GetHash() {
-    if (uuid_ < 0) {
-      uuid_ = uuid_counter_++;
-    }
+  inline int GetHash() const {
     return uuid_;
   }
 
@@ -51,8 +48,7 @@ class UniformBlock : public Uniform {
 class UniformSampler : public Uniform {
  public:
   explicit UniformSampler(const std::string &name) : Uniform(name) {}
-  virtual void SetTexture2D(Texture2D &tex) = 0;
-  virtual void SetTextureCube(TextureCube &tex) = 0;
+  virtual void SetTexture(const std::shared_ptr<Texture> &tex) = 0;
 };
 
 }

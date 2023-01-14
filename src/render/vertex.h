@@ -26,6 +26,7 @@ struct Vertex {
 
 class VertexArrayObject {
  public:
+  virtual int GetId() const = 0;
   virtual void UpdateVertexData(std::vector<Vertex> &vertexes) = 0;
   virtual void Bind() = 0;
 };

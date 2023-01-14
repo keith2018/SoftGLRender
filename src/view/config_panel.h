@@ -20,7 +20,7 @@ class ConfigPanel {
   explicit ConfigPanel(Config &config) : config_(config) {}
   ~ConfigPanel() { Destroy(); };
 
-  void Init(void *window, int width, int height);
+  bool Init(void *window, int width, int height);
   void OnDraw();
 
   void Update();
@@ -29,10 +29,10 @@ class ConfigPanel {
   bool WantCaptureKeyboard();
   bool WantCaptureMouse();
 
-  inline void SetReloadModelFunc(const std::function<void(const std::string &)> &func) {
+  inline void SetReloadModelFunc(const std::function<bool(const std::string &)> &func) {
     reload_model_func_ = func;
   }
-  inline void SetReloadSkyboxFunc(const std::function<void(const std::string &)> &func) {
+  inline void SetReloadSkyboxFunc(const std::function<bool(const std::string &)> &func) {
     reload_skybox_func_ = func;
   }
   inline void SetUpdateLightFunc(const std::function<void(glm::vec3 &, glm::vec3 &)> &func) {
@@ -43,9 +43,10 @@ class ConfigPanel {
   }
 
  private:
-  void LoadConfig();
-  void ReloadModel(const std::string &name);
-  void ReloadSkybox(const std::string &name);
+  bool LoadConfig();
+
+  bool ReloadModel(const std::string &name);
+  bool ReloadSkybox(const std::string &name);
   void ResetCamera();
 
   void DrawSettings();
@@ -62,8 +63,8 @@ class ConfigPanel {
   std::unordered_map<std::string, std::string> model_paths_;
   std::unordered_map<std::string, std::string> skybox_paths_;
 
-  std::function<void(const std::string &path)> reload_model_func_;
-  std::function<void(const std::string &path)> reload_skybox_func_;
+  std::function<bool(const std::string &path)> reload_model_func_;
+  std::function<bool(const std::string &path)> reload_skybox_func_;
   std::function<void(glm::vec3 &position, glm::vec3 &color)> update_light_func_;
   std::function<void(void)> reset_camera_func_;
 };

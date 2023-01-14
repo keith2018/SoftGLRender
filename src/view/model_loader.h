@@ -24,7 +24,11 @@ class ModelLoader {
   explicit ModelLoader(Config &config, ConfigPanel &panel);
 
   bool LoadModel(const std::string &filepath);
+  bool LoadSkybox(const std::string &filepath);
+
   inline DemoScene &GetScene() { return scene_; }
+
+  static void LoadCubeMesh(VertexArray &mesh);
 
  private:
   void LoadWorldAxis();

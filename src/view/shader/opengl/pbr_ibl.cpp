@@ -28,7 +28,6 @@ layout (std140) uniform UniformsMVP {
 
 layout(std140) uniform UniformsScene {
   bool u_enablePointLight;
-  bool u_enableIBL;
 
   vec3 u_ambientColor;
   vec3 u_cameraPosition;
@@ -67,7 +66,6 @@ layout (std140) uniform UniformsMVP {
 
 layout(std140) uniform UniformsScene {
   bool u_enablePointLight;
-  bool u_enableIBL;
 
   vec3 u_ambientColor;
   vec3 u_cameraPosition;
@@ -95,10 +93,14 @@ uniform sampler2D u_emissiveMap;
 uniform sampler2D u_aoMap;
 #endif
 
+#if defined(METALROUGHNESS_MAP)
 uniform sampler2D u_metalRoughnessMap;
+#endif
 
+#if defined(IBL_MAP)
 uniform samplerCube u_irradianceMap;
 uniform samplerCube u_prefilterMap;
+#endif
 
 const float PI = 3.14159265359;
 
@@ -234,24 +236,24 @@ void main() {
 
   // Ambient begin ---------------------------------------------------------------
   vec3 ambient = vec3(0.f);
-  if (u_enableIBL) {
-    vec3 F = FresnelSchlickRoughness(max(dot(N, V), 0.0f), F0, roughness);
+#if defined(IBL_MAP)
+  vec3 F = FresnelSchlickRoughness(max(dot(N, V), 0.0f), F0, roughness);
 
-    vec3 kS = F;
-    vec3 kD = 1.0f - kS;
-    kD *= (1.0f - metallic);
+  vec3 kS = F;
+  vec3 kD = 1.0f - kS;
+  kD *= (1.0f - metallic);
 
-    vec3 irradiance = texture(u_irradianceMap, N).rgb;
-    vec3 diffuse = irradiance * albedo;
+  vec3 irradiance = texture(u_irradianceMap, N).rgb;
+  vec3 diffuse = irradiance * albedo;
 
-    // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
-    const float MAX_REFLECTION_LOD = 4.0f;
-    vec3 prefilteredColor = textureLod(u_prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec3 specular = prefilteredColor * EnvBRDFApprox(F, roughness, max(dot(N, V), 0.0f));
-    ambient = (kD * diffuse + specular) * ao;
-  } else {
-    ambient = u_ambientColor * albedo * ao;
-  }
+  // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+  const float MAX_REFLECTION_LOD = 4.0f;
+  vec3 prefilteredColor = textureLod(u_prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+  vec3 specular = prefilteredColor * EnvBRDFApprox(F, roughness, max(dot(N, V), 0.0f));
+  ambient = (kD * diffuse + specular) * ao;
+#else
+  ambient = u_ambientColor * albedo * ao;
+#endif
   // Ambient end ---------------------------------------------------------------
 
   vec3 color = ambient + Lo;

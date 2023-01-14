@@ -9,21 +9,23 @@
 #include <glad/glad.h>
 #include "render/framebuffer.h"
 #include "render/opengl/texture_opengl.h"
+#include "render/opengl/opengl_utils.h"
+
 
 namespace SoftGL {
 
 class FrameBufferOpenGL : public FrameBuffer {
  public:
   FrameBufferOpenGL() {
-    glGenFramebuffers(1, &fbo_);
+    GL_CHECK(glGenFramebuffers(1, &fbo_));
   }
 
   ~FrameBufferOpenGL() {
-    glDeleteFramebuffers(1, &fbo_);
+    GL_CHECK(glDeleteFramebuffers(1, &fbo_));
   }
 
-  inline GLuint GetId() const {
-    return fbo_;
+  int GetId() const override {
+    return (int) fbo_;
   }
 
   bool IsValid() override {
@@ -31,30 +33,28 @@ class FrameBufferOpenGL : public FrameBuffer {
       return false;
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
     return glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
   }
 
   void Bind() override {
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
   }
 
   void Unbind() override {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
   }
 
   void SetColorAttachment(std::shared_ptr<Texture2D> &color) override {
     color_attachment = color;
-    auto *tex = dynamic_cast<Texture2DOpenGL *>(color.get());
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex->GetId(), 0);
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
+    GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, color->GetId(), 0));
   }
 
   void SetDepthAttachment(std::shared_ptr<TextureDepth> &depth) override {
     depth_attachment = depth;
-    auto *buf = dynamic_cast<TextureDepthOpenGL *>(depth.get());
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, buf->GetId());
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
+    GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth->GetId()));
   }
 
  private:

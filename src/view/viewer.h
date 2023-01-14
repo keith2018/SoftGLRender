@@ -17,7 +17,6 @@ namespace View {
 
 struct UniformsScene {
   glm::int32_t u_enablePointLight;
-  glm::int32_t u_enableIBL;
 
   glm::vec3 u_ambientColor;
   glm::vec3 u_cameraPosition;
@@ -48,22 +47,27 @@ class Viewer {
  private:
   void DrawPoints(ModelPoints &points, glm::mat4 &transform);
   void DrawLines(ModelLines &lines, glm::mat4 &transform);
+  void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
   void DrawMeshWireframe(ModelMesh &mesh);
   void DrawMeshTextured(ModelMesh &mesh);
   void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
+  void PipelineDraw(VertexArray &vertexes,
+                    Material &material,
+                    const std::vector<std::shared_ptr<Uniform>> &uniform_blocks,
+                    bool blend,
+                    const std::function<void(RenderState &rs)> &extra_states);
 
   void SetupVertexArray(VertexArray &vertexes);
-  void SetupRenderStates(RenderState &rs, bool blend = false) const;
-  void SetupUniforms(Material &material, const std::vector<std::vector<std::shared_ptr<Uniform>>> &uniforms);
-  void SetupTextures(TexturedMaterial &material, std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
-                     std::vector<std::string> &shader_defines);
-  void SetupShaderProgram(Material &material, ShadingModel shading_model,
-                          const std::vector<std::string> &shader_defines = {});
-
+  void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
+  void SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
+  void SetupTextures(Material &material,
+                     std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
+                     std::set<std::string> &shader_defines);
+  void SetupMaterial(Material &material, const std::vector<std::shared_ptr<Uniform>> &uniform_blocks);
   void StartRenderPipeline(VertexArray &vertexes, Material &material);
 
   void UpdateUniformScene();
-  void UpdateUniformMVP(const glm::mat4 &transform);
+  void UpdateUniformMVP(const glm::mat4 &transform, bool skybox = false);
   void UpdateUniformColor(const glm::vec4 &color);
 
   glm::mat4 AdjustModelCenter(BoundingBox &bounds);
@@ -88,8 +92,6 @@ class Viewer {
   std::shared_ptr<UniformBlock> uniform_block_scene_;
   std::shared_ptr<UniformBlock> uniforms_block_mvp_;
   std::shared_ptr<UniformBlock> uniforms_block_color_;
-
-  std::vector<std::shared_ptr<Uniform>> common_uniforms;
 };
 
 }

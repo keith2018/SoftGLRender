@@ -15,7 +15,7 @@
 namespace SoftGL {
 namespace View {
 
-void ConfigPanel::Init(void *window, int width, int height) {
+bool ConfigPanel::Init(void *window, int width, int height) {
   frame_width_ = width;
   frame_height_ = height;
 
@@ -35,7 +35,7 @@ void ConfigPanel::Init(void *window, int width, int height) {
   ImGui_ImplOpenGL3_Init("#version 330 core");
 
   // load config
-  LoadConfig();
+  return LoadConfig();
 }
 
 void ConfigPanel::OnDraw() {
@@ -189,7 +189,7 @@ bool ConfigPanel::WantCaptureMouse() {
   return io.WantCaptureMouse;
 }
 
-void ConfigPanel::LoadConfig() {
+bool ConfigPanel::LoadConfig() {
   auto config_path = ASSETS_DIR + "assets.json";
   std::string config_str = FileUtils::ReadAll(config_path);
   LOGD("load assets config: %s", config_path.c_str());
@@ -205,34 +205,38 @@ void ConfigPanel::LoadConfig() {
 
   if (model_paths_.empty()) {
     LOGE("load models failed");
-    return;
+    return false;
   }
 
-  // load model & skybox
-  ReloadModel(model_paths_.begin()->first);
-  ReloadSkybox(skybox_paths_.begin()->first);
+  // load default model & skybox
+  return ReloadModel(model_paths_.begin()->first)
+      && ReloadSkybox(skybox_paths_.begin()->first);
 }
 
-void ConfigPanel::ReloadModel(const std::string &name) {
+bool ConfigPanel::ReloadModel(const std::string &name) {
   if (name != config_.model_name) {
     config_.model_name = name;
     config_.model_path = model_paths_[config_.model_name];
 
     if (reload_model_func_) {
-      reload_model_func_(config_.model_path);
+      return reload_model_func_(config_.model_path);
     }
   }
+
+  return true;
 }
 
-void ConfigPanel::ReloadSkybox(const std::string &name) {
+bool ConfigPanel::ReloadSkybox(const std::string &name) {
   if (name != config_.skybox_name) {
     config_.skybox_name = name;
     config_.skybox_path = skybox_paths_[config_.skybox_name];
 
     if (reload_skybox_func_) {
-      reload_skybox_func_(config_.model_path);
+      return reload_skybox_func_(config_.skybox_path);
     }
   }
+
+  return true;
 }
 
 void ConfigPanel::ResetCamera() {

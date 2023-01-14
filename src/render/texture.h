@@ -7,6 +7,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include "base/buffer.h"
 #include "base/glm_inc.h"
 
@@ -38,19 +39,53 @@ enum CubeMapFace {
   TEXTURE_CUBE_MAP_NEGATIVE_Z,
 };
 
-struct Sampler2D {
+struct Sampler {
   bool use_mipmaps = false;
+  virtual ~Sampler() = default;
+};
+
+struct Sampler2D : Sampler {
   WrapMode wrap_s = Wrap_REPEAT;
   WrapMode wrap_t = Wrap_REPEAT;
   FilterMode filter_min = Filter_LINEAR;
   FilterMode filter_mag = Filter_LINEAR;
+
+  Sampler2D() {
+    use_mipmaps = true;
+    wrap_s = Wrap_REPEAT;
+    wrap_t = Wrap_REPEAT;
+    filter_min = Filter_LINEAR_MIPMAP_LINEAR;
+    filter_mag = Filter_LINEAR;
+  }
 };
 
 struct SamplerCube : Sampler2D {
   WrapMode wrap_r = Wrap_REPEAT;
+
+  SamplerCube() {
+    use_mipmaps = true;
+    wrap_s = Wrap_CLAMP_TO_EDGE;
+    wrap_t = Wrap_CLAMP_TO_EDGE;
+    wrap_r = Wrap_CLAMP_TO_EDGE;
+    filter_min = Filter_LINEAR_MIPMAP_LINEAR;
+    filter_mag = Filter_LINEAR;
+  }
+};
+
+enum TextureType {
+  TextureType_2D,
+  TextureType_CUBE,
+  TextureType_Depth,
 };
 
 class Texture {
+ public:
+  virtual int GetId() const = 0;
+  virtual TextureType Type() = 0;
+  virtual void SetSampler(Sampler &sampler) {};
+  virtual void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) {};
+  virtual void InitImageData(int w, int h) {};
+
  public:
   int width = 0;
   int height = 0;
@@ -59,24 +94,23 @@ class Texture {
 
 class Texture2D : public Texture {
  public:
-  virtual void SetSampler(Sampler2D &sampler) = 0;
-  virtual void SetImageData(BufferRGBA &buffer) = 0;
-  virtual void InitImageData(int width, int height) = 0;
-};
-
-class TextureDepth: public Texture {
- public:
-  virtual void InitImageData(int width, int height) = 0;
+  TextureType Type() override {
+    return TextureType_2D;
+  }
 };
 
 class TextureCube : public Texture {
  public:
-  virtual void SetSampler(SamplerCube &sampler) = 0;
-  virtual void SetImageData(BufferRGBA &buffer, CubeMapFace face) = 0;
-  virtual void InitImageData(int width, int height, CubeMapFace face) = 0;
+  TextureType Type() override {
+    return TextureType_CUBE;
+  }
+};
 
+class TextureDepth : public Texture {
  public:
-  std::shared_ptr<Texture2D> faces[6];  // +x, -x, +y, -y, +z, -z
+  TextureType Type() override {
+    return TextureType_Depth;
+  }
 };
 
 }

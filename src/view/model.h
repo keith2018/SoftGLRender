@@ -32,6 +32,10 @@ struct ModelMesh : VertexArray {
   TexturedMaterial material_textured;
 };
 
+struct ModelSkybox : VertexArray {
+  SkyboxMaterial material;
+};
+
 struct ModelNode {
   glm::mat4 transform;
   std::vector<ModelMesh> meshes;
@@ -53,6 +57,7 @@ struct DemoScene {
   std::shared_ptr<Model> model;
   ModelLines world_axis;
   ModelPoints point_light;
+  ModelSkybox skybox;
 };
 
 }

@@ -8,7 +8,9 @@
 
 #include <glad/glad.h>
 #include "render/texture.h"
-#include "enums_opengl.h"
+#include "render/opengl/enums_opengl.h"
+#include "render/opengl/opengl_utils.h"
+
 
 namespace SoftGL {
 
@@ -19,54 +21,54 @@ class Texture2DOpenGL : public Texture2D {
   }
 
   Texture2DOpenGL() : ref_(false) {
-    glGenTextures(1, &texId_);
+    GL_CHECK(glGenTextures(1, &texId_));
   }
 
   ~Texture2DOpenGL() {
     if (ref_) {
       return;
     }
-    glDeleteTextures(1, &texId_);
+    GL_CHECK(glDeleteTextures(1, &texId_));
   }
 
-  inline GLuint GetId() const {
-    return texId_;
+  int GetId() const override {
+    return (int) texId_;
   }
 
-  void SetSampler(Sampler2D &sampler) override {
-    glBindTexture(GL_TEXTURE_2D, texId_);
+  void SetSampler(Sampler &sampler) override {
+    auto &sampler_2d = dynamic_cast<Sampler2D &>(sampler);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId_));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler_2d.wrap_s)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler_2d.wrap_t)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler_2d.filter_min)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler_2d.filter_mag)));
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler.wrap_s));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler.wrap_t));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler.filter_min));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler.filter_mag));
-
-    use_mipmaps = sampler.use_mipmaps;
+    use_mipmaps = sampler_2d.use_mipmaps;
   }
 
-  void SetImageData(BufferRGBA &buffer) override {
-    width = (int) buffer.GetWidth();
-    height = (int) buffer.GetHeight();
-    glBindTexture(GL_TEXTURE_2D, texId_);
-    glTexImage2D(GL_TEXTURE_2D,
-                 0,
-                 GL_RGBA,
-                 width,
-                 height,
-                 0,
-                 GL_RGBA,
-                 GL_UNSIGNED_BYTE,
-                 buffer.GetRawDataPtr());
+  void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
+    width = (int) buffers[0]->GetWidth();
+    height = (int) buffers[0]->GetHeight();
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId_));
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
+                          0,
+                          GL_RGBA,
+                          width,
+                          height,
+                          0,
+                          GL_RGBA,
+                          GL_UNSIGNED_BYTE,
+                          buffers[0]->GetRawDataPtr()));
     if (use_mipmaps) {
-      glGenerateMipmap(GL_TEXTURE_2D);
+      GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
     }
   }
 
   void InitImageData(int w, int h) override {
     width = w;
     height = h;
-    glBindTexture(GL_TEXTURE_2D, texId_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId_));
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
   }
 
  private:
@@ -77,53 +79,69 @@ class Texture2DOpenGL : public Texture2D {
 class TextureCubeOpenGL : public TextureCube {
  public:
   TextureCubeOpenGL() {
-    glGenTextures(1, &texId_);
+    GL_CHECK(glGenTextures(1, &texId_));
   }
 
   ~TextureCubeOpenGL() {
-    glDeleteTextures(1, &texId_);
+    GL_CHECK(glDeleteTextures(1, &texId_));
   }
 
-  inline GLuint GetId() const {
-    return texId_;
+  int GetId() const override {
+    return (int) texId_;
   }
 
-  void SetSampler(SamplerCube &sampler) override {
-    glBindTexture(GL_TEXTURE_CUBE_MAP, texId_);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler.wrap_s));
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler.wrap_t));
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::ConvertWrap(sampler.wrap_r));
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler.filter_min));
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler.filter_mag));
+  void SetSampler(Sampler &sampler) override {
+    auto &sampler_cube = dynamic_cast<SamplerCube &>(sampler);
+    GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler_cube.wrap_s)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler_cube.wrap_t)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::ConvertWrap(sampler_cube.wrap_r)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP,
+                             GL_TEXTURE_MIN_FILTER,
+                             OpenGL::ConvertFilter(sampler_cube.filter_min)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP,
+                             GL_TEXTURE_MAG_FILTER,
+                             OpenGL::ConvertFilter(sampler_cube.filter_mag)));
 
-    use_mipmaps = sampler.use_mipmaps;
+    use_mipmaps = sampler_cube.use_mipmaps;
   }
 
-  void SetImageData(BufferRGBA &buffer, CubeMapFace face) override {
-    width = (int) buffer.GetWidth();
-    height = (int) buffer.GetHeight();
-    GLint face_gl = OpenGL::ConvertCubeFace(face);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, texId_);
-    glTexImage2D(face_gl,
-                 0,
-                 GL_RGBA,
-                 width,
-                 height,
-                 0,
-                 GL_RGBA,
-                 GL_UNSIGNED_BYTE,
-                 buffer.GetRawDataPtr());
+  void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
+    width = (int) buffers[0]->GetWidth();
+    height = (int) buffers[0]->GetHeight();
+    GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
+
+    for (int i = 0; i < 6; i++) {
+      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                            0,
+                            GL_RGBA,
+                            width,
+                            height,
+                            0,
+                            GL_RGBA,
+                            GL_UNSIGNED_BYTE,
+                            buffers[i]->GetRawDataPtr()));
+    }
     if (use_mipmaps) {
-      glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+      GL_CHECK(glGenerateMipmap(GL_TEXTURE_CUBE_MAP));
     }
   }
 
-  void InitImageData(int w, int h, CubeMapFace face) override {
+  void InitImageData(int w, int h) override {
     width = w;
     height = h;
-    GLint face_gl = OpenGL::ConvertCubeFace(face);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, texId_);
-    glTexImage2D(face_gl, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
+    for (int i = 0; i < 6; i++) {
+      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                            0,
+                            GL_RGBA,
+                            w,
+                            h,
+                            0,
+                            GL_RGBA,
+                            GL_UNSIGNED_BYTE,
+                            nullptr));
+    }
   }
 
  private:
@@ -133,22 +151,22 @@ class TextureCubeOpenGL : public TextureCube {
 class TextureDepthOpenGL : public TextureDepth {
  public:
   TextureDepthOpenGL() {
-    glGenRenderbuffers(1, &rbId_);
+    GL_CHECK(glGenRenderbuffers(1, &rbId_));
   }
 
   ~TextureDepthOpenGL() {
-    glDeleteRenderbuffers(1, &rbId_);
+    GL_CHECK(glDeleteRenderbuffers(1, &rbId_));
   }
 
-  inline GLuint GetId() const {
-    return rbId_;
+  int GetId() const override {
+    return (int) rbId_;
   }
 
   void InitImageData(int w, int h) override {
     width = w;
     height = h;
-    glBindRenderbuffer(GL_RENDERBUFFER, rbId_);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+    GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, rbId_));
+    GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height));
   }
 
  private:

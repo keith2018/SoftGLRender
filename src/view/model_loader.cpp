@@ -19,7 +19,9 @@
 //#include <stb/stb_image_write.h>
 
 #include "base/thread_pool.h"
+#include "base/string_utils.h"
 #include "base/logger.h"
+#include "cube.h"
 
 namespace SoftGL {
 namespace View {
@@ -29,17 +31,32 @@ ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
   LoadWorldAxis();
   LoadLights();
 
-  config_panel_.SetReloadModelFunc([&](const std::string &path) -> void {
-    LoadModel(path);
+  config_panel_.SetReloadModelFunc([&](const std::string &path) -> bool {
+    return LoadModel(path);
   });
-  config_panel_.SetReloadSkyboxFunc([&](const std::string &path) -> void {
-    // TODO
+  config_panel_.SetReloadSkyboxFunc([&](const std::string &path) -> bool {
+    return LoadSkybox(path);
   });
   config_panel_.SetUpdateLightFunc([&](glm::vec3 &position, glm::vec3 &color) -> void {
     scene_.point_light.vertexes[0].a_position = position;
     scene_.point_light.UpdateVertexData();
     scene_.point_light.material.base_color = glm::vec4(color, 1.f);
   });
+}
+
+void ModelLoader::LoadCubeMesh(VertexArray &mesh) {
+  mesh.primitive_type = Primitive_TRIANGLES;
+  mesh.primitive_cnt = 12;
+  for (int i = 0; i < 12; i++) {
+    for (int j = 0; j < 3; j++) {
+      Vertex vertex{};
+      vertex.a_position.x = CUBE_VERTICES[i * 9 + j * 3 + 0];
+      vertex.a_position.y = CUBE_VERTICES[i * 9 + j * 3 + 1];
+      vertex.a_position.z = CUBE_VERTICES[i * 9 + j * 3 + 2];
+      mesh.vertexes.push_back(vertex);
+      mesh.indices.push_back(i * 3 + j);
+    }
+  }
 }
 
 void ModelLoader::LoadWorldAxis() {
@@ -67,6 +84,8 @@ void ModelLoader::LoadWorldAxis() {
 
   scene_.world_axis.primitive_type = Primitive_LINES;
   scene_.world_axis.primitive_cnt = scene_.world_axis.indices.size() / 2;
+  scene_.world_axis.material.SetDirty();
+  scene_.world_axis.material.shading = Shading_BaseColor;
   scene_.world_axis.material.base_color = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
   scene_.world_axis.line_width = 1.f;
 }
@@ -81,8 +100,48 @@ void ModelLoader::LoadLights() {
   vertex.a_position = config_.point_light_position;
   scene_.point_light.vertexes[0] = vertex;
   scene_.point_light.indices[0] = 0;
+  scene_.point_light.material.SetDirty();
+  scene_.point_light.material.shading = Shading_BaseColor;
   scene_.point_light.material.base_color = glm::vec4(config_.point_light_color, 1.f);
   scene_.point_light.point_size = 10.f;
+}
+
+bool ModelLoader::LoadSkybox(const std::string &filepath) {
+  if (filepath.empty()) {
+    return false;
+  }
+  if (scene_.skybox.primitive_cnt <= 0) {
+    LoadCubeMesh(scene_.skybox);
+  }
+
+  LOGD("load skybox, path: %s", filepath.c_str());
+  auto &material = scene_.skybox.material;
+  material.SetDirty();
+  material.shading = Shading_Skybox;
+
+  std::vector<std::shared_ptr<BufferRGBA>> skybox_tex;
+  if (StringUtils::EndsWith(filepath, "/")) {
+    skybox_tex.resize(6);
+
+    ThreadPool pool(6);
+    pool.PushTask([&](int thread_id) { skybox_tex[0] = LoadTextureFile(filepath + "right.jpg"); });
+    pool.PushTask([&](int thread_id) { skybox_tex[1] = LoadTextureFile(filepath + "left.jpg"); });
+    pool.PushTask([&](int thread_id) { skybox_tex[2] = LoadTextureFile(filepath + "top.jpg"); });
+    pool.PushTask([&](int thread_id) { skybox_tex[3] = LoadTextureFile(filepath + "bottom.jpg"); });
+    pool.PushTask([&](int thread_id) { skybox_tex[4] = LoadTextureFile(filepath + "front.jpg"); });
+    pool.PushTask([&](int thread_id) { skybox_tex[5] = LoadTextureFile(filepath + "back.jpg"); });
+    pool.WaitTasksFinish();
+
+    material.skybox_type = Skybox_Cube;
+    material.texture_data[TextureUsage_CUBE] = std::move(skybox_tex);
+  } else {
+    material.skybox_type = Skybox_Equirectangular;
+    skybox_tex.resize(1);
+    skybox_tex[0] = LoadTextureFile(filepath);
+    material.texture_data[TextureUsage_EQUIRECTANGULAR] = std::move(skybox_tex);
+  }
+
+  return true;
 }
 
 bool ModelLoader::LoadModel(const std::string &filepath) {
@@ -211,6 +270,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     }
   }
 
+  out_mesh.material_textured.SetDirty();
   if (ai_mesh->mMaterialIndex >= 0) {
     const aiMaterial *material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
     aiString alphaMode;
@@ -235,8 +295,9 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     }
   }
 
-  out_mesh.material_wireframe.base_color = glm::vec4(1.f);
+  out_mesh.material_wireframe.SetDirty();
   out_mesh.material_wireframe.shading = Shading_BaseColor;
+  out_mesh.material_wireframe.base_color = glm::vec4(1.f);
 
   out_mesh.primitive_type = Primitive_TRIANGLES;
   out_mesh.primitive_cnt = ai_mesh->mNumFaces;
@@ -247,7 +308,9 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
   return true;
 }
 
-void ModelLoader::ProcessMaterial(const aiMaterial *ai_material, aiTextureType texture_type, TexturedMaterial &material) {
+void ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
+                                  aiTextureType texture_type,
+                                  TexturedMaterial &material) {
   if (ai_material->GetTextureCount(texture_type) <= 0) {
     return;
   }
@@ -259,23 +322,23 @@ void ModelLoader::ProcessMaterial(const aiMaterial *ai_material, aiTextureType t
       continue;
     }
     std::string absolutePath = scene_.model->res_dir + "/" + text_path.C_Str();
-    TextureType type = TextureType_NONE;
+    TextureUsage usage = TextureUsage_NONE;
     switch (texture_type) {
       case aiTextureType_BASE_COLOR:
       case aiTextureType_DIFFUSE:
-        type = TextureType_ALBEDO;
+        usage = TextureUsage_ALBEDO;
         break;
       case aiTextureType_NORMALS:
-        type = TextureType_NORMAL;
+        usage = TextureUsage_NORMAL;
         break;
       case aiTextureType_EMISSIVE:
-        type = TextureType_EMISSIVE;
+        usage = TextureUsage_EMISSIVE;
         break;
       case aiTextureType_LIGHTMAP:
-        type = TextureType_AMBIENT_OCCLUSION;
+        usage = TextureUsage_AMBIENT_OCCLUSION;
         break;
       case aiTextureType_UNKNOWN:
-        type = TextureType_METAL_ROUGHNESS;
+        usage = TextureUsage_METAL_ROUGHNESS;
         break;
       default:
 //        LOGW("texture type: %s not support", aiTextureTypeToString(texture_type));
@@ -284,9 +347,9 @@ void ModelLoader::ProcessMaterial(const aiMaterial *ai_material, aiTextureType t
 
     auto buffer = LoadTextureFile(absolutePath);
     if (buffer) {
-      material.texture_data[type] = std::move(buffer);
+      material.texture_data[usage] = {buffer};
     } else {
-      LOGE("load texture failed: %s, path: %s", Material::TextureTypeStr(type), absolutePath.c_str());
+      LOGE("load texture failed: %s, path: %s", Material::TextureUsageStr(usage), absolutePath.c_str());
     }
   }
 }
@@ -390,7 +453,8 @@ std::shared_ptr<BufferRGBA> ModelLoader::LoadTextureFile(const std::string &path
           to.a = data[idx * 4 + 3];
           break;
         }
-        default:break;
+        default:
+          break;
       }
     }
   }
@@ -398,7 +462,7 @@ std::shared_ptr<BufferRGBA> ModelLoader::LoadTextureFile(const std::string &path
   stbi_image_free(data);
 
   tex_cache_mutex_.lock();
-  texture_cache_[path] = std::move(buffer);
+  texture_cache_[path] = buffer;
   tex_cache_mutex_.unlock();
 
   return buffer;

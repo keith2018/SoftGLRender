@@ -8,6 +8,7 @@
 
 #include "render/render_state.h"
 
+
 namespace SoftGL {
 namespace OpenGL {
 

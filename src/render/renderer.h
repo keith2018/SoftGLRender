@@ -24,6 +24,7 @@ class Renderer {
   // texture
   virtual std::shared_ptr<Texture2D> CreateTexture2DRef(int refId) = 0;
   virtual std::shared_ptr<Texture2D> CreateTexture2D() = 0;
+  virtual std::shared_ptr<TextureCube> CreateTextureCube() = 0;
   virtual std::shared_ptr<TextureDepth> CreateDepthTexture() = 0;
 
   // vertex

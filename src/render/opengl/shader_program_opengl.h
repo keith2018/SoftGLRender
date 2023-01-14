@@ -10,6 +10,7 @@
 #include "render/shader_program.h"
 #include "shader_utils.h"
 
+
 namespace SoftGL {
 
 class ShaderProgramOpenGL : public ShaderProgram {
@@ -28,8 +29,8 @@ class ShaderProgramOpenGL : public ShaderProgram {
     program_glsl_.Use();
   };
 
-  inline GLuint GetId() const {
-    return programId_;
+  int GetId() const override {
+    return (int) programId_;
   }
 
  private:

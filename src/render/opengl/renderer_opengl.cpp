@@ -29,6 +29,10 @@ std::shared_ptr<Texture2D> RendererOpenGL::CreateTexture2D() {
   return std::make_shared<Texture2DOpenGL>();
 }
 
+std::shared_ptr<TextureCube> RendererOpenGL::CreateTextureCube() {
+  return std::make_shared<TextureCubeOpenGL>();
+}
+
 std::shared_ptr<TextureDepth> RendererOpenGL::CreateDepthTexture() {
   return std::make_shared<TextureDepthOpenGL>();
 }
@@ -56,14 +60,14 @@ std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::
 
 // pipeline
 void RendererOpenGL::SetViewPort(int x, int y, int width, int height) {
-  glViewport(x, y, width, height);
+  GL_CHECK(glViewport(x, y, width, height));
 }
 
 void RendererOpenGL::Clear(ClearState &state) {
-  glClearColor(state.clear_color.r,
+  GL_CHECK(glClearColor(state.clear_color.r,
                state.clear_color.g,
                state.clear_color.b,
-               state.clear_color.a);
+               state.clear_color.a));
   GLbitfield clear_bit = 0;
   if (state.color_flag) {
     clear_bit = clear_bit | GL_COLOR_BUFFER_BIT;
@@ -71,22 +75,24 @@ void RendererOpenGL::Clear(ClearState &state) {
   if (state.depth_flag) {
     clear_bit = clear_bit | GL_DEPTH_BUFFER_BIT;
   }
-  glClear(clear_bit);
+  GL_CHECK(glClear(clear_bit));
 }
 
 void RendererOpenGL::SetRenderState(RenderState &state) {
-  state.blend ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
-  glBlendFunc(OpenGL::ConvertBlendFactor(state.blend_src), OpenGL::ConvertBlendFactor(state.blend_dst));
+#define GL_STATE_SET(var, gl_state) if (var) GL_CHECK(glEnable(gl_state)); else GL_CHECK(glDisable(gl_state));
 
-  state.depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
-  glDepthMask(state.depth_mask);
-  glDepthFunc(OpenGL::ConvertDepthFunc(state.depth_func));
+  GL_STATE_SET(state.blend, GL_BLEND)
+  GL_CHECK(glBlendFunc(OpenGL::ConvertBlendFactor(state.blend_src), OpenGL::ConvertBlendFactor(state.blend_dst)));
 
-  state.cull_face ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
-  glPolygonMode(GL_FRONT_AND_BACK, OpenGL::ConvertPolygonMode(state.polygon_mode));
+  GL_STATE_SET(state.depth_test, GL_DEPTH_TEST)
+  GL_CHECK(glDepthMask(state.depth_mask));
+  GL_CHECK(glDepthFunc(OpenGL::ConvertDepthFunc(state.depth_func)));
 
-  glLineWidth(state.line_width);
-  glPointSize(state.point_size);
+  GL_STATE_SET(state.cull_face, GL_CULL_FACE)
+  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::ConvertPolygonMode(state.polygon_mode)));
+
+  GL_CHECK(glLineWidth(state.line_width));
+  GL_CHECK(glPointSize(state.point_size));
 }
 
 void RendererOpenGL::SetVertexArray(VertexArray &vertex) {
@@ -96,7 +102,7 @@ void RendererOpenGL::SetVertexArray(VertexArray &vertex) {
 
 void RendererOpenGL::Draw(PrimitiveType type) {
   GLenum mode = OpenGL::ConvertPrimitiveType(type);
-  glDrawElements(mode, (GLsizei) vertexArray_->indices.size(), GL_UNSIGNED_INT, nullptr);
+  GL_CHECK(glDrawElements(mode, (GLsizei) vertexArray_->indices.size(), GL_UNSIGNED_INT, nullptr));
 }
 
 }

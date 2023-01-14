@@ -10,11 +10,12 @@
 #include <glad/glad.h>
 #include "base/logger.h"
 
+
 namespace SoftGL {
 
 class OpenGLUtils {
  public:
-  static void CheckGLError_(const char *file, int line) {
+  static void CheckGLError_(const char *stmt, const char *file, int line) {
     const char *str;
     GLenum err = glGetError();
     switch (err) {
@@ -39,15 +40,19 @@ class OpenGLUtils {
     }
 
     if (err != GL_NO_ERROR) {
-      LOGE("CheckGLError: %s, (%s:%d)", str, file, line);
+      LOGE("CheckGLError: %s, %s:%d, %s", str, file, line, stmt);
+      abort();
     }
   }
 };
 
-#if DEBUG
-#define CheckGLError() OpenGLUtils::CheckGLError_(__FILE__, __LINE__)
+#ifdef DEBUG
+#define GL_CHECK(stmt) do { \
+            stmt; \
+            OpenGLUtils::CheckGLError_(#stmt, __FILE__, __LINE__); \
+        } while (0)
 #else
-#define CheckGLError()
+#define GL_CHECK(stmt) stmt
 #endif
 
 }

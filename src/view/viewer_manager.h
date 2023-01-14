@@ -37,7 +37,6 @@ class ViewerManager {
     // config
     config_ = std::make_shared<Config>();
     config_panel_ = std::make_shared<ConfigPanel>(*config_);
-    config_panel_->Init(window, width, height);
     config_panel_->SetResetCameraFunc([&]() -> void {
       orbit_controller_->Reset();
     });
@@ -54,7 +53,9 @@ class ViewerManager {
 
     // model loader
     model_loader_ = std::make_shared<ModelLoader>(*config_, *config_panel_);
-    return model_loader_->LoadModel(config_->model_path);
+
+    // init config
+    return config_panel_->Init(window, width, height);
   }
 
   inline void DrawFrame() {
