@@ -72,7 +72,7 @@ class UniformSamplerOpenGL : public UniformSampler {
       BIND_TEX(6)
       BIND_TEX(7)
       default: {
-        LOGE("texture unit not support");
+        LOGE("UniformSampler::BindProgram error: texture unit not support");
         break;
       }
     }
@@ -83,11 +83,13 @@ class UniformSamplerOpenGL : public UniformSampler {
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
     switch (tex->Type()) {
       case TextureType_2D:
-      case TextureType_Depth:
         texTarget_ = GL_TEXTURE_2D;
         break;
       case TextureType_CUBE:
         texTarget_ = GL_TEXTURE_CUBE_MAP;
+        break;
+      default:
+        LOGE("UniformSampler::SetTexture error: texture type not support");
         break;
     }
     texId_ = tex->GetId();

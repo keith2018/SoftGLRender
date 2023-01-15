@@ -33,7 +33,7 @@ std::shared_ptr<TextureCube> RendererOpenGL::CreateTextureCube() {
   return std::make_shared<TextureCubeOpenGL>();
 }
 
-std::shared_ptr<TextureDepth> RendererOpenGL::CreateDepthTexture() {
+std::shared_ptr<TextureDepth> RendererOpenGL::CreateTextureDepth() {
   return std::make_shared<TextureDepthOpenGL>();
 }
 

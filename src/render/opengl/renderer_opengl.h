@@ -20,7 +20,7 @@ class RendererOpenGL : public Renderer {
   std::shared_ptr<Texture2D> CreateTexture2DRef(int refId) override;
   std::shared_ptr<Texture2D> CreateTexture2D() override;
   std::shared_ptr<TextureCube> CreateTextureCube() override;
-  std::shared_ptr<TextureDepth> CreateDepthTexture() override;
+  std::shared_ptr<TextureDepth> CreateTextureDepth() override;
 
   // vertex
   std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(VertexArray &vertex_array) override;

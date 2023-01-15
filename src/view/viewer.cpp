@@ -28,7 +28,7 @@ void Viewer::Create(int width, int height, int outTexId) {
   fbo_ = renderer_->CreateFrameBuffer();
 
   // depth attachment
-  auto depth_attachment = renderer_->CreateDepthTexture();
+  auto depth_attachment = renderer_->CreateTextureDepth();
   depth_attachment->InitImageData(width, height);
   fbo_->SetDepthAttachment(depth_attachment);
 
@@ -402,7 +402,7 @@ std::shared_ptr<TextureCube> Viewer::CreateTextureCubeDefault(int width, int hei
 
 size_t Viewer::GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines) {
   size_t seed = 0;
-  HashUtils::HashCombine(seed, shading);
+  HashUtils::HashCombine(seed, (int) shading);
   for (auto &def : defines) {
     HashUtils::HashCombine(seed, def);
   }
