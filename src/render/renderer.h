@@ -37,8 +37,6 @@ class Renderer {
   virtual std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) = 0;
   virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name) = 0;
 
-  // material
-
   // pipeline
   virtual void SetViewPort(int x, int y, int width, int height) = 0;
   virtual void Clear(ClearState &state) = 0;

@@ -70,8 +70,14 @@ class Viewer {
   void UpdateUniformMVP(const glm::mat4 &transform, bool skybox = false);
   void UpdateUniformColor(const glm::vec4 &color);
 
-  glm::mat4 AdjustModelCenter(BoundingBox &bounds);
+  void InitSkyboxIBL(ModelSkybox &skybox);
+
+  static size_t GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
+  static glm::mat4 AdjustModelCenter(BoundingBox &bounds);
+
+  std::shared_ptr<TextureCube> CreateTextureCubeDefault(int width, int height);
   bool CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
+
  protected:
   int width_ = 0;
   int height_ = 0;
@@ -85,13 +91,15 @@ class Viewer {
 
   ClearState clear_state_;
 
-  UniformsScene uniforms_scene_;
-  UniformsMVP uniforms_mvp_;
-  UniformsColor uniforms_color_;
+  UniformsScene uniforms_scene_{};
+  UniformsMVP uniforms_mvp_{};
+  UniformsColor uniforms_color_{};
 
   std::shared_ptr<UniformBlock> uniform_block_scene_;
   std::shared_ptr<UniformBlock> uniforms_block_mvp_;
   std::shared_ptr<UniformBlock> uniforms_block_color_;
+
+  std::unordered_map<size_t, std::shared_ptr<ShaderProgram>> program_cache_;
 };
 
 }

@@ -7,6 +7,7 @@
 #include "material.h"
 
 namespace SoftGL {
+namespace View {
 
 const char *Material::TextureUsageStr(TextureUsage usage) {
 #define TexType_STR(type) case type: return #type
@@ -80,4 +81,5 @@ const char *Material::SamplerName(TextureUsage usage) {
   return nullptr;
 }
 
+}
 }

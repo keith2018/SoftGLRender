@@ -32,8 +32,6 @@ class RendererOpenGL : public Renderer {
   std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) override;
   std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name) override;
 
-  // material
-
   // pipeline
   void SetViewPort(int x, int y, int width, int height) override;
   void Clear(ClearState &state) override;

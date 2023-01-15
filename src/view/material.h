@@ -14,6 +14,7 @@
 #include "render/shader_program.h"
 
 namespace SoftGL {
+namespace View {
 
 enum AlphaMode {
   Alpha_Opaque,
@@ -70,14 +71,14 @@ class Material {
     }
   };
 
-  virtual void SetDirty() {
+  virtual void Reset() {
     dirty = true;
     shader_program = nullptr;
     uniform_groups.clear();
     texture_data.clear();
   }
 
-  virtual void InitIfDirty(const std::function<void()> &func) {
+  virtual void Create(const std::function<void()> &func) {
     if (dirty) {
       dirty = false;
       func();
@@ -89,6 +90,7 @@ class Material {
   RenderState render_state;
   std::shared_ptr<ShaderProgram> shader_program;
   std::vector<std::vector<std::shared_ptr<Uniform>>> uniform_groups;
+  std::unordered_map<int, std::shared_ptr<Texture>> textures;
 
   std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
 
@@ -125,6 +127,8 @@ class SkyboxMaterial : public TexturedMaterial {
 
  public:
   SkyboxType skybox_type = Skybox_Cube;
+  bool ibl_ready = false;
 };
 
+}
 }

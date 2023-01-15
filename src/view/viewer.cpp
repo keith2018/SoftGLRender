@@ -5,9 +5,12 @@
  */
 
 #include "viewer.h"
+#include <algorithm>
 #include "base/logger.h"
+#include "base/hash_utils.h"
 #include "render/opengl/renderer_opengl.h"
 #include "shader/opengl/shader_glsl.h"
+#include "environment.h"
 
 
 namespace SoftGL {
@@ -89,6 +92,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
     ModelSkybox &skybox = scene.skybox;
     glm::mat4 skybox_transform(1.f);
     DrawSkybox(skybox, skybox_transform);
+    InitSkyboxIBL(skybox);
   }
 
   // draw model nodes blend
@@ -249,13 +253,14 @@ void Viewer::SetupTextures(Material &material,
 
     // upload image data
     texture->SetImageData(kv.second);
+    material.textures[kv.first] = texture;
 
     // create sampler uniform
     const char *sampler_name = Material::SamplerName((TextureUsage) kv.first);
     if (sampler_name) {
-      auto sampler_uniform = renderer_->CreateUniformSampler(sampler_name);
-      sampler_uniform->SetTexture(texture);
-      sampler_uniforms.emplace_back(std::move(sampler_uniform));
+      auto uniform = renderer_->CreateUniformSampler(sampler_name);
+      uniform->SetTexture(texture);
+      sampler_uniforms.emplace_back(std::move(uniform));
     }
 
     // add shader defines
@@ -267,27 +272,45 @@ void Viewer::SetupTextures(Material &material,
 }
 
 void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines) {
-  material.shader_program = renderer_->CreateShaderProgram();
-  material.shader_program->AddDefines(shader_defines);
+  size_t cache_key = GetShaderProgramCacheKey(material.shading, shader_defines);
 
+  // try cache
+  auto cached_program = program_cache_.find(cache_key);
+  if (cached_program != program_cache_.end()) {
+    material.shader_program = cached_program->second;
+    return;
+  }
+
+  auto program = renderer_->CreateShaderProgram();
+  program->AddDefines(shader_defines);
+
+  bool success = false;
   switch (material.shading) {
     case Shading_BaseColor:
-      material.shader_program->CompileAndLink(BASIC_VS, BASIC_FS);
+      success = program->CompileAndLink(BASIC_VS, BASIC_FS);
       break;
     case Shading_BlinnPhong:
-      material.shader_program->CompileAndLink(BLINN_PHONG_VS, BLINN_PHONG_FS);
+      success = program->CompileAndLink(BLINN_PHONG_VS, BLINN_PHONG_FS);
       break;
     case Shading_PBR:
-      material.shader_program->CompileAndLink(PBR_IBL_VS, PBR_IBL_FS);
+      success = program->CompileAndLink(PBR_IBL_VS, PBR_IBL_FS);
       break;
     case Shading_Skybox:
-      material.shader_program->CompileAndLink(SKYBOX_VS, SKYBOX_FS);
+      success = program->CompileAndLink(SKYBOX_VS, SKYBOX_FS);
       break;
+  }
+
+  if (success) {
+    // add to cache
+    program_cache_[cache_key] = program;
+    material.shader_program = program;
+  } else {
+    LOGE("SetupShaderProgram failed: %d", material.shading);
   }
 }
 
 void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr<Uniform>> &uniform_blocks) {
-  material.InitIfDirty([&]() -> void {
+  material.Create([&]() -> void {
     std::vector<std::shared_ptr<Uniform>> uniform_samplers;
     std::set<std::string> shader_defines;
     SetupTextures(material, uniform_samplers, shader_defines);
@@ -327,6 +350,63 @@ void Viewer::UpdateUniformMVP(const glm::mat4 &transform, bool skybox) {
 void Viewer::UpdateUniformColor(const glm::vec4 &color) {
   uniforms_color_.u_baseColor = color;
   uniforms_block_color_->SetData(&uniforms_color_, sizeof(UniformsColor));
+}
+
+void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
+  if (skybox.material.ibl_ready) {
+    return;
+  }
+
+  std::shared_ptr<TextureCube> texture_cube = nullptr;
+
+  // convert equirectangular to cube map if needed
+  auto tex_cube_it = skybox.material.textures.find(TextureUsage_CUBE);
+  if (tex_cube_it == skybox.material.textures.end()) {
+    auto tex_eq_it = skybox.material.textures.find(TextureUsage_EQUIRECTANGULAR);
+    if (tex_eq_it != skybox.material.textures.end()) {
+      Texture2D &texture_2d = *std::dynamic_pointer_cast<Texture2D>(tex_eq_it->second);
+      int cube_size = std::min(texture_2d.width, texture_2d.height);
+      texture_cube = CreateTextureCubeDefault(cube_size, cube_size);
+      Environment::ConvertEquirectangular(texture_2d, *texture_cube);
+      skybox.material.textures[TextureUsage_CUBE] = texture_cube;
+    }
+  } else {
+    texture_cube = std::dynamic_pointer_cast<TextureCube>(tex_cube_it->second);
+  }
+
+  if (!texture_cube) {
+    LOGE("InitSkyboxIBL failed: skybox texture cube not available");
+    return;
+  }
+
+  // generate irradiance map
+  auto texture_irradiance = CreateTextureCubeDefault(texture_cube->width, texture_cube->height);
+  Environment::GenerateIrradianceMap(*texture_cube, *texture_irradiance);
+  skybox.material.textures[TextureUsage_IBL_IRRADIANCE] = texture_irradiance;
+
+  // generate prefilter map
+  auto texture_prefilter = CreateTextureCubeDefault(texture_cube->width, texture_cube->height);
+  Environment::GeneratePrefilterMap(*texture_cube, *texture_prefilter);
+  skybox.material.textures[TextureUsage_IBL_PREFILTER] = texture_prefilter;
+
+  skybox.material.ibl_ready = true;
+}
+
+std::shared_ptr<TextureCube> Viewer::CreateTextureCubeDefault(int width, int height) {
+  SamplerCube sampler_cube;
+  auto texture_cube = renderer_->CreateTextureCube();
+  texture_cube->SetSampler(sampler_cube);
+  texture_cube->InitImageData(width, height);
+  return texture_cube;
+}
+
+size_t Viewer::GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines) {
+  size_t seed = 0;
+  HashUtils::HashCombine(seed, shading);
+  for (auto &def : defines) {
+    HashUtils::HashCombine(seed, def);
+  }
+  return seed;
 }
 
 glm::mat4 Viewer::AdjustModelCenter(BoundingBox &bounds) {

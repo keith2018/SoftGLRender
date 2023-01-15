@@ -81,7 +81,6 @@ class UniformSamplerOpenGL : public UniformSampler {
   }
 
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
-    tex_ = tex;
     switch (tex->Type()) {
       case TextureType_2D:
       case TextureType_Depth:
@@ -97,7 +96,6 @@ class UniformSamplerOpenGL : public UniformSampler {
  private:
   GLuint texTarget_ = 0;
   GLuint texId_ = 0;
-  std::shared_ptr<Texture> tex_;
 };
 
 }

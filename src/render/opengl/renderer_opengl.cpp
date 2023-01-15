@@ -56,8 +56,6 @@ std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::
   return std::make_shared<UniformSamplerOpenGL>(name);
 }
 
-// material
-
 // pipeline
 void RendererOpenGL::SetViewPort(int x, int y, int width, int height) {
   GL_CHECK(glViewport(x, y, width, height));

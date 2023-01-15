@@ -45,14 +45,16 @@ ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
 }
 
 void ModelLoader::LoadCubeMesh(VertexArray &mesh) {
+  const float *cube_vertexes = Cube::GetCubeVertexes();
+
   mesh.primitive_type = Primitive_TRIANGLES;
   mesh.primitive_cnt = 12;
   for (int i = 0; i < 12; i++) {
     for (int j = 0; j < 3; j++) {
       Vertex vertex{};
-      vertex.a_position.x = CUBE_VERTICES[i * 9 + j * 3 + 0];
-      vertex.a_position.y = CUBE_VERTICES[i * 9 + j * 3 + 1];
-      vertex.a_position.z = CUBE_VERTICES[i * 9 + j * 3 + 2];
+      vertex.a_position.x = cube_vertexes[i * 9 + j * 3 + 0];
+      vertex.a_position.y = cube_vertexes[i * 9 + j * 3 + 1];
+      vertex.a_position.z = cube_vertexes[i * 9 + j * 3 + 2];
       mesh.vertexes.push_back(vertex);
       mesh.indices.push_back(i * 3 + j);
     }
@@ -84,7 +86,7 @@ void ModelLoader::LoadWorldAxis() {
 
   scene_.world_axis.primitive_type = Primitive_LINES;
   scene_.world_axis.primitive_cnt = scene_.world_axis.indices.size() / 2;
-  scene_.world_axis.material.SetDirty();
+  scene_.world_axis.material.Reset();
   scene_.world_axis.material.shading = Shading_BaseColor;
   scene_.world_axis.material.base_color = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
   scene_.world_axis.line_width = 1.f;
@@ -100,7 +102,7 @@ void ModelLoader::LoadLights() {
   vertex.a_position = config_.point_light_position;
   scene_.point_light.vertexes[0] = vertex;
   scene_.point_light.indices[0] = 0;
-  scene_.point_light.material.SetDirty();
+  scene_.point_light.material.Reset();
   scene_.point_light.material.shading = Shading_BaseColor;
   scene_.point_light.material.base_color = glm::vec4(config_.point_light_color, 1.f);
   scene_.point_light.point_size = 10.f;
@@ -116,7 +118,7 @@ bool ModelLoader::LoadSkybox(const std::string &filepath) {
 
   LOGD("load skybox, path: %s", filepath.c_str());
   auto &material = scene_.skybox.material;
-  material.SetDirty();
+  material.Reset();
   material.shading = Shading_Skybox;
 
   std::vector<std::shared_ptr<BufferRGBA>> skybox_tex;
@@ -270,7 +272,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     }
   }
 
-  out_mesh.material_textured.SetDirty();
+  out_mesh.material_textured.Reset();
   if (ai_mesh->mMaterialIndex >= 0) {
     const aiMaterial *material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
     aiString alphaMode;
@@ -295,7 +297,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     }
   }
 
-  out_mesh.material_wireframe.SetDirty();
+  out_mesh.material_wireframe.Reset();
   out_mesh.material_wireframe.shading = Shading_BaseColor;
   out_mesh.material_wireframe.base_color = glm::vec4(1.f);
 

@@ -15,6 +15,7 @@
 
 
 namespace SoftGL {
+namespace View {
 
 struct ModelPoints : VertexArray {
   float point_size;
@@ -60,4 +61,5 @@ struct DemoScene {
   ModelSkybox skybox;
 };
 
+}
 }
