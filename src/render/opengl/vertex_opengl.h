@@ -15,7 +15,7 @@ namespace SoftGL {
 
 class VertexArrayObjectOpenGL : public VertexArrayObject {
  public:
-  explicit VertexArrayObjectOpenGL(VertexArray &vertex_array) {
+  explicit VertexArrayObjectOpenGL(const VertexArray &vertex_array) {
     if (vertex_array.vertexes.empty() || vertex_array.indices.empty()) {
       return;
     }

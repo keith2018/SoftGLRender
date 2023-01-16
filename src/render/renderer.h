@@ -28,7 +28,7 @@ class Renderer {
   virtual std::shared_ptr<TextureDepth> CreateTextureDepth() = 0;
 
   // vertex
-  virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(VertexArray &vertex_array) = 0;
+  virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) = 0;
 
   // shader program
   virtual std::shared_ptr<ShaderProgram> CreateShaderProgram() = 0;
@@ -39,8 +39,8 @@ class Renderer {
 
   // pipeline
   virtual void SetViewPort(int x, int y, int width, int height) = 0;
-  virtual void Clear(ClearState &state) = 0;
-  virtual void SetRenderState(RenderState &state) = 0;
+  virtual void Clear(const ClearState &state) = 0;
+  virtual void SetRenderState(const RenderState &state) = 0;
   virtual void SetVertexArray(VertexArray &vertex) = 0;
   virtual void Draw(PrimitiveType type) = 0;
 };

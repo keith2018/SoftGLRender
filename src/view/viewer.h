@@ -12,27 +12,9 @@
 #include "config.h"
 #include "camera.h"
 
+
 namespace SoftGL {
 namespace View {
-
-struct UniformsScene {
-  glm::int32_t u_enablePointLight;
-
-  glm::vec3 u_ambientColor;
-  glm::vec3 u_cameraPosition;
-  glm::vec3 u_pointLightPosition;
-  glm::vec3 u_pointLightColor;
-};
-
-struct UniformsMVP {
-  glm::mat4 u_modelMatrix;
-  glm::mat4 u_modelViewProjectionMatrix;
-  glm::mat3 u_inverseTransposeModelMatrix;
-};
-
-struct UniformsColor {
-  glm::vec4 u_baseColor;
-};
 
 class Viewer {
  public:
@@ -60,9 +42,10 @@ class Viewer {
   void SetupVertexArray(VertexArray &vertexes);
   void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
   void SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
-  void SetupTextures(Material &material,
-                     std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
-                     std::set<std::string> &shader_defines);
+  void SetupTextures(Material &material);
+  void SetupSamplerUniforms(Material &material,
+                            std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
+                            std::set<std::string> &shader_defines);
   void SetupMaterial(Material &material, const std::vector<std::shared_ptr<Uniform>> &uniform_blocks);
   void StartRenderPipeline(VertexArray &vertexes, Material &material);
 

@@ -55,6 +55,25 @@ enum MaterialType {
   Material_Skybox,
 };
 
+struct UniformsScene {
+  glm::int32_t u_enablePointLight;
+
+  glm::vec3 u_ambientColor;
+  glm::vec3 u_cameraPosition;
+  glm::vec3 u_pointLightPosition;
+  glm::vec3 u_pointLightColor;
+};
+
+struct UniformsMVP {
+  glm::mat4 u_modelMatrix;
+  glm::mat4 u_modelViewProjectionMatrix;
+  glm::mat3 u_inverseTransposeModelMatrix;
+};
+
+struct UniformsColor {
+  glm::vec4 u_baseColor;
+};
+
 class Material {
  public:
   static const char *TextureUsageStr(TextureUsage usage);
@@ -75,6 +94,7 @@ class Material {
     dirty = true;
     shader_program = nullptr;
     uniform_groups.clear();
+    textures.clear();
     texture_data.clear();
   }
 
@@ -85,13 +105,19 @@ class Material {
     }
   }
 
+  virtual void SetTexturesChanged() {
+    dirty = true;
+    shader_program = nullptr;
+    uniform_groups.clear();
+    texture_data.clear();
+  }
+
  public:
   ShadingModel shading;
   RenderState render_state;
   std::shared_ptr<ShaderProgram> shader_program;
   std::vector<std::vector<std::shared_ptr<Uniform>>> uniform_groups;
   std::unordered_map<int, std::shared_ptr<Texture>> textures;
-
   std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
 
  private:
@@ -119,7 +145,7 @@ class TexturedMaterial : public Material {
   bool double_sided = false;
 };
 
-class SkyboxMaterial : public TexturedMaterial {
+class SkyboxMaterial : public Material {
  public:
   MaterialType Type() const override {
     return Material_Skybox;

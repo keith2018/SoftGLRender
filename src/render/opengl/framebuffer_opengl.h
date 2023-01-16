@@ -46,20 +46,44 @@ class FrameBufferOpenGL : public FrameBuffer {
   }
 
   void SetColorAttachment(std::shared_ptr<Texture2D> &color) override {
-    color_attachment = color;
+    color_attachment_2d = color;
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
-    GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, color->GetId(), 0));
+    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
+                                    GL_COLOR_ATTACHMENT0,
+                                    GL_TEXTURE_2D,
+                                    color->GetId(),
+                                    0));
+  }
+
+  void SetColorAttachment(std::shared_ptr<TextureCube> &color, CubeMapFace face) override {
+    color_attachment_cube.cube_tex = color;
+    color_attachment_cube.cube_face = face;
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
+    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
+                                    GL_COLOR_ATTACHMENT0,
+                                    OpenGL::ConvertCubeFace(face),
+                                    color->GetId(),
+                                    0));
   }
 
   void SetDepthAttachment(std::shared_ptr<TextureDepth> &depth) override {
     depth_attachment = depth;
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
-    GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth->GetId()));
+    GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER,
+                                       GL_DEPTH_ATTACHMENT,
+                                       GL_RENDERBUFFER,
+                                       depth->GetId()));
   }
 
  private:
   GLuint fbo_ = 0;
-  std::shared_ptr<Texture2D> color_attachment;
+
+  std::shared_ptr<Texture2D> color_attachment_2d;
+  struct {
+    std::shared_ptr<TextureCube> cube_tex;
+    CubeMapFace cube_face = TEXTURE_CUBE_MAP_POSITIVE_X;
+  } color_attachment_cube;
+
   std::shared_ptr<TextureDepth> depth_attachment;
 };
 

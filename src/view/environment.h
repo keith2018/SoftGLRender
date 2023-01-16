@@ -13,11 +13,14 @@ namespace View {
 
 class Environment {
  public:
-  static void ConvertEquirectangular(Texture2D &tex_in, TextureCube &tex_out, int width = 0, int height = 0);
+  static bool ConvertEquirectangular(std::shared_ptr<Texture2D> &tex_in,
+                                     std::shared_ptr<TextureCube> &tex_out);
 
-  static void GenerateIrradianceMap(TextureCube &tex_in, TextureCube &tex_out);
+  static bool GenerateIrradianceMap(std::shared_ptr<TextureCube> &tex_in,
+                                    std::shared_ptr<TextureCube> &tex_out);
 
-  static void GeneratePrefilterMap(TextureCube &tex_in, TextureCube &tex_out);
+  static bool GeneratePrefilterMap(std::shared_ptr<TextureCube> &tex_in,
+                                   std::shared_ptr<TextureCube> &tex_out);
 };
 
 }

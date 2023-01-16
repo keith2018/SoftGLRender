@@ -45,10 +45,10 @@ struct Sampler {
 };
 
 struct Sampler2D : Sampler {
-  WrapMode wrap_s = Wrap_REPEAT;
-  WrapMode wrap_t = Wrap_REPEAT;
-  FilterMode filter_min = Filter_LINEAR;
-  FilterMode filter_mag = Filter_LINEAR;
+  WrapMode wrap_s;
+  WrapMode wrap_t;
+  FilterMode filter_min;
+  FilterMode filter_mag;
 
   Sampler2D() {
     use_mipmaps = true;
@@ -60,7 +60,7 @@ struct Sampler2D : Sampler {
 };
 
 struct SamplerCube : Sampler2D {
-  WrapMode wrap_r = Wrap_REPEAT;
+  WrapMode wrap_r;
 
   SamplerCube() {
     use_mipmaps = true;

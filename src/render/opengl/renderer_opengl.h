@@ -23,7 +23,7 @@ class RendererOpenGL : public Renderer {
   std::shared_ptr<TextureDepth> CreateTextureDepth() override;
 
   // vertex
-  std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(VertexArray &vertex_array) override;
+  std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) override;
 
   // shader program
   std::shared_ptr<ShaderProgram> CreateShaderProgram() override;
@@ -34,8 +34,8 @@ class RendererOpenGL : public Renderer {
 
   // pipeline
   void SetViewPort(int x, int y, int width, int height) override;
-  void Clear(ClearState &state) override;
-  void SetRenderState(RenderState &state) override;
+  void Clear(const ClearState &state) override;
+  void SetRenderState(const RenderState &state) override;
   void SetVertexArray(VertexArray &vertex) override;
   void Draw(PrimitiveType type) override;
 

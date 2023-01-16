@@ -56,9 +56,9 @@ struct RenderState {
 };
 
 struct ClearState {
-  bool depth_flag = false;
-  bool color_flag = false;
-  glm::vec4 clear_color;
+  bool depth_flag = true;
+  bool color_flag = true;
+  glm::vec4 clear_color = glm::vec4(0.f);
 };
 
 }

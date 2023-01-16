@@ -38,7 +38,7 @@ std::shared_ptr<TextureDepth> RendererOpenGL::CreateTextureDepth() {
 }
 
 // vertex
-std::shared_ptr<VertexArrayObject> RendererOpenGL::CreateVertexArrayObject(VertexArray &vertex_array) {
+std::shared_ptr<VertexArrayObject> RendererOpenGL::CreateVertexArrayObject(const VertexArray &vertex_array) {
   return std::make_shared<VertexArrayObjectOpenGL>(vertex_array);
 }
 
@@ -61,7 +61,7 @@ void RendererOpenGL::SetViewPort(int x, int y, int width, int height) {
   GL_CHECK(glViewport(x, y, width, height));
 }
 
-void RendererOpenGL::Clear(ClearState &state) {
+void RendererOpenGL::Clear(const ClearState &state) {
   GL_CHECK(glClearColor(state.clear_color.r,
                state.clear_color.g,
                state.clear_color.b,
@@ -76,7 +76,7 @@ void RendererOpenGL::Clear(ClearState &state) {
   GL_CHECK(glClear(clear_bit));
 }
 
-void RendererOpenGL::SetRenderState(RenderState &state) {
+void RendererOpenGL::SetRenderState(const RenderState &state) {
 #define GL_STATE_SET(var, gl_state) if (var) GL_CHECK(glEnable(gl_state)); else GL_CHECK(glDisable(gl_state));
 
   GL_STATE_SET(state.blend, GL_BLEND)

@@ -19,6 +19,7 @@ class FrameBuffer {
   virtual void Unbind() = 0;
 
   virtual void SetColorAttachment(std::shared_ptr<Texture2D> &color) = 0;
+  virtual void SetColorAttachment(std::shared_ptr<TextureCube> &color, CubeMapFace face) = 0;
   virtual void SetDepthAttachment(std::shared_ptr<TextureDepth> &depth) = 0;
 };
 

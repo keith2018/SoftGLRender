@@ -228,9 +228,7 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
   }
 }
 
-void Viewer::SetupTextures(Material &material,
-                           std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
-                           std::set<std::string> &shader_defines) {
+void Viewer::SetupTextures(Material &material) {
   SamplerCube sampler_cube;
   Sampler2D sampler_2d;
 
@@ -254,12 +252,18 @@ void Viewer::SetupTextures(Material &material,
     // upload image data
     texture->SetImageData(kv.second);
     material.textures[kv.first] = texture;
+  }
+}
 
+void Viewer::SetupSamplerUniforms(Material &material,
+                                  std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
+                                  std::set<std::string> &shader_defines) {
+  for (auto &kv : material.textures) {
     // create sampler uniform
     const char *sampler_name = Material::SamplerName((TextureUsage) kv.first);
     if (sampler_name) {
       auto uniform = renderer_->CreateUniformSampler(sampler_name);
-      uniform->SetTexture(texture);
+      uniform->SetTexture(kv.second);
       sampler_uniforms.emplace_back(std::move(uniform));
     }
 
@@ -313,7 +317,8 @@ void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr
   material.Create([&]() -> void {
     std::vector<std::shared_ptr<Uniform>> uniform_samplers;
     std::set<std::string> shader_defines;
-    SetupTextures(material, uniform_samplers, shader_defines);
+    SetupTextures(material);
+    SetupSamplerUniforms(material, uniform_samplers, shader_defines);
     material.uniform_groups = {uniform_blocks, uniform_samplers};
     SetupShaderProgram(material, shader_defines);
   });
@@ -364,11 +369,19 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
   if (tex_cube_it == skybox.material.textures.end()) {
     auto tex_eq_it = skybox.material.textures.find(TextureUsage_EQUIRECTANGULAR);
     if (tex_eq_it != skybox.material.textures.end()) {
-      Texture2D &texture_2d = *std::dynamic_pointer_cast<Texture2D>(tex_eq_it->second);
-      int cube_size = std::min(texture_2d.width, texture_2d.height);
-      texture_cube = CreateTextureCubeDefault(cube_size, cube_size);
-      Environment::ConvertEquirectangular(texture_2d, *texture_cube);
-      skybox.material.textures[TextureUsage_CUBE] = texture_cube;
+      auto texture_2d = std::dynamic_pointer_cast<Texture2D>(tex_eq_it->second);
+      auto cube_size = std::min(texture_2d->width, texture_2d->height);
+      auto tex_cvt = CreateTextureCubeDefault(cube_size, cube_size);
+      auto success = Environment::ConvertEquirectangular(texture_2d, tex_cvt);
+      if (success) {
+        texture_cube = tex_cvt;
+        skybox.material.textures[TextureUsage_CUBE] = tex_cvt;
+
+        // change skybox material type
+        skybox.material.skybox_type = Skybox_Cube;
+        skybox.material.textures.erase(TextureUsage_EQUIRECTANGULAR);
+        skybox.material.SetTexturesChanged();
+      }
     }
   } else {
     texture_cube = std::dynamic_pointer_cast<TextureCube>(tex_cube_it->second);
@@ -381,22 +394,34 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
 
   // generate irradiance map
   auto texture_irradiance = CreateTextureCubeDefault(texture_cube->width, texture_cube->height);
-  Environment::GenerateIrradianceMap(*texture_cube, *texture_irradiance);
-  skybox.material.textures[TextureUsage_IBL_IRRADIANCE] = texture_irradiance;
+  if (Environment::GenerateIrradianceMap(texture_cube, texture_irradiance)) {
+    skybox.material.textures[TextureUsage_IBL_IRRADIANCE] = std::move(texture_irradiance);
+  } else {
+    LOGE("InitSkyboxIBL failed: generate irradiance map failed");
+    return;
+  }
 
   // generate prefilter map
   auto texture_prefilter = CreateTextureCubeDefault(texture_cube->width, texture_cube->height);
-  Environment::GeneratePrefilterMap(*texture_cube, *texture_prefilter);
-  skybox.material.textures[TextureUsage_IBL_PREFILTER] = texture_prefilter;
+  if (Environment::GeneratePrefilterMap(texture_cube, texture_prefilter)) {
+    skybox.material.textures[TextureUsage_IBL_PREFILTER] = std::move(texture_prefilter);
+  } else {
+    LOGE("InitSkyboxIBL failed: generate prefilter map failed");
+    return;
+  }
 
   skybox.material.ibl_ready = true;
 }
 
 std::shared_ptr<TextureCube> Viewer::CreateTextureCubeDefault(int width, int height) {
   SamplerCube sampler_cube;
+  sampler_cube.use_mipmaps = false;
+  sampler_cube.filter_min = Filter_LINEAR;
+
   auto texture_cube = renderer_->CreateTextureCube();
   texture_cube->SetSampler(sampler_cube);
   texture_cube->InitImageData(width, height);
+
   return texture_cube;
 }
 
