@@ -44,11 +44,6 @@ enum TextureUsage {
   TextureUsage_IBL_PREFILTER,
 };
 
-enum SkyboxType {
-  Skybox_Cube,
-  Skybox_Equirectangular,
-};
-
 enum MaterialType {
   Material_BaseColor,
   Material_Textured,
@@ -83,45 +78,58 @@ class Material {
   virtual MaterialType Type() const = 0;
 
   virtual void BindUniforms() {
-    for (auto &group : uniform_groups) {
-      if (!group.empty()) {
-        shader_program->BindUniforms(group);
-      }
-    }
+    shader_program->BindUniforms(uniform_blocks);
+    shader_program->BindUniforms(uniform_samplers);
   };
 
   virtual void Reset() {
-    dirty = true;
-    shader_program = nullptr;
-    uniform_groups.clear();
-    textures.clear();
-    texture_data.clear();
+    ResetTextures();
+    ResetProgram();
   }
 
-  virtual void Create(const std::function<void()> &func) {
-    if (dirty) {
-      dirty = false;
+  virtual void ResetProgram() {
+    shader_program = nullptr;
+    uniform_blocks.clear();
+    uniform_samplers.clear();
+    program_dirty = true;
+  }
+
+  virtual void ResetTextures() {
+    textures.clear();
+    textures_dirty = true;
+  }
+
+  virtual void CreateProgram(const std::function<void()> &func) {
+    if (program_dirty) {
       func();
+      program_dirty = false;
     }
   }
 
-  virtual void SetTexturesChanged() {
-    dirty = true;
-    shader_program = nullptr;
-    uniform_groups.clear();
-    texture_data.clear();
+  virtual void CreateTextures(const std::function<void()> &func) {
+    if (textures_dirty) {
+      func();
+      textures_dirty = false;
+    }
   }
 
  public:
+  // static properties
   ShadingModel shading;
   RenderState render_state;
-  std::shared_ptr<ShaderProgram> shader_program;
-  std::vector<std::vector<std::shared_ptr<Uniform>>> uniform_groups;
-  std::unordered_map<int, std::shared_ptr<Texture>> textures;
   std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
 
+  // runtime properties: program, uniform
+  std::shared_ptr<ShaderProgram> shader_program;
+  std::vector<std::shared_ptr<Uniform>> uniform_blocks;
+  std::vector<std::shared_ptr<Uniform>> uniform_samplers;
+
+  // runtime properties: textures
+  std::unordered_map<int, std::shared_ptr<Texture>> textures;
+
  private:
-  bool dirty = false;
+  bool program_dirty = false;
+  bool textures_dirty = false;
 };
 
 class BaseColorMaterial : public Material {
@@ -152,7 +160,6 @@ class SkyboxMaterial : public Material {
   }
 
  public:
-  SkyboxType skybox_type = Skybox_Cube;
   bool ibl_ready = false;
 };
 

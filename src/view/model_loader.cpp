@@ -134,10 +134,8 @@ bool ModelLoader::LoadSkybox(const std::string &filepath) {
     pool.PushTask([&](int thread_id) { skybox_tex[5] = LoadTextureFile(filepath + "back.jpg"); });
     pool.WaitTasksFinish();
 
-    material.skybox_type = Skybox_Cube;
     material.texture_data[TextureUsage_CUBE] = std::move(skybox_tex);
   } else {
-    material.skybox_type = Skybox_Equirectangular;
     skybox_tex.resize(1);
     skybox_tex[0] = LoadTextureFile(filepath);
     material.texture_data[TextureUsage_EQUIRECTANGULAR] = std::move(skybox_tex);

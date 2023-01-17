@@ -29,25 +29,26 @@ class Viewer {
  private:
   void DrawPoints(ModelPoints &points, glm::mat4 &transform);
   void DrawLines(ModelLines &lines, glm::mat4 &transform);
-  void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
   void DrawMeshWireframe(ModelMesh &mesh);
   void DrawMeshTextured(ModelMesh &mesh);
   void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
-  void PipelineDraw(VertexArray &vertexes,
-                    Material &material,
-                    const std::vector<std::shared_ptr<Uniform>> &uniform_blocks,
-                    bool blend,
-                    const std::function<void(RenderState &rs)> &extra_states);
+
+  void SetupSkybox(ModelSkybox &skybox);
+  void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
+
+  void PipelineSetup(VertexArray &vertexes,
+                     Material &material,
+                     const std::vector<std::shared_ptr<Uniform>> &uniform_blocks,
+                     bool blend,
+                     const std::function<void(RenderState &rs)> &extra_states);
+  void PipelineDraw(VertexArray &vertexes, Material &material);
 
   void SetupVertexArray(VertexArray &vertexes);
   void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
   void SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
   void SetupTextures(Material &material);
-  void SetupSamplerUniforms(Material &material,
-                            std::vector<std::shared_ptr<Uniform>> &sampler_uniforms,
-                            std::set<std::string> &shader_defines);
+  void SetupSamplerUniforms(Material &material, std::set<std::string> &shader_defines);
   void SetupMaterial(Material &material, const std::vector<std::shared_ptr<Uniform>> &uniform_blocks);
-  void StartRenderPipeline(VertexArray &vertexes, Material &material);
 
   void UpdateUniformScene();
   void UpdateUniformMVP(const glm::mat4 &transform, bool skybox = false);
@@ -58,7 +59,7 @@ class Viewer {
   static size_t GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
   static glm::mat4 AdjustModelCenter(BoundingBox &bounds);
 
-  std::shared_ptr<TextureCube> CreateTextureCubeDefault(int width, int height);
+  std::shared_ptr<TextureCube> CreateTextureCubeDefault(int width, int height, bool mipmaps = false);
   bool CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
 
  protected:

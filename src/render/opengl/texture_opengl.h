@@ -69,6 +69,9 @@ class Texture2DOpenGL : public Texture2D {
     height = h;
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId_));
     GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+    if (use_mipmaps) {
+      GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+    }
   }
 
  private:
@@ -141,6 +144,9 @@ class TextureCubeOpenGL : public TextureCube {
                             GL_RGBA,
                             GL_UNSIGNED_BYTE,
                             nullptr));
+    }
+    if (use_mipmaps) {
+      GL_CHECK(glGenerateMipmap(GL_TEXTURE_CUBE_MAP));
     }
   }
 

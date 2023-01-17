@@ -45,25 +45,26 @@ class FrameBufferOpenGL : public FrameBuffer {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
   }
 
-  void SetColorAttachment(std::shared_ptr<Texture2D> &color) override {
-    color_attachment_2d = color;
+  void SetColorAttachment(std::shared_ptr<Texture2D> &color, int level) override {
+    color_attachment_2d.tex = color;
+    color_attachment_2d.level = level;
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
                                     GL_TEXTURE_2D,
                                     color->GetId(),
-                                    0));
+                                    level));
   }
 
-  void SetColorAttachment(std::shared_ptr<TextureCube> &color, CubeMapFace face) override {
-    color_attachment_cube.cube_tex = color;
-    color_attachment_cube.cube_face = face;
+  void SetColorAttachment(std::shared_ptr<TextureCube> &color, CubeMapFace face, int level) override {
+    color_attachment_cube.tex = color;
+    color_attachment_cube.face = face;
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
                                     OpenGL::ConvertCubeFace(face),
                                     color->GetId(),
-                                    0));
+                                    level));
   }
 
   void SetDepthAttachment(std::shared_ptr<TextureDepth> &depth) override {
@@ -78,10 +79,15 @@ class FrameBufferOpenGL : public FrameBuffer {
  private:
   GLuint fbo_ = 0;
 
-  std::shared_ptr<Texture2D> color_attachment_2d;
   struct {
-    std::shared_ptr<TextureCube> cube_tex;
-    CubeMapFace cube_face = TEXTURE_CUBE_MAP_POSITIVE_X;
+    std::shared_ptr<Texture2D> tex;
+    int level = 0;
+  } color_attachment_2d;
+
+  struct {
+    std::shared_ptr<TextureCube> tex;
+    CubeMapFace face = TEXTURE_CUBE_MAP_POSITIVE_X;
+    int level = 0;
   } color_attachment_cube;
 
   std::shared_ptr<TextureDepth> depth_attachment;
