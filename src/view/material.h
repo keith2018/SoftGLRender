@@ -52,6 +52,7 @@ enum MaterialType {
 
 struct UniformsScene {
   glm::int32_t u_enablePointLight;
+  glm::int32_t u_enableIBL;
 
   glm::vec3 u_ambientColor;
   glm::vec3 u_cameraPosition;
@@ -78,8 +79,8 @@ class Material {
   virtual MaterialType Type() const = 0;
 
   virtual void BindUniforms() {
-    shader_program->BindUniforms(uniform_blocks);
-    shader_program->BindUniforms(uniform_samplers);
+    shader_program->BindUniformBlocks(uniform_blocks);
+    shader_program->BindUniformSamplers(uniform_samplers);
   };
 
   virtual void Reset() {
@@ -96,6 +97,7 @@ class Material {
 
   virtual void ResetTextures() {
     textures.clear();
+    texture_data.clear();
     textures_dirty = true;
   }
 
@@ -117,15 +119,13 @@ class Material {
   // static properties
   ShadingModel shading;
   RenderState render_state;
-  std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
 
-  // runtime properties: program, uniform
   std::shared_ptr<ShaderProgram> shader_program;
-  std::vector<std::shared_ptr<Uniform>> uniform_blocks;
-  std::vector<std::shared_ptr<Uniform>> uniform_samplers;
+  std::vector<std::shared_ptr<UniformBlock>> uniform_blocks;
+  std::unordered_map<int, std::shared_ptr<UniformSampler>> uniform_samplers;
 
-  // runtime properties: textures
   std::unordered_map<int, std::shared_ptr<Texture>> textures;
+  std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
 
  private:
   bool program_dirty = false;
@@ -157,6 +157,11 @@ class SkyboxMaterial : public Material {
  public:
   MaterialType Type() const override {
     return Material_Skybox;
+  }
+
+  void Reset() override {
+    Material::Reset();
+    ibl_ready = false;
   }
 
  public:

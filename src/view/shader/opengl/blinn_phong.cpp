@@ -26,6 +26,7 @@ layout (std140) uniform UniformsMVP {
 
 layout(std140) uniform UniformsScene {
     bool u_enablePointLight;
+    bool u_enableIBL;
 
     vec3 u_ambientColor;
     vec3 u_cameraPosition;
@@ -75,6 +76,7 @@ layout (std140) uniform UniformsMVP {
 
 layout(std140) uniform UniformsScene {
     bool u_enablePointLight;
+    bool u_enableIBL;
 
     vec3 u_ambientColor;
     vec3 u_cameraPosition;

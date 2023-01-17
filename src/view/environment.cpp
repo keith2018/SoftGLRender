@@ -113,7 +113,7 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   const char *sampler_name = Material::SamplerName(tex_usage);
   auto uniform = context.renderer->CreateUniformSampler(sampler_name);
   uniform->SetTexture(tex_in);
-  context.model_skybox.material.uniform_samplers.emplace_back(uniform);
+  context.model_skybox.material.uniform_samplers[tex_usage] = uniform;
 
   // shader program
   std::set<std::string> shader_defines = {Material::SamplerDefine(tex_usage)};
@@ -141,7 +141,7 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
                                 std::shared_ptr<TextureCube> &tex_out,
                                 int tex_out_level,
                                 const std::function<void()> &before_draw) {
-  static LookAtParam captureViews[] = {
+  static LookAtParam capture_views[] = {
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)},
@@ -159,7 +159,7 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
   context.renderer->SetViewPort(0, 0, width, height);
 
   for (int i = 0; i < 6; i++) {
-    auto &param = captureViews[i];
+    auto &param = capture_views[i];
     context.camera.LookAt(param.eye, param.center, param.up);
 
     // update mvp

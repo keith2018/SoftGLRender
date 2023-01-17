@@ -32,13 +32,11 @@ class Viewer {
   void DrawMeshWireframe(ModelMesh &mesh);
   void DrawMeshTextured(ModelMesh &mesh);
   void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
-
-  void SetupSkybox(ModelSkybox &skybox);
   void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
 
   void PipelineSetup(VertexArray &vertexes,
                      Material &material,
-                     const std::vector<std::shared_ptr<Uniform>> &uniform_blocks,
+                     const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks,
                      bool blend,
                      const std::function<void(RenderState &rs)> &extra_states);
   void PipelineDraw(VertexArray &vertexes, Material &material);
@@ -48,13 +46,15 @@ class Viewer {
   void SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
   void SetupTextures(Material &material);
   void SetupSamplerUniforms(Material &material, std::set<std::string> &shader_defines);
-  void SetupMaterial(Material &material, const std::vector<std::shared_ptr<Uniform>> &uniform_blocks);
+  void SetupMaterial(Material &material, const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks);
 
   void UpdateUniformScene();
   void UpdateUniformMVP(const glm::mat4 &transform, bool skybox = false);
   void UpdateUniformColor(const glm::vec4 &color);
 
   void InitSkyboxIBL(ModelSkybox &skybox);
+  bool IBLEnabled();
+  void UpdateIBLTextures(Material &material);
 
   static size_t GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
   static glm::mat4 AdjustModelCenter(BoundingBox &bounds);
@@ -69,6 +69,9 @@ class Viewer {
 
   Config &config_;
   Camera &camera_;
+
+  DemoScene *scene_ = nullptr;
+  std::shared_ptr<TextureCube> ibl_placeholder_ = nullptr;
 
   std::shared_ptr<Renderer> renderer_;
   std::shared_ptr<FrameBuffer> fbo_;

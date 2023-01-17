@@ -48,9 +48,13 @@ void Viewer::Create(int width, int height, int outTexId) {
   uniform_block_scene_ = renderer_->CreateUniformBlock("UniformsScene", sizeof(UniformsScene));
   uniforms_block_mvp_ = renderer_->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
   uniforms_block_color_ = renderer_->CreateUniformBlock("UniformsColor", sizeof(UniformsColor));
+
+  ibl_placeholder_ = CreateTextureCubeDefault(1, 1);
 }
 
 void Viewer::DrawFrame(DemoScene &scene) {
+  scene_ = &scene;
+
   // bind framebuffer
   fbo_->Bind();
 
@@ -68,35 +72,32 @@ void Viewer::DrawFrame(DemoScene &scene) {
 
   // draw world axis
   if (config_.world_axis && !config_.show_skybox) {
-    auto &lines = scene.world_axis;
     glm::mat4 axis_transform(1.0f);
-    DrawLines(lines, axis_transform);
+    DrawLines(scene_->world_axis, axis_transform);
   }
 
   // draw point light
   if (!config_.wireframe && config_.show_light) {
-    ModelPoints &points = scene.point_light;
     glm::mat4 light_transform(1.0f);
-    DrawPoints(points, light_transform);
+    DrawPoints(scene_->point_light, light_transform);
   }
 
   // init skybox ibl
   if (config_.show_skybox) {
-    SetupSkybox(scene.skybox);
-    InitSkyboxIBL(scene.skybox);
+    InitSkyboxIBL(scene_->skybox);
   }
 
   // adjust model center
-  glm::mat4 model_transform = AdjustModelCenter(scene.model->root_aabb);
+  glm::mat4 model_transform = AdjustModelCenter(scene_->model->root_aabb);
 
   // draw model nodes opaque
-  ModelNode &model_node = scene.model->root_node;
+  ModelNode &model_node = scene_->model->root_node;
   DrawModelNodes(model_node, model_transform, Alpha_Opaque, config_.wireframe);
 
   // draw skybox
   if (config_.show_skybox) {
     glm::mat4 skybox_transform(1.f);
-    DrawSkybox(scene.skybox, skybox_transform);
+    DrawSkybox(scene_->skybox, skybox_transform);
   }
 
   // draw model nodes blend
@@ -135,7 +136,9 @@ void Viewer::DrawLines(ModelLines &lines, glm::mat4 &transform) {
   PipelineDraw(lines, lines.material);
 }
 
-void Viewer::SetupSkybox(ModelSkybox &skybox) {
+void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
+  UpdateUniformMVP(transform, true);
+
   PipelineSetup(skybox,
                 skybox.material,
                 {uniforms_block_mvp_},
@@ -144,11 +147,6 @@ void Viewer::SetupSkybox(ModelSkybox &skybox) {
                   rs.depth_func = Depth_LEQUAL;
                   rs.depth_mask = false;
                 });
-}
-
-void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
-  UpdateUniformMVP(transform, true);
-  SetupSkybox(skybox);
   PipelineDraw(skybox, skybox.material);
 }
 
@@ -173,6 +171,12 @@ void Viewer::DrawMeshTextured(ModelMesh &mesh) {
                 {uniforms_block_mvp_, uniform_block_scene_, uniforms_block_color_},
                 mesh.material_textured.alpha_mode == Alpha_Blend,
                 nullptr);
+
+  // update IBL textures
+  if (mesh.material_textured.shading == Shading_PBR) {
+    UpdateIBLTextures(mesh.material_textured);
+  }
+
   PipelineDraw(mesh, mesh.material_textured);
 }
 
@@ -205,7 +209,7 @@ void Viewer::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
 
 void Viewer::PipelineSetup(VertexArray &vertexes,
                            Material &material,
-                           const std::vector<std::shared_ptr<Uniform>> &uniform_blocks,
+                           const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks,
                            bool blend,
                            const std::function<void(RenderState &rs)> &extra_states) {
   SetupVertexArray(vertexes);
@@ -275,6 +279,12 @@ void Viewer::SetupTextures(Material &material) {
     texture->SetImageData(kv.second);
     material.textures[kv.first] = texture;
   }
+
+  // default IBL texture
+  if (material.shading == Shading_PBR) {
+    material.textures[TextureUsage_IBL_IRRADIANCE] = ibl_placeholder_;
+    material.textures[TextureUsage_IBL_PREFILTER] = ibl_placeholder_;
+  }
 }
 
 void Viewer::SetupSamplerUniforms(Material &material, std::set<std::string> &shader_defines) {
@@ -284,7 +294,7 @@ void Viewer::SetupSamplerUniforms(Material &material, std::set<std::string> &sha
     if (sampler_name) {
       auto uniform = renderer_->CreateUniformSampler(sampler_name);
       uniform->SetTexture(kv.second);
-      material.uniform_samplers.emplace_back(std::move(uniform));
+      material.uniform_samplers[kv.first] = std::move(uniform);
     }
 
     // add shader defines
@@ -333,7 +343,7 @@ void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
   }
 }
 
-void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr<Uniform>> &uniform_blocks) {
+void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks) {
   material.CreateTextures([&]() -> void {
     SetupTextures(material);
   });
@@ -348,6 +358,8 @@ void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr
 
 void Viewer::UpdateUniformScene() {
   uniforms_scene_.u_enablePointLight = config_.show_light ? 1 : 0;
+  uniforms_scene_.u_enableIBL = IBLEnabled() ? 1 : 0;
+
   uniforms_scene_.u_ambientColor = config_.ambient_color;
   uniforms_scene_.u_cameraPosition = camera_.Eye();
   uniforms_scene_.u_pointLightPosition = config_.point_light_position;
@@ -376,6 +388,10 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
     return;
   }
 
+  skybox.material.CreateTextures([&]() -> void {
+    SetupTextures(skybox.material);
+  });
+
   std::shared_ptr<TextureCube> texture_cube = nullptr;
 
   // convert equirectangular to cube map if needed
@@ -391,7 +407,7 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
         texture_cube = tex_cvt;
         skybox.material.textures[TextureUsage_CUBE] = tex_cvt;
 
-        // change skybox material type
+        // update skybox material
         skybox.material.textures.erase(TextureUsage_EQUIRECTANGULAR);
         skybox.material.ResetProgram();
       }
@@ -424,6 +440,21 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
   }
 
   skybox.material.ibl_ready = true;
+}
+
+bool Viewer::IBLEnabled() {
+  return config_.show_skybox && scene_->skybox.material.ibl_ready;
+}
+
+void Viewer::UpdateIBLTextures(Material &material) {
+  if (IBLEnabled()) {
+    auto &skybox_textures = scene_->skybox.material.textures;
+    material.uniform_samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(skybox_textures[TextureUsage_IBL_IRRADIANCE]);
+    material.uniform_samplers[TextureUsage_IBL_PREFILTER]->SetTexture(skybox_textures[TextureUsage_IBL_PREFILTER]);
+  } else {
+    material.uniform_samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(ibl_placeholder_);
+    material.uniform_samplers[TextureUsage_IBL_PREFILTER]->SetTexture(ibl_placeholder_);
+  }
 }
 
 std::shared_ptr<TextureCube> Viewer::CreateTextureCubeDefault(int width, int height, bool mipmaps) {

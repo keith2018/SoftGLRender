@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <set>
 #include "uniform.h"
+#include "base/logger.h"
+
 
 namespace SoftGL {
 
@@ -25,10 +27,20 @@ class ShaderProgram {
     }
   }
 
-  virtual void BindUniforms(std::vector<std::shared_ptr<Uniform>> &uniforms) {
+  virtual void BindUniformBlocks(std::vector<std::shared_ptr<UniformBlock>> &uniforms) {
     int binding = 0;
     for (auto &uniform : uniforms) {
       bool success = SetUniform(*uniform, binding);
+      if (success) {
+        binding++;
+      }
+    }
+  }
+
+  virtual void BindUniformSamplers(std::unordered_map<int, std::shared_ptr<UniformSampler>> &uniforms) {
+    int binding = 0;
+    for (auto &kv : uniforms) {
+      bool success = SetUniform(*kv.second, binding);
       if (success) {
         binding++;
       }

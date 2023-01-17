@@ -36,7 +36,7 @@ class Config {
   bool wireframe = false;
   bool wireframe_show_clip = false;
   bool world_axis = true;
-  bool show_skybox = true;
+  bool show_skybox = false;
   bool cull_face = true;
   bool depth_test = true;
   bool early_z = false;
