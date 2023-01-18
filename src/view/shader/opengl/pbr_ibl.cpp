@@ -17,6 +17,11 @@ out vec2 v_texCoord;
 out vec3 v_normalVector;
 out vec3 v_worldPos;
 
+#if defined(NORMAL_MAP)
+out vec3 v_normal;
+out vec3 v_tangent;
+#endif
+
 out vec3 v_cameraDirection;
 out vec3 v_lightDirection;
 
@@ -46,6 +51,13 @@ void main() {
     v_normalVector = mat3(u_modelMatrix) * a_normal;
     v_lightDirection = u_pointLightPosition - v_worldPos;
     v_cameraDirection = u_cameraPosition - v_worldPos;
+
+    #if defined(NORMAL_MAP)
+    vec3 N = normalize(u_inverseTransposeModelMatrix * a_normal);
+    vec3 T = normalize(u_inverseTransposeModelMatrix * a_tangent);
+    v_normal = N;
+    v_tangent = normalize(T - dot(T, N) * N);
+    #endif
 }
 )";
 
@@ -53,6 +65,11 @@ const char *PBR_IBL_FS = R"(
 in vec2 v_texCoord;
 in vec3 v_normalVector;
 in vec3 v_worldPos;
+
+#if defined(NORMAL_MAP)
+in vec3 v_normal;
+in vec3 v_tangent;
+#endif
 
 in vec3 v_cameraDirection;
 in vec3 v_lightDirection;
@@ -106,18 +123,13 @@ const float PI = 3.14159265359;
 
 vec3 GetNormalFromMap() {
     #if defined(NORMAL_MAP)
-    vec3 tangentNormal = texture(u_normalMap, v_texCoord).rgb * 2.0 - 1.0;
-
-    vec3 Q1  = dFdx(v_worldPos);
-    vec3 Q2  = dFdy(v_worldPos);
-    vec2 st1 = dFdx(v_texCoord);
-    vec2 st2 = dFdy(v_texCoord);
-
-    vec3 N   = normalize(v_normalVector);
-    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B  = -normalize(cross(N, T));
+    vec3 N = normalize(v_normal);
+    vec3 T = normalize(v_tangent);
+    T = normalize(T - dot(T, N) * N);
+    vec3 B = cross(T, N);
     mat3 TBN = mat3(T, B, N);
 
+    vec3 tangentNormal = texture(u_normalMap, v_texCoord).rgb * 2.0 - 1.0;
     return normalize(TBN * tangentNormal);
     #else
     return normalize(v_normalVector);
