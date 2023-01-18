@@ -42,6 +42,8 @@ enum TextureUsage {
 
   TextureUsage_IBL_IRRADIANCE,
   TextureUsage_IBL_PREFILTER,
+
+  TextureUsage_QUAD_FILTER,
 };
 
 enum MaterialType {

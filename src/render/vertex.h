@@ -18,10 +18,10 @@ enum PrimitiveType {
 };
 
 struct Vertex {
-  glm::vec3 a_position = {0.f, 0.f, 0.f};
-  glm::vec2 a_texCoord = {0.f, 0.f};
-  glm::vec3 a_normal = {0.f, 0.f, 0.f};
-  glm::vec3 a_tangent = {0.f, 0.f, 0.f};
+  glm::vec3 a_position;
+  glm::vec2 a_texCoord;
+  glm::vec3 a_normal;
+  glm::vec3 a_tangent;
 };
 
 class VertexArrayObject {

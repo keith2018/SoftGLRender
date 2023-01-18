@@ -11,6 +11,7 @@
 #include "model.h"
 #include "config.h"
 #include "camera.h"
+#include "quad_filter.h"
 
 
 namespace SoftGL {
@@ -27,6 +28,9 @@ class Viewer {
   virtual void Destroy();
 
  private:
+  void FXAASetup();
+  void FXAADraw();
+
   void DrawPoints(ModelPoints &points, glm::mat4 &transform);
   void DrawLines(ModelLines &lines, glm::mat4 &transform);
   void DrawMeshWireframe(ModelMesh &mesh);
@@ -63,18 +67,23 @@ class Viewer {
   bool CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
 
  protected:
+  Config &config_;
+  Camera &camera_;
+
   int width_ = 0;
   int height_ = 0;
   int outTexId_ = 0;
 
-  Config &config_;
-  Camera &camera_;
-
   DemoScene *scene_ = nullptr;
   std::shared_ptr<TextureCube> ibl_placeholder_ = nullptr;
+  AAType aa_type_ = AAType_NONE;
 
   std::shared_ptr<Renderer> renderer_;
   std::shared_ptr<FrameBuffer> fbo_;
+  std::shared_ptr<Texture2D> color_tex_out_;
+
+  std::shared_ptr<QuadFilter> fxaa_filter_;
+  std::shared_ptr<Texture2D> color_tex_fxaa_;
 
   ClearState clear_state_;
 

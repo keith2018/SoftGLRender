@@ -26,4 +26,7 @@ extern const char *IBL_IRRADIANCE_FS;
 extern const char *IBL_PREFILTER_VS;
 extern const char *IBL_PREFILTER_FS;
 
+extern const char *FXAA_VS;
+extern const char *FXAA_FS;
+
 }

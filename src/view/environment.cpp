@@ -106,6 +106,9 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   // renderer
   context.renderer = std::make_shared<RendererOpenGL>();
 
+  // fbo
+  context.fbo = context.renderer->CreateFrameBuffer();
+
   // vao
   context.model_skybox.vao = context.renderer->CreateVertexArrayObject(context.model_skybox);
 
@@ -129,9 +132,6 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   // uniforms
   context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
   context.model_skybox.material.uniform_blocks.emplace_back(context.uniforms_block_mvp);
-
-  // fbo
-  context.fbo = context.renderer->CreateFrameBuffer();
   return true;
 }
 
@@ -152,7 +152,6 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
 
   UniformsMVP uniforms_mvp{};
   glm::mat4 model_matrix(1.f);
-  ClearState clear_state;
 
   // draw
   context.fbo->Bind();
@@ -173,7 +172,7 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
 
     // draw
     context.fbo->SetColorAttachment(tex_out, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), tex_out_level);
-    context.renderer->Clear(clear_state);
+    context.renderer->Clear({});
     context.model_skybox.material.shader_program->Use();
     context.model_skybox.material.BindUniforms();
     context.renderer->SetVertexArray(context.model_skybox);

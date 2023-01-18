@@ -33,13 +33,13 @@ void Viewer::Create(int width, int height, int outTexId) {
   fbo_->SetDepthAttachment(depth_attachment);
 
   // color attachment
-  auto color_attachment = renderer_->CreateTexture2DRef(outTexId);
-  color_attachment->InitImageData(width, height);
   Sampler2D sampler;
+  sampler.use_mipmaps = false;
   sampler.filter_min = Filter_NEAREST;
-  sampler.filter_mag = Filter_NEAREST;
-  color_attachment->SetSampler(sampler);
-  fbo_->SetColorAttachment(color_attachment);
+  color_tex_out_ = renderer_->CreateTexture2DRef(outTexId);
+  color_tex_out_->InitImageData(width, height);
+  color_tex_out_->SetSampler(sampler);
+  fbo_->SetColorAttachment(color_tex_out_, 0);
 
   if (!fbo_->IsValid()) {
     LOGE("create framebuffer failed");
@@ -58,8 +58,40 @@ void Viewer::DrawFrame(DemoScene &scene) {
   // bind framebuffer
   fbo_->Bind();
 
-  // view port
-  renderer_->SetViewPort(0, 0, width_, height_);
+  // anti-aliasing
+  aa_type_ = (AAType) config_.aa_type;
+  if (config_.wireframe) {
+    aa_type_ = AAType_NONE;
+  }
+
+  // FXAA
+  if (aa_type_ == AAType_FXAA) {
+    FXAASetup();
+  }
+
+  // set framebuffer output
+  switch (aa_type_) {
+    case AAType_FXAA: {
+      fbo_->SetColorAttachment(color_tex_fxaa_, 0);
+      fbo_->UpdateAttachmentsSize(width_, height_);
+      renderer_->SetViewPort(0, 0, width_, height_);
+      break;
+    }
+
+    case AAType_SSAA: {
+      fbo_->SetColorAttachment(color_tex_out_, 0);
+      fbo_->UpdateAttachmentsSize(width_ * 2, height_ * 2);
+      renderer_->SetViewPort(0, 0, width_ * 2, height_ * 2);
+      break;
+    }
+
+    default: {
+      fbo_->SetColorAttachment(color_tex_out_, 0);
+      fbo_->UpdateAttachmentsSize(width_, height_);
+      renderer_->SetViewPort(0, 0, width_, height_);
+      break;
+    }
+  }
 
   // clear
   clear_state_.color_flag = true;
@@ -102,10 +134,33 @@ void Viewer::DrawFrame(DemoScene &scene) {
 
   // draw model nodes blend
   DrawModelNodes(model_node, model_transform, Alpha_Blend, config_.wireframe);
+
+  // FXAA
+  if (aa_type_ == AAType_FXAA) {
+    FXAADraw();
+  }
 }
 
-void Viewer::Destroy() {
+void Viewer::Destroy() {}
 
+void Viewer::FXAASetup() {
+  if (!color_tex_fxaa_) {
+    Sampler2D sampler;
+    sampler.use_mipmaps = false;
+    sampler.filter_min = Filter_NEAREST;
+
+    color_tex_fxaa_ = renderer_->CreateTexture2D();
+    color_tex_fxaa_->InitImageData(width_, height_);
+    color_tex_fxaa_->SetSampler(sampler);
+  }
+
+  if (!fxaa_filter_) {
+    fxaa_filter_ = std::make_shared<QuadFilter>(color_tex_fxaa_, color_tex_out_, FXAA_VS, FXAA_FS);
+  }
+}
+
+void Viewer::FXAADraw() {
+  fxaa_filter_->Draw();
 }
 
 void Viewer::DrawPoints(ModelPoints &points, glm::mat4 &transform) {

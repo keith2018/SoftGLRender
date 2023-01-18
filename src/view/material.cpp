@@ -22,6 +22,7 @@ const char *Material::TextureUsageStr(TextureUsage usage) {
     TexType_STR(TextureUsage_EQUIRECTANGULAR);
     TexType_STR(TextureUsage_IBL_IRRADIANCE);
     TexType_STR(TextureUsage_IBL_PREFILTER);
+    TexType_STR(TextureUsage_QUAD_FILTER);
     default:
       break;
   }
@@ -74,6 +75,8 @@ const char *Material::SamplerName(TextureUsage usage) {
       return "u_irradianceMap";
     case TextureUsage_IBL_PREFILTER:
       return "u_prefilterMap";
+    case TextureUsage_QUAD_FILTER:
+      return "u_screenTexture";
     default:
       break;
   }
