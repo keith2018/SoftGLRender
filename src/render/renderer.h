@@ -43,7 +43,7 @@ class Renderer {
   virtual void Clear(const ClearState &state) = 0;
   virtual void SetRenderState(const RenderState &state) = 0;
   virtual void SetVertexArray(VertexArray &vertex) = 0;
-  virtual void SetShaderProgram(ShaderProgram &program) = 0;
+  virtual void SetShaderProgram(ShaderProgram &program, ProgramUniforms &uniforms) = 0;
   virtual void Draw(PrimitiveType type) = 0;
 };
 

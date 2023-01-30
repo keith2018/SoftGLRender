@@ -73,7 +73,7 @@ bool Environment::GeneratePrefilterMap(const std::shared_ptr<TextureCube> &tex_i
   }
 
   auto uniforms_block_prefilter = context.renderer->CreateUniformBlock("UniformsPrefilter", sizeof(UniformsPrefilter));
-  context.model_skybox.material.shader_program->AddUniformBlock(uniforms_block_prefilter);
+  context.model_skybox.material.uniforms.uniform_blocks_.emplace_back(uniforms_block_prefilter);
 
   UniformsPrefilter uniforms_prefilter{};
 
@@ -127,10 +127,10 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   const char *sampler_name = Material::SamplerName(tex_usage);
   auto uniform = context.renderer->CreateUniformSampler(sampler_name);
   uniform->SetTexture(tex_in);
-  context.model_skybox.material.shader_program->AddUniformSampler(tex_usage, uniform);
+  context.model_skybox.material.uniforms.uniform_samplers_[tex_usage] = uniform;
 
   context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  context.model_skybox.material.shader_program->AddUniformBlock(context.uniforms_block_mvp);
+  context.model_skybox.material.uniforms.uniform_blocks_.emplace_back(context.uniforms_block_mvp);
 
   return true;
 }
@@ -175,7 +175,7 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
     context.renderer->Clear({});
     context.renderer->SetVertexArray(context.model_skybox);
     context.renderer->SetRenderState(context.model_skybox.material.render_state);
-    context.renderer->SetShaderProgram(*context.model_skybox.material.shader_program);
+    context.renderer->SetShaderProgram(*context.model_skybox.material.shader_program, context.model_skybox.material.uniforms);
     context.renderer->Draw(context.model_skybox.primitive_type);
   }
 }

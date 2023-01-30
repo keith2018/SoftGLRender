@@ -86,6 +86,7 @@ class Material {
   }
 
   virtual void ResetProgram() {
+    uniforms.Reset();
     shader_program = nullptr;
     program_dirty = true;
   }
@@ -113,8 +114,8 @@ class Material {
  public:
   ShadingModel shading;
   RenderState render_state;
+  ProgramUniforms uniforms;
   std::shared_ptr<ShaderProgram> shader_program;
-
   std::unordered_map<int, std::shared_ptr<Texture>> textures;
   std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
 

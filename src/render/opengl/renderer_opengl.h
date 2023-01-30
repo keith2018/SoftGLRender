@@ -38,7 +38,7 @@ class RendererOpenGL : public Renderer {
   void Clear(const ClearState &state) override;
   void SetRenderState(const RenderState &state) override;
   void SetVertexArray(VertexArray &vertex) override;
-  void SetShaderProgram(ShaderProgram &program) override;
+  void SetShaderProgram(ShaderProgram &program, ProgramUniforms &uniforms) override;
   void Draw(PrimitiveType type) override;
 
  private:

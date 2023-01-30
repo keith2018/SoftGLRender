@@ -279,7 +279,7 @@ void Viewer::PipelineSetup(VertexArray &vertexes,
 void Viewer::PipelineDraw(VertexArray &vertexes, Material &material) {
   renderer_->SetVertexArray(vertexes);
   renderer_->SetRenderState(material.render_state);
-  renderer_->SetShaderProgram(*material.shader_program);
+  renderer_->SetShaderProgram(*material.shader_program, material.uniforms);
   renderer_->Draw(vertexes.primitive_type);
 }
 
@@ -358,7 +358,7 @@ void Viewer::SetupSamplerUniforms(Material &material) {
     if (sampler_name) {
       auto uniform = renderer_->CreateUniformSampler(sampler_name);
       uniform->SetTexture(kv.second);
-      material.shader_program->AddUniformSampler(kv.first, uniform);
+      material.uniforms.uniform_samplers_[kv.first] = std::move(uniform);
     }
   }
 }
@@ -412,7 +412,7 @@ void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr
     SetupShaderProgram(material, shader_defines);
     SetupSamplerUniforms(material);
     for (auto &block : uniform_blocks) {
-      material.shader_program->AddUniformBlock(block);
+      material.uniforms.uniform_blocks_.emplace_back(block);
     }
   });
 }
@@ -509,7 +509,7 @@ bool Viewer::IBLEnabled() {
 }
 
 void Viewer::UpdateIBLTextures(Material &material) {
-  auto &samplers = material.shader_program->GetUniformSamplers();
+  auto &samplers = material.uniforms.uniform_samplers_;
   if (IBLEnabled()) {
     auto &skybox_textures = scene_->skybox.material.textures;
     samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(skybox_textures[TextureUsage_IBL_IRRADIANCE]);

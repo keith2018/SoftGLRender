@@ -104,9 +104,10 @@ void RendererOpenGL::SetVertexArray(VertexArray &vertex) {
   vao->Bind();
 }
 
-void RendererOpenGL::SetShaderProgram(ShaderProgram &program) {
+void RendererOpenGL::SetShaderProgram(ShaderProgram &program, ProgramUniforms &uniforms) {
   auto &program_gl = dynamic_cast<ShaderProgramOpenGL &>(program);
   program_gl.Use();
+  program_gl.BindUniforms(uniforms);
 }
 
 void RendererOpenGL::Draw(PrimitiveType type) {

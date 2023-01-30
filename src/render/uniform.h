@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include "texture.h"
 
 
@@ -49,6 +50,18 @@ class UniformSampler : public Uniform {
  public:
   explicit UniformSampler(const std::string &name) : Uniform(name) {}
   virtual void SetTexture(const std::shared_ptr<Texture> &tex) = 0;
+};
+
+class ProgramUniforms {
+ public:
+  void Reset() {
+    uniform_blocks_.clear();
+    uniform_samplers_.clear();
+  }
+
+ public:
+  std::vector<std::shared_ptr<UniformBlock>> uniform_blocks_;
+  std::unordered_map<int, std::shared_ptr<UniformSampler>> uniform_samplers_;
 };
 
 }

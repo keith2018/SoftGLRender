@@ -15,6 +15,10 @@ namespace SoftGL {
 
 class ShaderProgramOpenGL : public ShaderProgram {
  public:
+  int GetId() const override {
+    return (int) programId_;
+  }
+
   void AddDefine(const std::string &def) override {
     program_glsl_.AddDefine(def);
   }
@@ -25,19 +29,13 @@ class ShaderProgramOpenGL : public ShaderProgram {
     return ret;
   }
 
-  int GetId() const override {
-    return (int) programId_;
-  }
-
   void Use() {
     program_glsl_.Use();
-    BindUniforms();
-  };
+  }
 
- protected:
-  void BindUniforms() {
+  void BindUniforms(ProgramUniforms &uniforms) {
     int binding = 0;
-    for (auto &uniform : uniform_blocks_) {
+    for (auto &uniform : uniforms.uniform_blocks_) {
       bool success = SetUniform(*uniform, binding);
       if (success) {
         binding++;
@@ -45,7 +43,7 @@ class ShaderProgramOpenGL : public ShaderProgram {
     }
 
     binding = 0;
-    for (auto &kv : uniform_samplers_) {
+    for (auto &kv : uniforms.uniform_samplers_) {
       bool success = SetUniform(*kv.second, binding);
       if (success) {
         binding++;
@@ -53,6 +51,7 @@ class ShaderProgramOpenGL : public ShaderProgram {
     }
   }
 
+ protected:
   bool SetUniform(Uniform &uniform, int binding) {
     int hash = uniform.GetHash();
     int loc = -1;
