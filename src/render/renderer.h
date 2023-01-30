@@ -38,10 +38,12 @@ class Renderer {
   virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name) = 0;
 
   // pipeline
+  virtual void SetFrameBuffer(FrameBuffer &frame_buffer) = 0;
   virtual void SetViewPort(int x, int y, int width, int height) = 0;
   virtual void Clear(const ClearState &state) = 0;
   virtual void SetRenderState(const RenderState &state) = 0;
   virtual void SetVertexArray(VertexArray &vertex) = 0;
+  virtual void SetShaderProgram(ShaderProgram &program) = 0;
   virtual void Draw(PrimitiveType type) = 0;
 };
 

@@ -71,7 +71,7 @@ class VertexArrayObjectOpenGL : public VertexArrayObject {
     return (int) vao_;
   }
 
-  void Bind() override {
+  void Bind() {
     if (vao_) {
       GL_CHECK(glBindVertexArray(vao_));
     }

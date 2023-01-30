@@ -33,10 +33,12 @@ class RendererOpenGL : public Renderer {
   std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name) override;
 
   // pipeline
+  void SetFrameBuffer(FrameBuffer &frame_buffer) override;
   void SetViewPort(int x, int y, int width, int height) override;
   void Clear(const ClearState &state) override;
   void SetRenderState(const RenderState &state) override;
   void SetVertexArray(VertexArray &vertex) override;
+  void SetShaderProgram(ShaderProgram &program) override;
   void Draw(PrimitiveType type) override;
 
  private:

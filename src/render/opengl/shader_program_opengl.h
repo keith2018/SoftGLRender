@@ -25,17 +25,56 @@ class ShaderProgramOpenGL : public ShaderProgram {
     return ret;
   }
 
-  void Use() override {
-    program_glsl_.Use();
-  };
-
   int GetId() const override {
     return (int) programId_;
   }
 
+  void Use() {
+    program_glsl_.Use();
+    BindUniforms();
+  };
+
+ protected:
+  void BindUniforms() {
+    int binding = 0;
+    for (auto &uniform : uniform_blocks_) {
+      bool success = SetUniform(*uniform, binding);
+      if (success) {
+        binding++;
+      }
+    }
+
+    binding = 0;
+    for (auto &kv : uniform_samplers_) {
+      bool success = SetUniform(*kv.second, binding);
+      if (success) {
+        binding++;
+      }
+    }
+  }
+
+  bool SetUniform(Uniform &uniform, int binding) {
+    int hash = uniform.GetHash();
+    int loc = -1;
+    if (uniform_locations_.find(hash) == uniform_locations_.end()) {
+      loc = uniform.GetLocation(*this);
+      uniform_locations_[hash] = loc;
+    } else {
+      loc = uniform_locations_[hash];
+    }
+
+    if (loc < 0) {
+      return false;
+    }
+
+    uniform.BindProgram(*this, loc, binding);
+    return true;
+  };
+
  private:
   GLuint programId_ = 0;
   ProgramGLSL program_glsl_;
+  std::unordered_map<int, int> uniform_locations_;
 };
 
 }

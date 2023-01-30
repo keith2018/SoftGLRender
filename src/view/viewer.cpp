@@ -55,8 +55,8 @@ void Viewer::Create(int width, int height, int outTexId) {
 void Viewer::DrawFrame(DemoScene &scene) {
   scene_ = &scene;
 
-  // bind framebuffer
-  fbo_->Bind();
+  // set framebuffer
+  renderer_->SetFrameBuffer(*fbo_);
 
   // anti-aliasing
   aa_type_ = (AAType) config_.aa_type;
@@ -155,6 +155,10 @@ void Viewer::FXAASetup() {
   }
 
   if (!fxaa_filter_) {
+    // reset output texture size
+    if (color_tex_out_->width != width_ || color_tex_out_->height != height_) {
+      color_tex_out_->InitImageData(width_, height_);
+    }
     fxaa_filter_ = std::make_shared<QuadFilter>(color_tex_fxaa_, color_tex_out_, FXAA_VS, FXAA_FS);
   }
 }
@@ -273,10 +277,9 @@ void Viewer::PipelineSetup(VertexArray &vertexes,
 }
 
 void Viewer::PipelineDraw(VertexArray &vertexes, Material &material) {
-  material.shader_program->Use();
-  material.BindUniforms();
   renderer_->SetVertexArray(vertexes);
   renderer_->SetRenderState(material.render_state);
+  renderer_->SetShaderProgram(*material.shader_program);
   renderer_->Draw(vertexes.primitive_type);
 }
 
@@ -306,7 +309,7 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
   }
 }
 
-void Viewer::SetupTextures(Material &material) {
+void Viewer::SetupTextures(Material &material, std::set<std::string> &shader_defines) {
   SamplerCube sampler_cube;
   Sampler2D sampler_2d;
 
@@ -333,6 +336,12 @@ void Viewer::SetupTextures(Material &material) {
     // upload image data
     texture->SetImageData(kv.second);
     material.textures[kv.first] = texture;
+
+    // add shader defines
+    const char *sampler_define = Material::SamplerDefine((TextureUsage) kv.first);
+    if (sampler_define) {
+      shader_defines.insert(sampler_define);
+    }
   }
 
   // default IBL texture
@@ -342,20 +351,14 @@ void Viewer::SetupTextures(Material &material) {
   }
 }
 
-void Viewer::SetupSamplerUniforms(Material &material, std::set<std::string> &shader_defines) {
+void Viewer::SetupSamplerUniforms(Material &material) {
   for (auto &kv : material.textures) {
     // create sampler uniform
     const char *sampler_name = Material::SamplerName((TextureUsage) kv.first);
     if (sampler_name) {
       auto uniform = renderer_->CreateUniformSampler(sampler_name);
       uniform->SetTexture(kv.second);
-      material.uniform_samplers[kv.first] = std::move(uniform);
-    }
-
-    // add shader defines
-    const char *sampler_define = Material::SamplerDefine((TextureUsage) kv.first);
-    if (sampler_define) {
-      shader_defines.insert(sampler_define);
+      material.shader_program->AddUniformSampler(kv.first, uniform);
     }
   }
 }
@@ -399,15 +402,18 @@ void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
 }
 
 void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks) {
+  std::set<std::string> shader_defines;
+
   material.CreateTextures([&]() -> void {
-    SetupTextures(material);
+    SetupTextures(material, shader_defines);
   });
 
   material.CreateProgram([&]() -> void {
-    std::set<std::string> shader_defines;
-    SetupSamplerUniforms(material, shader_defines);
-    material.uniform_blocks = uniform_blocks;
     SetupShaderProgram(material, shader_defines);
+    SetupSamplerUniforms(material);
+    for (auto &block : uniform_blocks) {
+      material.shader_program->AddUniformBlock(block);
+    }
   });
 }
 
@@ -443,8 +449,9 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
     return;
   }
 
+  std::set<std::string> shader_defines;
   skybox.material.CreateTextures([&]() -> void {
-    SetupTextures(skybox.material);
+    SetupTextures(skybox.material, shader_defines);
   });
 
   std::shared_ptr<TextureCube> texture_cube = nullptr;
@@ -502,13 +509,14 @@ bool Viewer::IBLEnabled() {
 }
 
 void Viewer::UpdateIBLTextures(Material &material) {
+  auto &samplers = material.shader_program->GetUniformSamplers();
   if (IBLEnabled()) {
     auto &skybox_textures = scene_->skybox.material.textures;
-    material.uniform_samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(skybox_textures[TextureUsage_IBL_IRRADIANCE]);
-    material.uniform_samplers[TextureUsage_IBL_PREFILTER]->SetTexture(skybox_textures[TextureUsage_IBL_PREFILTER]);
+    samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(skybox_textures[TextureUsage_IBL_IRRADIANCE]);
+    samplers[TextureUsage_IBL_PREFILTER]->SetTexture(skybox_textures[TextureUsage_IBL_PREFILTER]);
   } else {
-    material.uniform_samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(ibl_placeholder_);
-    material.uniform_samplers[TextureUsage_IBL_PREFILTER]->SetTexture(ibl_placeholder_);
+    samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(ibl_placeholder_);
+    samplers[TextureUsage_IBL_PREFILTER]->SetTexture(ibl_placeholder_);
   }
 }
 

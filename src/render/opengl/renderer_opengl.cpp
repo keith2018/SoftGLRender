@@ -57,15 +57,20 @@ std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::
 }
 
 // pipeline
+void RendererOpenGL::SetFrameBuffer(FrameBuffer &frame_buffer) {
+  auto &fbo = dynamic_cast<FrameBufferOpenGL &>(frame_buffer);
+  fbo.Bind();
+}
+
 void RendererOpenGL::SetViewPort(int x, int y, int width, int height) {
   GL_CHECK(glViewport(x, y, width, height));
 }
 
 void RendererOpenGL::Clear(const ClearState &state) {
   GL_CHECK(glClearColor(state.clear_color.r,
-               state.clear_color.g,
-               state.clear_color.b,
-               state.clear_color.a));
+                        state.clear_color.g,
+                        state.clear_color.b,
+                        state.clear_color.a));
   GLbitfield clear_bit = 0;
   if (state.color_flag) {
     clear_bit = clear_bit | GL_COLOR_BUFFER_BIT;
@@ -95,7 +100,13 @@ void RendererOpenGL::SetRenderState(const RenderState &state) {
 
 void RendererOpenGL::SetVertexArray(VertexArray &vertex) {
   vertexArray_ = &vertex;
-  vertex.vao->Bind();
+  auto vao = std::dynamic_pointer_cast<VertexArrayObjectOpenGL>(vertex.vao);
+  vao->Bind();
+}
+
+void RendererOpenGL::SetShaderProgram(ShaderProgram &program) {
+  auto &program_gl = dynamic_cast<ShaderProgramOpenGL &>(program);
+  program_gl.Use();
 }
 
 void RendererOpenGL::Draw(PrimitiveType type) {

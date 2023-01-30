@@ -41,12 +41,6 @@ QuadFilter::QuadFilter(std::shared_ptr<Texture2D> &tex_in,
   // vao
   quad_mesh_.vao = renderer_->CreateVertexArrayObject(quad_mesh_);
 
-  // texture
-  const char *sampler_name = Material::SamplerName(TextureUsage_QUAD_FILTER);
-  auto uniform = renderer_->CreateUniformSampler(sampler_name);
-  uniform->SetTexture(tex_in);
-  quad_mesh_.material_textured.uniform_samplers[TextureUsage_QUAD_FILTER] = uniform;
-
   // program
   auto program = renderer_->CreateShaderProgram();
   bool success = program->CompileAndLink(vsSource, fsSource);
@@ -57,10 +51,15 @@ QuadFilter::QuadFilter(std::shared_ptr<Texture2D> &tex_in,
   quad_mesh_.material_textured.shader_program = program;
 
   // uniforms
+  const char *sampler_name = Material::SamplerName(TextureUsage_QUAD_FILTER);
+  auto uniform = renderer_->CreateUniformSampler(sampler_name);
+  uniform->SetTexture(tex_in);
+  quad_mesh_.material_textured.shader_program->AddUniformSampler(TextureUsage_QUAD_FILTER, uniform);
+
   auto uniforms_block_filter = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
   UniformsQuadFilter uniforms_filter{glm::vec2(width_, height_)};
   uniforms_block_filter->SetData(&uniforms_filter, sizeof(UniformsQuadFilter));
-  quad_mesh_.material_textured.uniform_blocks.emplace_back(uniforms_block_filter);
+  quad_mesh_.material_textured.shader_program->AddUniformBlock(uniforms_block_filter);
 
   init_ready_ = true;
 }
@@ -70,14 +69,13 @@ void QuadFilter::Draw() {
     return;
   }
 
-  fbo_->Bind();
+  renderer_->SetFrameBuffer(*fbo_);
   renderer_->SetViewPort(0, 0, width_, height_);
 
   renderer_->Clear({});
-  quad_mesh_.material_textured.shader_program->Use();
-  quad_mesh_.material_textured.BindUniforms();
   renderer_->SetVertexArray(quad_mesh_);
   renderer_->SetRenderState(quad_mesh_.material_textured.render_state);
+  renderer_->SetShaderProgram(*quad_mesh_.material_textured.shader_program);
   renderer_->Draw(quad_mesh_.primitive_type);
 }
 

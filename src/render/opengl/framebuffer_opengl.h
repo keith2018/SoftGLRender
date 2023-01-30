@@ -36,12 +36,8 @@ class FrameBufferOpenGL : public FrameBuffer {
     return glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
   }
 
-  void Bind() override {
+  void Bind() {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
-  }
-
-  void Unbind() override {
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
   }
 
   void SetColorAttachment(std::shared_ptr<Texture2D> &color, int level) override {

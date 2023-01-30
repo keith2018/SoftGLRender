@@ -73,7 +73,7 @@ bool Environment::GeneratePrefilterMap(const std::shared_ptr<TextureCube> &tex_i
   }
 
   auto uniforms_block_prefilter = context.renderer->CreateUniformBlock("UniformsPrefilter", sizeof(UniformsPrefilter));
-  context.model_skybox.material.uniform_blocks.emplace_back(uniforms_block_prefilter);
+  context.model_skybox.material.shader_program->AddUniformBlock(uniforms_block_prefilter);
 
   UniformsPrefilter uniforms_prefilter{};
 
@@ -112,12 +112,6 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   // vao
   context.model_skybox.vao = context.renderer->CreateVertexArrayObject(context.model_skybox);
 
-  // texture
-  const char *sampler_name = Material::SamplerName(tex_usage);
-  auto uniform = context.renderer->CreateUniformSampler(sampler_name);
-  uniform->SetTexture(tex_in);
-  context.model_skybox.material.uniform_samplers[tex_usage] = uniform;
-
   // shader program
   std::set<std::string> shader_defines = {Material::SamplerDefine(tex_usage)};
   auto program = context.renderer->CreateShaderProgram();
@@ -130,8 +124,14 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   context.model_skybox.material.shader_program = program;
 
   // uniforms
+  const char *sampler_name = Material::SamplerName(tex_usage);
+  auto uniform = context.renderer->CreateUniformSampler(sampler_name);
+  uniform->SetTexture(tex_in);
+  context.model_skybox.material.shader_program->AddUniformSampler(tex_usage, uniform);
+
   context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  context.model_skybox.material.uniform_blocks.emplace_back(context.uniforms_block_mvp);
+  context.model_skybox.material.shader_program->AddUniformBlock(context.uniforms_block_mvp);
+
   return true;
 }
 
@@ -154,7 +154,7 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
   glm::mat4 model_matrix(1.f);
 
   // draw
-  context.fbo->Bind();
+  context.renderer->SetFrameBuffer(*context.fbo);
   context.renderer->SetViewPort(0, 0, width, height);
 
   for (int i = 0; i < 6; i++) {
@@ -173,10 +173,9 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
     // draw
     context.fbo->SetColorAttachment(tex_out, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), tex_out_level);
     context.renderer->Clear({});
-    context.model_skybox.material.shader_program->Use();
-    context.model_skybox.material.BindUniforms();
     context.renderer->SetVertexArray(context.model_skybox);
     context.renderer->SetRenderState(context.model_skybox.material.render_state);
+    context.renderer->SetShaderProgram(*context.model_skybox.material.shader_program);
     context.renderer->Draw(context.model_skybox.primitive_type);
   }
 }

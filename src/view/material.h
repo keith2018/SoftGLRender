@@ -80,11 +80,6 @@ class Material {
 
   virtual MaterialType Type() const = 0;
 
-  virtual void BindUniforms() {
-    shader_program->BindUniformBlocks(uniform_blocks);
-    shader_program->BindUniformSamplers(uniform_samplers);
-  };
-
   virtual void Reset() {
     ResetTextures();
     ResetProgram();
@@ -92,8 +87,6 @@ class Material {
 
   virtual void ResetProgram() {
     shader_program = nullptr;
-    uniform_blocks.clear();
-    uniform_samplers.clear();
     program_dirty = true;
   }
 
@@ -118,13 +111,9 @@ class Material {
   }
 
  public:
-  // static properties
   ShadingModel shading;
   RenderState render_state;
-
   std::shared_ptr<ShaderProgram> shader_program;
-  std::vector<std::shared_ptr<UniformBlock>> uniform_blocks;
-  std::unordered_map<int, std::shared_ptr<UniformSampler>> uniform_samplers;
 
   std::unordered_map<int, std::shared_ptr<Texture>> textures;
   std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
