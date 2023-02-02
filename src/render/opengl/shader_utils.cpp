@@ -9,7 +9,6 @@
 #include "base/file_utils.h"
 #include "render/opengl/opengl_utils.h"
 
-
 namespace SoftGL {
 
 void ShaderGLSL::SetHeader(const std::string &header) {

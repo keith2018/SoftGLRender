@@ -20,15 +20,8 @@ enum BufferLayout {
 template<typename T>
 class Buffer {
  public:
-  static std::shared_ptr<Buffer<T>> MakeDefault() {
-#if SOFTGL_TEXTURE_TILED
-    return std::make_shared<TiledBuffer<T>>();
-#elif SOFTGL_TEXTURE_MORTON
-    return std::make_shared<MortonBuffer<T>>();
-#else
-    return std::make_shared<Buffer<T>>();
-#endif
-  }
+  static std::shared_ptr<Buffer<T>> MakeDefault();
+  static std::shared_ptr<Buffer<T>> MakeLayout(BufferLayout layout);
 
   virtual void InitLayout() {
     inner_width_ = width_;
@@ -215,6 +208,34 @@ class MortonBuffer : public Buffer<T> {
   size_t tile_height_ = 0;
 };
 
+template<typename T>
+std::shared_ptr<Buffer<T>> Buffer<T>::MakeDefault() {
+#if SOFTGL_TEXTURE_TILED
+  return std::make_shared<TiledBuffer<T>>();
+#elif SOFTGL_TEXTURE_MORTON
+  return std::make_shared<MortonBuffer<T>>();
+#else
+  return std::make_shared<Buffer<T>>();
+#endif
+}
+
+template<typename T>
+std::shared_ptr<Buffer<T>> Buffer<T>::MakeLayout(BufferLayout layout) {
+  switch (layout) {
+    case Layout_Tiled: {
+      return std::make_shared<TiledBuffer<T>>();
+    }
+    case Layout_Morton: {
+      return std::make_shared<MortonBuffer<T>>();
+    }
+    case Layout_Linear:
+    default: {
+      return std::make_shared<Buffer<T>>();
+    }
+  }
+}
+
 using BufferRGBA = Buffer<glm::tvec4<uint8_t>>;
+using BufferDepth = Buffer<float>;
 
 }

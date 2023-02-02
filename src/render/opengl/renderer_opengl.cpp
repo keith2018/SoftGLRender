@@ -12,7 +12,6 @@
 #include "vertex_opengl.h"
 #include "enums_opengl.h"
 
-
 namespace SoftGL {
 
 // framebuffer
@@ -21,10 +20,6 @@ std::shared_ptr<FrameBuffer> RendererOpenGL::CreateFrameBuffer() {
 }
 
 // texture
-std::shared_ptr<Texture2D> RendererOpenGL::CreateTexture2DRef(int refId) {
-  return std::make_shared<Texture2DOpenGL>(refId);
-}
-
 std::shared_ptr<Texture2D> RendererOpenGL::CreateTexture2D() {
   return std::make_shared<Texture2DOpenGL>();
 }
@@ -100,14 +95,19 @@ void RendererOpenGL::SetRenderState(const RenderState &state) {
 
 void RendererOpenGL::SetVertexArray(VertexArray &vertex) {
   vertexArray_ = &vertex;
-  auto vao = std::dynamic_pointer_cast<VertexArrayObjectOpenGL>(vertex.vao);
+  auto vao = dynamic_cast<VertexArrayObjectOpenGL *>(vertex.vao.get());
   vao->Bind();
 }
 
-void RendererOpenGL::SetShaderProgram(ShaderProgram &program, ProgramUniforms &uniforms) {
-  auto &program_gl = dynamic_cast<ShaderProgramOpenGL &>(program);
-  program_gl.Use();
-  program_gl.BindUniforms(uniforms);
+void RendererOpenGL::SetShaderProgram(ShaderProgram &program) {
+  shader_program_ = dynamic_cast<ShaderProgramOpenGL *>(&program);
+  shader_program_->Use();
+}
+
+void RendererOpenGL::SetShaderUniforms(ShaderUniforms &uniforms) {
+  if (shader_program_) {
+    shader_program_->BindUniforms(uniforms);
+  }
 }
 
 void RendererOpenGL::Draw(PrimitiveType type) {

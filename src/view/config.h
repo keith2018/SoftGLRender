@@ -9,7 +9,6 @@
 #include <string>
 #include "base/glm_inc.h"
 
-
 namespace SoftGL {
 namespace View {
 

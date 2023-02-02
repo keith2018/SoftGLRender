@@ -11,12 +11,10 @@
 
 namespace SoftGL {
 
-#define SOFTGL_ALIGNMENT_DEFAULT 32
-
 class MemoryUtils {
  public:
 
-  static void *AlignedMalloc(size_t size, size_t alignment = SOFTGL_ALIGNMENT_DEFAULT) {
+  static void *AlignedMalloc(size_t size, size_t alignment) {
     if ((alignment & (alignment - 1)) != 0) {
       LOGE("failed to malloc, invalid alignment: %d", alignment);
       return nullptr;

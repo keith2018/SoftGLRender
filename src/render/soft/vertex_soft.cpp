@@ -5,10 +5,10 @@
  */
 
 
-#include "uniform.h"
+#include "vertex_soft.h"
 
 namespace SoftGL {
 
-int Uniform::uuid_counter_ = 0;
+int VertexArrayObjectSoft::uuid_counter_ = 0;
 
 }

@@ -5,8 +5,9 @@
  */
 
 #include "quad_filter.h"
-#include "render/opengl/renderer_opengl.h"
 
+#include <utility>
+#include "render/opengl/renderer_opengl.h"
 
 namespace SoftGL {
 namespace View {
@@ -15,7 +16,8 @@ struct UniformsQuadFilter {
   glm::vec2 u_screenSize;
 };
 
-QuadFilter::QuadFilter(std::shared_ptr<Texture2D> &tex_in,
+QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
+                       std::shared_ptr<Texture2D> &tex_in,
                        std::shared_ptr<Texture2D> &tex_out,
                        const std::string &vsSource,
                        const std::string &fsSource) {
@@ -32,7 +34,7 @@ QuadFilter::QuadFilter(std::shared_ptr<Texture2D> &tex_in,
   quad_mesh_.indices = {0, 1, 2, 1, 2, 3};
 
   // renderer
-  renderer_ = std::make_shared<RendererOpenGL>();
+  renderer_ = renderer;
 
   // fbo
   fbo_ = renderer_->CreateFrameBuffer();
@@ -49,17 +51,18 @@ QuadFilter::QuadFilter(std::shared_ptr<Texture2D> &tex_in,
     return;
   }
   quad_mesh_.material_textured.shader_program = program;
+  quad_mesh_.material_textured.shader_uniforms = std::make_shared<ShaderUniforms>();
 
   // uniforms
   const char *sampler_name = Material::SamplerName(TextureUsage_QUAD_FILTER);
   auto uniform = renderer_->CreateUniformSampler(sampler_name);
   uniform->SetTexture(tex_in);
-  quad_mesh_.material_textured.uniforms.uniform_samplers_[TextureUsage_QUAD_FILTER] = uniform;
+  quad_mesh_.material_textured.shader_uniforms->samplers[TextureUsage_QUAD_FILTER] = uniform;
 
   auto uniforms_block_filter = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
   UniformsQuadFilter uniforms_filter{glm::vec2(width_, height_)};
   uniforms_block_filter->SetData(&uniforms_filter, sizeof(UniformsQuadFilter));
-  quad_mesh_.material_textured.uniforms.uniform_blocks_.emplace_back(uniforms_block_filter);
+  quad_mesh_.material_textured.shader_uniforms->blocks.emplace_back(uniforms_block_filter);
 
   init_ready_ = true;
 }
@@ -75,7 +78,8 @@ void QuadFilter::Draw() {
   renderer_->Clear({});
   renderer_->SetVertexArray(quad_mesh_);
   renderer_->SetRenderState(quad_mesh_.material_textured.render_state);
-  renderer_->SetShaderProgram(*quad_mesh_.material_textured.shader_program, quad_mesh_.material_textured.uniforms);
+  renderer_->SetShaderProgram(*quad_mesh_.material_textured.shader_program);
+  renderer_->SetShaderUniforms(*quad_mesh_.material_textured.shader_uniforms);
   renderer_->Draw(quad_mesh_.primitive_type);
 }
 

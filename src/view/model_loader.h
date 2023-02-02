@@ -15,7 +15,6 @@
 #include "config.h"
 #include "config_panel.h"
 
-
 namespace SoftGL {
 namespace View {
 

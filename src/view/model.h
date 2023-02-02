@@ -13,7 +13,6 @@
 #include "render/bounding_box.h"
 #include "material.h"
 
-
 namespace SoftGL {
 namespace View {
 

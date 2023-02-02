@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include "texture.h"
 
-
 namespace SoftGL {
 
 class ShaderProgram;
@@ -52,16 +51,10 @@ class UniformSampler : public Uniform {
   virtual void SetTexture(const std::shared_ptr<Texture> &tex) = 0;
 };
 
-class ProgramUniforms {
+class ShaderUniforms {
  public:
-  void Reset() {
-    uniform_blocks_.clear();
-    uniform_samplers_.clear();
-  }
-
- public:
-  std::vector<std::shared_ptr<UniformBlock>> uniform_blocks_;
-  std::unordered_map<int, std::shared_ptr<UniformSampler>> uniform_samplers_;
+  std::vector<std::shared_ptr<UniformBlock>> blocks;
+  std::unordered_map<int, std::shared_ptr<UniformSampler>> samplers;
 };
 
 }

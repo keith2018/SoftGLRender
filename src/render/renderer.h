@@ -13,7 +13,6 @@
 #include "vertex.h"
 #include "shader_program.h"
 
-
 namespace SoftGL {
 
 class Renderer {
@@ -22,7 +21,6 @@ class Renderer {
   virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
 
   // texture
-  virtual std::shared_ptr<Texture2D> CreateTexture2DRef(int refId) = 0;
   virtual std::shared_ptr<Texture2D> CreateTexture2D() = 0;
   virtual std::shared_ptr<TextureCube> CreateTextureCube() = 0;
   virtual std::shared_ptr<TextureDepth> CreateTextureDepth() = 0;
@@ -43,7 +41,8 @@ class Renderer {
   virtual void Clear(const ClearState &state) = 0;
   virtual void SetRenderState(const RenderState &state) = 0;
   virtual void SetVertexArray(VertexArray &vertex) = 0;
-  virtual void SetShaderProgram(ShaderProgram &program, ProgramUniforms &uniforms) = 0;
+  virtual void SetShaderProgram(ShaderProgram &program) = 0;
+  virtual void SetShaderUniforms(ShaderUniforms &uniforms) = 0;
   virtual void Draw(PrimitiveType type) = 0;
 };
 

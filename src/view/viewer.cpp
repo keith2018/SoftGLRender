@@ -8,10 +8,8 @@
 #include <algorithm>
 #include "base/logger.h"
 #include "base/hash_utils.h"
-#include "render/opengl/renderer_opengl.h"
 #include "shader/opengl/shader_glsl.h"
 #include "environment.h"
-
 
 namespace SoftGL {
 namespace View {
@@ -22,7 +20,7 @@ void Viewer::Create(int width, int height, int outTexId) {
   outTexId_ = outTexId;
 
   // create renderer
-  renderer_ = std::make_shared<RendererOpenGL>();
+  renderer_ = CreateRenderer();
 
   // create fbo
   fbo_ = renderer_->CreateFrameBuffer();
@@ -36,7 +34,7 @@ void Viewer::Create(int width, int height, int outTexId) {
   Sampler2D sampler;
   sampler.use_mipmaps = false;
   sampler.filter_min = Filter_NEAREST;
-  color_tex_out_ = renderer_->CreateTexture2DRef(outTexId);
+  color_tex_out_ = renderer_->CreateTexture2D();
   color_tex_out_->InitImageData(width, height);
   color_tex_out_->SetSampler(sampler);
   fbo_->SetColorAttachment(color_tex_out_, 0);
@@ -59,19 +57,16 @@ void Viewer::DrawFrame(DemoScene &scene) {
   renderer_->SetFrameBuffer(*fbo_);
 
   // anti-aliasing
-  aa_type_ = (AAType) config_.aa_type;
+  auto aa_type = (AAType) config_.aa_type;
   if (config_.wireframe) {
-    aa_type_ = AAType_NONE;
+    aa_type = AAType_NONE;
   }
 
-  // FXAA
-  if (aa_type_ == AAType_FXAA) {
-    FXAASetup();
-  }
-
-  // set framebuffer output
-  switch (aa_type_) {
+  switch (aa_type) {
     case AAType_FXAA: {
+      color_tex_out_->InitImageData(width_, height_);
+      FXAASetup();
+
       fbo_->SetColorAttachment(color_tex_fxaa_, 0);
       fbo_->UpdateAttachmentsSize(width_, height_);
       renderer_->SetViewPort(0, 0, width_, height_);
@@ -94,10 +89,9 @@ void Viewer::DrawFrame(DemoScene &scene) {
   }
 
   // clear
-  clear_state_.color_flag = true;
-  clear_state_.depth_flag = true;
-  clear_state_.clear_color = config_.clear_color;
-  renderer_->Clear(clear_state_);
+  ClearState clear_state;
+  clear_state.clear_color = config_.clear_color;
+  renderer_->Clear(clear_state);
 
   // update scene uniform
   UpdateUniformScene();
@@ -136,7 +130,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
   DrawModelNodes(model_node, model_transform, Alpha_Blend, config_.wireframe);
 
   // FXAA
-  if (aa_type_ == AAType_FXAA) {
+  if (aa_type == AAType_FXAA) {
     FXAADraw();
   }
 }
@@ -155,11 +149,9 @@ void Viewer::FXAASetup() {
   }
 
   if (!fxaa_filter_) {
-    // reset output texture size
-    if (color_tex_out_->width != width_ || color_tex_out_->height != height_) {
-      color_tex_out_->InitImageData(width_, height_);
-    }
-    fxaa_filter_ = std::make_shared<QuadFilter>(color_tex_fxaa_, color_tex_out_, FXAA_VS, FXAA_FS);
+    fxaa_filter_ = std::make_shared<QuadFilter>(CreateRenderer(),
+                                                color_tex_fxaa_, color_tex_out_,
+                                                FXAA_VS, FXAA_FS);
   }
 }
 
@@ -229,7 +221,9 @@ void Viewer::DrawMeshTextured(ModelMesh &mesh) {
                 mesh.material_textured,
                 {uniforms_block_mvp_, uniform_block_scene_, uniforms_block_color_},
                 mesh.material_textured.alpha_mode == Alpha_Blend,
-                nullptr);
+                [&](RenderState &rs) -> void {
+                  rs.cull_face = config_.cull_face && (!mesh.material_textured.double_sided);
+                });
 
   // update IBL textures
   if (mesh.material_textured.shading == Shading_PBR) {
@@ -279,7 +273,8 @@ void Viewer::PipelineSetup(VertexArray &vertexes,
 void Viewer::PipelineDraw(VertexArray &vertexes, Material &material) {
   renderer_->SetVertexArray(vertexes);
   renderer_->SetRenderState(material.render_state);
-  renderer_->SetShaderProgram(*material.shader_program, material.uniforms);
+  renderer_->SetShaderProgram(*material.shader_program);
+  renderer_->SetShaderUniforms(*material.shader_uniforms);
   renderer_->Draw(vertexes.primitive_type);
 }
 
@@ -358,7 +353,7 @@ void Viewer::SetupSamplerUniforms(Material &material) {
     if (sampler_name) {
       auto uniform = renderer_->CreateUniformSampler(sampler_name);
       uniform->SetTexture(kv.second);
-      material.uniforms.uniform_samplers_[kv.first] = std::move(uniform);
+      material.shader_uniforms->samplers[kv.first] = std::move(uniform);
     }
   }
 }
@@ -370,6 +365,7 @@ void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
   auto cached_program = program_cache_.find(cache_key);
   if (cached_program != program_cache_.end()) {
     material.shader_program = cached_program->second;
+    material.shader_uniforms = std::make_shared<ShaderUniforms>();
     return;
   }
 
@@ -396,6 +392,7 @@ void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
     // add to cache
     program_cache_[cache_key] = program;
     material.shader_program = program;
+    material.shader_uniforms = std::make_shared<ShaderUniforms>();
   } else {
     LOGE("SetupShaderProgram failed: %d", material.shading);
   }
@@ -412,7 +409,7 @@ void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr
     SetupShaderProgram(material, shader_defines);
     SetupSamplerUniforms(material);
     for (auto &block : uniform_blocks) {
-      material.uniforms.uniform_blocks_.emplace_back(block);
+      material.shader_uniforms->blocks.emplace_back(block);
     }
   });
 }
@@ -464,7 +461,7 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
       auto texture_2d = std::dynamic_pointer_cast<Texture2D>(tex_eq_it->second);
       auto cube_size = std::min(texture_2d->width, texture_2d->height);
       auto tex_cvt = CreateTextureCubeDefault(cube_size, cube_size);
-      auto success = Environment::ConvertEquirectangular(texture_2d, tex_cvt);
+      auto success = Environment::ConvertEquirectangular(CreateRenderer(), texture_2d, tex_cvt);
       if (success) {
         texture_cube = tex_cvt;
         skybox.material.textures[TextureUsage_CUBE] = tex_cvt;
@@ -485,7 +482,7 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
 
   // generate irradiance map
   auto texture_irradiance = CreateTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize);
-  if (Environment::GenerateIrradianceMap(texture_cube, texture_irradiance)) {
+  if (Environment::GenerateIrradianceMap(CreateRenderer(), texture_cube, texture_irradiance)) {
     skybox.material.textures[TextureUsage_IBL_IRRADIANCE] = std::move(texture_irradiance);
   } else {
     LOGE("InitSkyboxIBL failed: generate irradiance map failed");
@@ -494,7 +491,7 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
 
   // generate prefilter map
   auto texture_prefilter = CreateTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, true);
-  if (Environment::GeneratePrefilterMap(texture_cube, texture_prefilter)) {
+  if (Environment::GeneratePrefilterMap(CreateRenderer(), texture_cube, texture_prefilter)) {
     skybox.material.textures[TextureUsage_IBL_PREFILTER] = std::move(texture_prefilter);
   } else {
     LOGE("InitSkyboxIBL failed: generate prefilter map failed");
@@ -509,7 +506,7 @@ bool Viewer::IBLEnabled() {
 }
 
 void Viewer::UpdateIBLTextures(Material &material) {
-  auto &samplers = material.uniforms.uniform_samplers_;
+  auto &samplers = material.shader_uniforms->samplers;
   if (IBLEnabled()) {
     auto &skybox_textures = scene_->skybox.material.textures;
     samplers[TextureUsage_IBL_IRRADIANCE]->SetTexture(skybox_textures[TextureUsage_IBL_IRRADIANCE]);

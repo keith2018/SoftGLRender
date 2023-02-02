@@ -10,7 +10,6 @@
 #include "render/vertex.h"
 #include "render/opengl/opengl_utils.h"
 
-
 namespace SoftGL {
 
 class VertexArrayObjectOpenGL : public VertexArrayObject {

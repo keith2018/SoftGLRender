@@ -10,7 +10,6 @@
 #include <glad/glad.h>
 #include "base/logger.h"
 
-
 namespace SoftGL {
 
 class OpenGLUtils {

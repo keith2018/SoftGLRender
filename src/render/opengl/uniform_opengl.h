@@ -6,7 +6,6 @@
 #include "render/opengl/shader_program_opengl.h"
 #include "render/opengl/opengl_utils.h"
 
-
 namespace SoftGL {
 
 class UniformBlockOpenGL : public UniformBlock {

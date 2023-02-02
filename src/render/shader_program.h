@@ -11,7 +11,6 @@
 #include "uniform.h"
 #include "base/logger.h"
 
-
 namespace SoftGL {
 
 class ShaderProgram {

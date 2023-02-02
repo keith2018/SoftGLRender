@@ -10,7 +10,6 @@
 #include "render/shader_program.h"
 #include "shader_utils.h"
 
-
 namespace SoftGL {
 
 class ShaderProgramOpenGL : public ShaderProgram {
@@ -33,9 +32,9 @@ class ShaderProgramOpenGL : public ShaderProgram {
     program_glsl_.Use();
   }
 
-  void BindUniforms(ProgramUniforms &uniforms) {
+  void BindUniforms(ShaderUniforms &uniforms) {
     int binding = 0;
-    for (auto &uniform : uniforms.uniform_blocks_) {
+    for (auto &uniform : uniforms.blocks) {
       bool success = SetUniform(*uniform, binding);
       if (success) {
         binding++;
@@ -43,7 +42,7 @@ class ShaderProgramOpenGL : public ShaderProgram {
     }
 
     binding = 0;
-    for (auto &kv : uniforms.uniform_samplers_) {
+    for (auto &kv : uniforms.samplers) {
       bool success = SetUniform(*kv.second, binding);
       if (success) {
         binding++;

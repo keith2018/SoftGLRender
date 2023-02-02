@@ -9,13 +9,13 @@
 #include "render/renderer.h"
 #include "model.h"
 
-
 namespace SoftGL {
 namespace View {
 
 class QuadFilter {
  public:
-  QuadFilter(std::shared_ptr<Texture2D> &tex_in,
+  QuadFilter(const std::shared_ptr<Renderer> &renderer,
+             std::shared_ptr<Texture2D> &tex_in,
              std::shared_ptr<Texture2D> &tex_out,
              const std::string &vsSource,
              const std::string &fsSource);

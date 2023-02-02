@@ -81,47 +81,54 @@ class Material {
   virtual MaterialType Type() const = 0;
 
   virtual void Reset() {
-    ResetTextures();
-    ResetProgram();
-  }
-
-  virtual void ResetProgram() {
-    uniforms.Reset();
-    shader_program = nullptr;
-    program_dirty = true;
-  }
-
-  virtual void ResetTextures() {
-    textures.clear();
+    shading = Shading_BaseColor;
     texture_data.clear();
-    textures_dirty = true;
+    ResetRuntimeStates();
   }
 
-  virtual void CreateProgram(const std::function<void()> &func) {
-    if (program_dirty) {
+  virtual void ResetRuntimeStates() {
+    render_state = RenderState();
+    ResetProgram();
+    ResetTextures();
+  }
+
+  void ResetProgram() {
+    shader_program = nullptr;
+    shader_uniforms = nullptr;
+    program_dirty_ = true;
+  }
+
+  void ResetTextures() {
+    textures.clear();
+    textures_dirty_ = true;
+  }
+
+  void CreateProgram(const std::function<void()> &func) {
+    if (program_dirty_) {
       func();
-      program_dirty = false;
+      program_dirty_ = false;
     }
   }
 
-  virtual void CreateTextures(const std::function<void()> &func) {
-    if (textures_dirty) {
+  void CreateTextures(const std::function<void()> &func) {
+    if (textures_dirty_) {
       func();
-      textures_dirty = false;
+      textures_dirty_ = false;
     }
   }
 
  public:
   ShadingModel shading;
-  RenderState render_state;
-  ProgramUniforms uniforms;
-  std::shared_ptr<ShaderProgram> shader_program;
-  std::unordered_map<int, std::shared_ptr<Texture>> textures;
   std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
 
+  RenderState render_state;
+  std::shared_ptr<ShaderProgram> shader_program;
+  std::shared_ptr<ShaderUniforms> shader_uniforms;
+  std::unordered_map<int, std::shared_ptr<Texture>> textures;
+
  private:
-  bool program_dirty = false;
-  bool textures_dirty = false;
+  bool program_dirty_ = false;
+  bool textures_dirty_ = false;
 };
 
 class BaseColorMaterial : public Material {
@@ -151,8 +158,8 @@ class SkyboxMaterial : public Material {
     return Material_Skybox;
   }
 
-  void Reset() override {
-    Material::Reset();
+  void ResetRuntimeStates() override {
+    Material::ResetRuntimeStates();
     ibl_ready = false;
   }
 

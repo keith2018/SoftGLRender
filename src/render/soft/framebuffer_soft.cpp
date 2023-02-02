@@ -5,10 +5,10 @@
  */
 
 
-#include "uniform.h"
+#include "framebuffer_soft.h"
 
 namespace SoftGL {
 
-int Uniform::uuid_counter_ = 0;
+int FrameBufferSoft::uuid_counter_ = 0;
 
 }

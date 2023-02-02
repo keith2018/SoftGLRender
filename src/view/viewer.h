@@ -13,7 +13,6 @@
 #include "camera.h"
 #include "quad_filter.h"
 
-
 namespace SoftGL {
 namespace View {
 
@@ -25,7 +24,12 @@ class Viewer {
 
   virtual void DrawFrame(DemoScene &scene);
 
+  virtual void SwapBuffer() = 0;
+
   virtual void Destroy();
+
+ protected:
+  virtual std::shared_ptr<Renderer> CreateRenderer() = 0;
 
  private:
   void FXAASetup();
@@ -69,27 +73,23 @@ class Viewer {
  protected:
   Config &config_;
   Camera &camera_;
+  DemoScene *scene_ = nullptr;
 
   int width_ = 0;
   int height_ = 0;
   int outTexId_ = 0;
 
-  DemoScene *scene_ = nullptr;
-  std::shared_ptr<TextureCube> ibl_placeholder_ = nullptr;
-  AAType aa_type_ = AAType_NONE;
-
-  std::shared_ptr<Renderer> renderer_;
-  std::shared_ptr<FrameBuffer> fbo_;
-  std::shared_ptr<Texture2D> color_tex_out_;
-
-  std::shared_ptr<QuadFilter> fxaa_filter_;
-  std::shared_ptr<Texture2D> color_tex_fxaa_;
-
-  ClearState clear_state_;
-
   UniformsScene uniforms_scene_{};
   UniformsMVP uniforms_mvp_{};
   UniformsColor uniforms_color_{};
+
+  std::shared_ptr<Renderer> renderer_ = nullptr;
+  std::shared_ptr<QuadFilter> fxaa_filter_ = nullptr;
+
+  std::shared_ptr<FrameBuffer> fbo_ = nullptr;
+  std::shared_ptr<Texture2D> color_tex_out_ = nullptr;
+  std::shared_ptr<Texture2D> color_tex_fxaa_ = nullptr;
+  std::shared_ptr<TextureCube> ibl_placeholder_ = nullptr;
 
   std::shared_ptr<UniformBlock> uniform_block_scene_;
   std::shared_ptr<UniformBlock> uniforms_block_mvp_;

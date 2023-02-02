@@ -9,7 +9,6 @@
 #include <string>
 #include <glad/glad.h>
 
-
 namespace SoftGL {
 
 class ShaderGLSL {

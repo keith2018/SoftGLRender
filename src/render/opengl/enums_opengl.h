@@ -8,7 +8,6 @@
 
 #include "render/render_state.h"
 
-
 namespace SoftGL {
 namespace OpenGL {
 
@@ -20,7 +19,8 @@ static inline GLint ConvertWrap(WrapMode mode) {
     CVT_CASE(Wrap_, MIRRORED_REPEAT);
     CVT_CASE(Wrap_, CLAMP_TO_EDGE);
     CVT_CASE(Wrap_, CLAMP_TO_BORDER);
-    default:break;
+    default:
+      break;
   }
   return GL_REPEAT;
 }
@@ -33,7 +33,8 @@ static inline GLint ConvertFilter(FilterMode mode) {
     CVT_CASE(Filter_, LINEAR_MIPMAP_NEAREST);
     CVT_CASE(Filter_, NEAREST_MIPMAP_LINEAR);
     CVT_CASE(Filter_, NEAREST_MIPMAP_NEAREST);
-    default:break;
+    default:
+      break;
   }
   return GL_NEAREST;
 }
@@ -46,7 +47,8 @@ static inline GLint ConvertCubeFace(CubeMapFace face) {
     CVT_CASE(, TEXTURE_CUBE_MAP_NEGATIVE_Y);
     CVT_CASE(, TEXTURE_CUBE_MAP_POSITIVE_Z);
     CVT_CASE(, TEXTURE_CUBE_MAP_NEGATIVE_Z);
-    default:break;
+    default:
+      break;
   }
   return 0;
 }
@@ -61,7 +63,8 @@ static inline GLint ConvertDepthFunc(DepthFunc func) {
     CVT_CASE(Depth_, NOTEQUAL);
     CVT_CASE(Depth_, GEQUAL);
     CVT_CASE(Depth_, ALWAYS);
-    default:break;
+    default:
+      break;
   }
   return 0;
 }
@@ -78,7 +81,8 @@ static inline GLint ConvertBlendFactor(BlendFactor factor) {
     CVT_CASE(Factor_, ONE_MINUS_SRC_ALPHA);
     CVT_CASE(Factor_, ONE_MINUS_DST_COLOR);
     CVT_CASE(Factor_, ONE_MINUS_DST_ALPHA);
-    default:break;
+    default:
+      break;
   }
   return 0;
 }
@@ -87,7 +91,8 @@ static inline GLint ConvertPolygonMode(PolygonMode mode) {
   switch (mode) {
     CVT_CASE(, LINE);
     CVT_CASE(, FILL);
-    default:break;
+    default:
+      break;
   }
   return 0;
 }
@@ -97,7 +102,8 @@ static inline GLint ConvertPrimitiveType(PrimitiveType type) {
     CVT_CASE(Primitive_, POINTS);
     CVT_CASE(Primitive_, LINES);
     CVT_CASE(Primitive_, TRIANGLES);
-    default:break;
+    default:
+      break;
   }
   return 0;
 }

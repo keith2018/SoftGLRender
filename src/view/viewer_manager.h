@@ -10,7 +10,8 @@
 #include "orbit_controller.h"
 #include "config_panel.h"
 #include "model_loader.h"
-#include "viewer.h"
+#include "viewer_opengl.h"
+#include "viewer_soft.h"
 
 namespace SoftGL {
 namespace View {
@@ -42,12 +43,12 @@ class ViewerManager {
     });
 
     // viewer soft
-    auto viewer_soft = std::make_shared<Viewer>(*config_, *camera_);
+    auto viewer_soft = std::make_shared<ViewerSoft>(*config_, *camera_);
     viewer_soft->Create(width, height, outTexId);
     viewers_[Renderer_SOFT] = std::move(viewer_soft);
 
     // viewer opengl
-    auto viewer_opengl = std::make_shared<Viewer>(*config_, *camera_);
+    auto viewer_opengl = std::make_shared<ViewerOpenGL>(*config_, *camera_);
     viewer_opengl->Create(width, height, outTexId);
     viewers_[Renderer_OPENGL] = std::move(viewer_opengl);
 
@@ -58,12 +59,19 @@ class ViewerManager {
     return config_panel_->Init(window, width, height);
   }
 
-  inline void DrawFrame() {
+  void DrawFrame() {
     camera_->Update();
     orbit_controller_->Update();
     config_panel_->Update();
 
-    CurrentViewer().DrawFrame(model_loader_->GetScene());
+    auto &viewer = viewers_[config_->renderer_type];
+    if (renderer_type_ != config_->renderer_type) {
+      renderer_type_ = config_->renderer_type;
+      ResetSceneStates(model_loader_->GetScene());
+      viewer->Create(width_, height_, outTexId_);
+    }
+    viewer->DrawFrame(model_loader_->GetScene());
+    viewer->SwapBuffer();
   }
 
   inline void Destroy() {
@@ -112,8 +120,26 @@ class ViewerManager {
   }
 
  private:
-  inline Viewer &CurrentViewer() {
-    return *viewers_[config_->renderer_type];
+  void ResetSceneStates(DemoScene &scene) {
+    std::function<void(ModelNode &node)> reset_node_func = [&](ModelNode &node) -> void {
+      for (auto &mesh : node.meshes) {
+        mesh.vao = nullptr;
+        mesh.material_wireframe.ResetRuntimeStates();
+        mesh.material_textured.ResetRuntimeStates();
+      }
+      for (auto &child_node : node.children) {
+        reset_node_func(child_node);
+      }
+    };
+    reset_node_func(scene.model->root_node);
+    scene.world_axis.vao = nullptr;
+    scene.world_axis.material.ResetRuntimeStates();
+
+    scene.point_light.vao = nullptr;
+    scene.point_light.material.ResetRuntimeStates();
+
+    scene.skybox.vao = nullptr;
+    scene.skybox.material.ResetRuntimeStates();
   }
 
  private:
@@ -130,6 +156,7 @@ class ViewerManager {
 
   std::unordered_map<int, std::shared_ptr<Viewer>> viewers_;
 
+  int renderer_type_ = -1;
   bool show_config_panel_ = true;
 };
 

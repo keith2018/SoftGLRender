@@ -5,10 +5,10 @@
  */
 
 
-#include "uniform.h"
+#include "shader_program_soft.h"
 
 namespace SoftGL {
 
-int Uniform::uuid_counter_ = 0;
+int ShaderProgramSoft::uuid_counter_ = 0;
 
 }

@@ -7,11 +7,19 @@
 #pragma once
 
 #include "render/renderer.h"
-#include "render/opengl/shader_program_opengl.h"
+#include "render/soft/framebuffer_soft.h"
+#include "render/soft/shader_program_soft.h"
 
 namespace SoftGL {
 
-class RendererOpenGL : public Renderer {
+struct DepthRange {
+  float near = 0.f;
+  float far = 1.f;
+  float diff = 1.f;   // far - near
+  float sum = 1.f;    // far + near
+};
+
+class RendererSoft : public Renderer {
  public:
   // framebuffer
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
@@ -41,9 +49,16 @@ class RendererOpenGL : public Renderer {
   void SetShaderUniforms(ShaderUniforms &uniforms) override;
   void Draw(PrimitiveType type) override;
 
+ public:
+  void SetDepthRange(float near, float far);
+
  private:
+  DepthRange depth_range_;
+  glm::vec4 viewport_;
+  FrameBufferSoft *fbo_ = nullptr;
+  const RenderState *render_state_ = nullptr;
   VertexArray *vertexArray_ = nullptr;
-  ShaderProgramOpenGL *shader_program_ = nullptr;
+  ShaderProgramSoft *shader_program_ = nullptr;
 };
 
 }

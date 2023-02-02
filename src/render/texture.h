@@ -31,12 +31,12 @@ enum FilterMode {
 };
 
 enum CubeMapFace {
-  TEXTURE_CUBE_MAP_POSITIVE_X,
-  TEXTURE_CUBE_MAP_NEGATIVE_X,
-  TEXTURE_CUBE_MAP_POSITIVE_Y,
-  TEXTURE_CUBE_MAP_NEGATIVE_Y,
-  TEXTURE_CUBE_MAP_POSITIVE_Z,
-  TEXTURE_CUBE_MAP_NEGATIVE_Z,
+  TEXTURE_CUBE_MAP_POSITIVE_X = 0,
+  TEXTURE_CUBE_MAP_NEGATIVE_X = 1,
+  TEXTURE_CUBE_MAP_POSITIVE_Y = 2,
+  TEXTURE_CUBE_MAP_NEGATIVE_Y = 3,
+  TEXTURE_CUBE_MAP_POSITIVE_Z = 4,
+  TEXTURE_CUBE_MAP_NEGATIVE_Z = 5,
 };
 
 struct Sampler {
@@ -89,7 +89,6 @@ class Texture {
  public:
   int width = 0;
   int height = 0;
-  bool use_mipmaps = false;
 };
 
 class Texture2D : public Texture {

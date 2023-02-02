@@ -10,7 +10,6 @@
 #include "render/opengl/renderer_opengl.h"
 #include "shader/opengl/shader_glsl.h"
 
-
 namespace SoftGL {
 namespace View {
 
@@ -25,9 +24,11 @@ struct UniformsPrefilter {
   float u_roughness;
 };
 
-bool Environment::ConvertEquirectangular(const std::shared_ptr<Texture2D> &tex_in,
+bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
+                                         const std::shared_ptr<Texture2D> &tex_in,
                                          std::shared_ptr<TextureCube> &tex_out) {
   CubeRenderContext context;
+  context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
                                          SKYBOX_VS,
                                          SKYBOX_FS,
@@ -42,9 +43,11 @@ bool Environment::ConvertEquirectangular(const std::shared_ptr<Texture2D> &tex_i
   return true;
 }
 
-bool Environment::GenerateIrradianceMap(const std::shared_ptr<TextureCube> &tex_in,
+bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
+                                        const std::shared_ptr<TextureCube> &tex_in,
                                         std::shared_ptr<TextureCube> &tex_out) {
   CubeRenderContext context;
+  context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
                                          IBL_IRRADIANCE_VS,
                                          IBL_IRRADIANCE_FS,
@@ -59,9 +62,11 @@ bool Environment::GenerateIrradianceMap(const std::shared_ptr<TextureCube> &tex_
   return true;
 }
 
-bool Environment::GeneratePrefilterMap(const std::shared_ptr<TextureCube> &tex_in,
+bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
+                                       const std::shared_ptr<TextureCube> &tex_in,
                                        std::shared_ptr<TextureCube> &tex_out) {
   CubeRenderContext context;
+  context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
                                          IBL_PREFILTER_VS,
                                          IBL_PREFILTER_FS,
@@ -73,7 +78,7 @@ bool Environment::GeneratePrefilterMap(const std::shared_ptr<TextureCube> &tex_i
   }
 
   auto uniforms_block_prefilter = context.renderer->CreateUniformBlock("UniformsPrefilter", sizeof(UniformsPrefilter));
-  context.model_skybox.material.uniforms.uniform_blocks_.emplace_back(uniforms_block_prefilter);
+  context.model_skybox.material.shader_uniforms->blocks.emplace_back(uniforms_block_prefilter);
 
   UniformsPrefilter uniforms_prefilter{};
 
@@ -103,9 +108,6 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   context.model_skybox.material.Reset();
   context.model_skybox.material.shading = Shading_Skybox;
 
-  // renderer
-  context.renderer = std::make_shared<RendererOpenGL>();
-
   // fbo
   context.fbo = context.renderer->CreateFrameBuffer();
 
@@ -122,15 +124,16 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
     return false;
   }
   context.model_skybox.material.shader_program = program;
+  context.model_skybox.material.shader_uniforms = std::make_shared<ShaderUniforms>();
 
   // uniforms
   const char *sampler_name = Material::SamplerName(tex_usage);
   auto uniform = context.renderer->CreateUniformSampler(sampler_name);
   uniform->SetTexture(tex_in);
-  context.model_skybox.material.uniforms.uniform_samplers_[tex_usage] = uniform;
+  context.model_skybox.material.shader_uniforms->samplers[tex_usage] = uniform;
 
   context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  context.model_skybox.material.uniforms.uniform_blocks_.emplace_back(context.uniforms_block_mvp);
+  context.model_skybox.material.shader_uniforms->blocks.emplace_back(context.uniforms_block_mvp);
 
   return true;
 }
@@ -175,7 +178,8 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
     context.renderer->Clear({});
     context.renderer->SetVertexArray(context.model_skybox);
     context.renderer->SetRenderState(context.model_skybox.material.render_state);
-    context.renderer->SetShaderProgram(*context.model_skybox.material.shader_program, context.model_skybox.material.uniforms);
+    context.renderer->SetShaderProgram(*context.model_skybox.material.shader_program);
+    context.renderer->SetShaderUniforms(*context.model_skybox.material.shader_uniforms);
     context.renderer->Draw(context.model_skybox.primitive_type);
   }
 }

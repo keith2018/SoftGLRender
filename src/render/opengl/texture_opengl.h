@@ -11,23 +11,15 @@
 #include "render/opengl/enums_opengl.h"
 #include "render/opengl/opengl_utils.h"
 
-
 namespace SoftGL {
 
 class Texture2DOpenGL : public Texture2D {
  public:
-  explicit Texture2DOpenGL(int refId) : ref_(true) {
-    texId_ = refId;
-  }
-
-  Texture2DOpenGL() : ref_(false) {
+  Texture2DOpenGL() {
     GL_CHECK(glGenTextures(1, &texId_));
   }
 
   ~Texture2DOpenGL() {
-    if (ref_) {
-      return;
-    }
     GL_CHECK(glDeleteTextures(1, &texId_));
   }
 
@@ -65,6 +57,9 @@ class Texture2DOpenGL : public Texture2D {
   }
 
   void InitImageData(int w, int h) override {
+    if (width == w && height == h) {
+      return;
+    }
     width = w;
     height = h;
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId_));
@@ -75,8 +70,8 @@ class Texture2DOpenGL : public Texture2D {
   }
 
  private:
-  bool ref_ = false;
   GLuint texId_ = 0;
+  bool use_mipmaps = false;
 };
 
 class TextureCubeOpenGL : public TextureCube {
@@ -131,6 +126,9 @@ class TextureCubeOpenGL : public TextureCube {
   }
 
   void InitImageData(int w, int h) override {
+    if (width == w && height == h) {
+      return;
+    }
     width = w;
     height = h;
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
@@ -152,6 +150,7 @@ class TextureCubeOpenGL : public TextureCube {
 
  private:
   GLuint texId_ = 0;
+  bool use_mipmaps = false;
 };
 
 class TextureDepthOpenGL : public TextureDepth {
@@ -169,6 +168,9 @@ class TextureDepthOpenGL : public TextureDepth {
   }
 
   void InitImageData(int w, int h) override {
+    if (width == w && height == h) {
+      return;
+    }
     width = w;
     height = h;
     GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, rbId_));

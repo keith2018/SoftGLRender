@@ -7,6 +7,7 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 #include "base/glm_inc.h"
 
 namespace SoftGL {
