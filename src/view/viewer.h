@@ -52,7 +52,7 @@ class Viewer {
 
   void SetupVertexArray(VertexArray &vertexes);
   void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
-  void SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
+  bool SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
   void SetupTextures(Material &material, std::set<std::string> &shader_defines);
   void SetupSamplerUniforms(Material &material);
   void SetupMaterial(Material &material, const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks);

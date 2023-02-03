@@ -364,15 +364,15 @@ void Viewer::SetupSamplerUniforms(Material &material) {
   }
 }
 
-void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines) {
-  size_t cache_key = GetShaderProgramCacheKey(material.shading, shader_defines);
+bool Viewer::SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines) {
+  material.shader_uniforms = std::make_shared<ShaderUniforms>();
 
   // try cache
+  size_t cache_key = GetShaderProgramCacheKey(material.shading, shader_defines);
   auto cached_program = program_cache_.find(cache_key);
   if (cached_program != program_cache_.end()) {
     material.shader_program = cached_program->second;
-    material.shader_uniforms = std::make_shared<ShaderUniforms>();
-    return;
+    return true;
   }
 
   auto program = renderer_->CreateShaderProgram();
@@ -385,8 +385,10 @@ void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
     material.shader_program = program;
     material.shader_uniforms = std::make_shared<ShaderUniforms>();
   } else {
-    LOGE("SetupShaderProgram failed: %d", material.shading);
+    LOGE("SetupShaderProgram failed: %s", Material::ShadingModelStr(material.shading));
   }
+
+  return success;
 }
 
 void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks) {
@@ -397,10 +399,11 @@ void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr
   });
 
   material.CreateProgram([&]() -> void {
-    SetupShaderProgram(material, shader_defines);
-    SetupSamplerUniforms(material);
-    for (auto &block : uniform_blocks) {
-      material.shader_uniforms->blocks.emplace_back(block);
+    if (SetupShaderProgram(material, shader_defines)) {
+      SetupSamplerUniforms(material);
+      for (auto &block : uniform_blocks) {
+        material.shader_uniforms->blocks.emplace_back(block);
+      }
     }
   });
 }
@@ -512,6 +515,10 @@ bool Viewer::IBLEnabled() {
 }
 
 void Viewer::UpdateIBLTextures(Material &material) {
+  if (!material.shader_uniforms) {
+    return;
+  }
+
   auto &samplers = material.shader_uniforms->samplers;
   if (IBLEnabled()) {
     auto &skybox_textures = scene_->skybox.material.textures;

@@ -9,20 +9,36 @@
 namespace SoftGL {
 namespace View {
 
+#define CASE_ENUM_STR(type) case type: return #type
+
+const char *Material::ShadingModelStr(ShadingModel model) {
+  switch (model) {
+    CASE_ENUM_STR(Shading_BaseColor);
+    CASE_ENUM_STR(Shading_BlinnPhong);
+    CASE_ENUM_STR(Shading_PBR);
+    CASE_ENUM_STR(Shading_Skybox);
+    CASE_ENUM_STR(Shading_IBL_Irradiance);
+    CASE_ENUM_STR(Shading_IBL_Prefilter);
+    CASE_ENUM_STR(Shading_FXAA);
+    default:
+      break;
+  }
+  return "";
+}
+
 const char *Material::TextureUsageStr(TextureUsage usage) {
-#define TexType_STR(type) case type: return #type
   switch (usage) {
-    TexType_STR(TextureUsage_NONE);
-    TexType_STR(TextureUsage_ALBEDO);
-    TexType_STR(TextureUsage_NORMAL);
-    TexType_STR(TextureUsage_EMISSIVE);
-    TexType_STR(TextureUsage_AMBIENT_OCCLUSION);
-    TexType_STR(TextureUsage_METAL_ROUGHNESS);
-    TexType_STR(TextureUsage_CUBE);
-    TexType_STR(TextureUsage_EQUIRECTANGULAR);
-    TexType_STR(TextureUsage_IBL_IRRADIANCE);
-    TexType_STR(TextureUsage_IBL_PREFILTER);
-    TexType_STR(TextureUsage_QUAD_FILTER);
+    CASE_ENUM_STR(TextureUsage_NONE);
+    CASE_ENUM_STR(TextureUsage_ALBEDO);
+    CASE_ENUM_STR(TextureUsage_NORMAL);
+    CASE_ENUM_STR(TextureUsage_EMISSIVE);
+    CASE_ENUM_STR(TextureUsage_AMBIENT_OCCLUSION);
+    CASE_ENUM_STR(TextureUsage_METAL_ROUGHNESS);
+    CASE_ENUM_STR(TextureUsage_CUBE);
+    CASE_ENUM_STR(TextureUsage_EQUIRECTANGULAR);
+    CASE_ENUM_STR(TextureUsage_IBL_IRRADIANCE);
+    CASE_ENUM_STR(TextureUsage_IBL_PREFILTER);
+    CASE_ENUM_STR(TextureUsage_QUAD_FILTER);
     default:
       break;
   }

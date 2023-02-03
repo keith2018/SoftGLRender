@@ -77,6 +77,7 @@ struct UniformsColor {
 
 class Material {
  public:
+  static const char *ShadingModelStr(ShadingModel model);
   static const char *TextureUsageStr(TextureUsage usage);
   static const char *SamplerDefine(TextureUsage usage);
   static const char *SamplerName(TextureUsage usage);
