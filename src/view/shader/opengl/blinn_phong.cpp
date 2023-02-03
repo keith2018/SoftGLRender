@@ -151,7 +151,7 @@ void main() {
         specularColor = vec3(pow(specularAngle, specularExponent));
     }
 
-        #if defined(EMISSIVE_MAP)
+    #if defined(EMISSIVE_MAP)
     emissiveColor = texture(u_emissiveMap, v_texCoord).rgb;
     #endif
 

@@ -34,6 +34,10 @@ class ViewerSoft : public Viewer {
   std::shared_ptr<Renderer> CreateRenderer() override {
     return std::make_shared<RendererSoft>();
   }
+
+  bool LoadShaders(ShaderProgram &program, ShadingModel shading) override {
+    return false;
+  }
 };
 
 }

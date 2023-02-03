@@ -97,6 +97,21 @@ void RendererSoft::SetShaderUniforms(ShaderUniforms &uniforms) {
 }
 
 void RendererSoft::Draw(PrimitiveType type) {
+  // vertex shader
+
+  // primitive assembly
+
+  // clipping
+
+  // perspective divide
+
+  // viewport transform
+
+  // rasterization
+
+  // fragment shader
+
+  // depth test
 }
 
 void RendererSoft::SetDepthRange(float near, float far) {

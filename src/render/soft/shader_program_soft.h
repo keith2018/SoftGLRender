@@ -22,9 +22,6 @@ class ShaderProgramSoft : public ShaderProgram {
   void AddDefine(const std::string &def) override {
   }
 
-  bool CompileAndLink(const std::string &vsSource, const std::string &fsSource) override {
-  }
-
  private:
   int uuid_ = -1;
   static int uuid_counter_;

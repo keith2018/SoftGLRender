@@ -26,6 +26,9 @@ enum ShadingModel {
   Shading_BlinnPhong,
   Shading_PBR,
   Shading_Skybox,
+  Shading_IBL_Irradiance,
+  Shading_IBL_Prefilter,
+  Shading_FXAA,
 };
 
 enum TextureUsage {

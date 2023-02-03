@@ -1,3 +1,9 @@
+/*
+ * SoftGLRender
+ * @author 	: keith@robot9.me
+ *
+ */
+
 #pragma once
 
 #include "base/logger.h"

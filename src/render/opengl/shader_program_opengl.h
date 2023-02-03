@@ -22,7 +22,7 @@ class ShaderProgramOpenGL : public ShaderProgram {
     program_glsl_.AddDefine(def);
   }
 
-  bool CompileAndLink(const std::string &vsSource, const std::string &fsSource) override {
+  bool CompileAndLink(const std::string &vsSource, const std::string &fsSource) {
     bool ret = program_glsl_.LoadSource(vsSource, fsSource);
     programId_ = program_glsl_.GetId();
     return ret;

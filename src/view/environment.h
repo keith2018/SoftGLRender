@@ -30,21 +30,23 @@ struct CubeRenderContext {
 class Environment {
  public:
   static bool ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
+                                     const std::function<bool(ShaderProgram &program)> &shader_func,
                                      const std::shared_ptr<Texture2D> &tex_in,
                                      std::shared_ptr<TextureCube> &tex_out);
 
   static bool GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
+                                    const std::function<bool(ShaderProgram &program)> &shader_func,
                                     const std::shared_ptr<TextureCube> &tex_in,
                                     std::shared_ptr<TextureCube> &tex_out);
 
   static bool GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
+                                   const std::function<bool(ShaderProgram &program)> &shader_func,
                                    const std::shared_ptr<TextureCube> &tex_in,
                                    std::shared_ptr<TextureCube> &tex_out);
 
  private:
   static bool CreateCubeRenderContext(CubeRenderContext &context,
-                                      const std::string &vsSource,
-                                      const std::string &fsSource,
+                                      const std::function<bool(ShaderProgram &program)> &shader_func,
                                       const std::shared_ptr<Texture> &tex_in,
                                       TextureUsage tex_usage);
 

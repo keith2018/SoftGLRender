@@ -8,7 +8,6 @@
 #include "model_loader.h"
 #include "base/logger.h"
 #include "render/opengl/renderer_opengl.h"
-#include "shader/opengl/shader_glsl.h"
 
 namespace SoftGL {
 namespace View {
@@ -25,13 +24,13 @@ struct UniformsPrefilter {
 };
 
 bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
+                                         const std::function<bool(ShaderProgram &program)> &shader_func,
                                          const std::shared_ptr<Texture2D> &tex_in,
                                          std::shared_ptr<TextureCube> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
-                                         SKYBOX_VS,
-                                         SKYBOX_FS,
+                                         shader_func,
                                          std::dynamic_pointer_cast<Texture>(tex_in),
                                          TextureUsage_EQUIRECTANGULAR);
   if (!success) {
@@ -44,13 +43,13 @@ bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &render
 }
 
 bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
+                                        const std::function<bool(ShaderProgram &program)> &shader_func,
                                         const std::shared_ptr<TextureCube> &tex_in,
                                         std::shared_ptr<TextureCube> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
-                                         IBL_IRRADIANCE_VS,
-                                         IBL_IRRADIANCE_FS,
+                                         shader_func,
                                          std::dynamic_pointer_cast<Texture>(tex_in),
                                          TextureUsage_CUBE);
   if (!success) {
@@ -63,13 +62,13 @@ bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &rendere
 }
 
 bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
+                                       const std::function<bool(ShaderProgram &program)> &shader_func,
                                        const std::shared_ptr<TextureCube> &tex_in,
                                        std::shared_ptr<TextureCube> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
-                                         IBL_PREFILTER_VS,
-                                         IBL_PREFILTER_FS,
+                                         shader_func,
                                          std::dynamic_pointer_cast<Texture>(tex_in),
                                          TextureUsage_CUBE);
   if (!success) {
@@ -96,8 +95,7 @@ bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer
 }
 
 bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
-                                          const std::string &vsSource,
-                                          const std::string &fsSource,
+                                          const std::function<bool(ShaderProgram &program)> &shader_func,
                                           const std::shared_ptr<Texture> &tex_in,
                                           TextureUsage tex_usage) {
   // camera
@@ -118,7 +116,7 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   std::set<std::string> shader_defines = {Material::SamplerDefine(tex_usage)};
   auto program = context.renderer->CreateShaderProgram();
   program->AddDefines(shader_defines);
-  bool success = program->CompileAndLink(vsSource, fsSource);
+  bool success = shader_func(*program);
   if (!success) {
     LOGE("create shader program failed");
     return false;

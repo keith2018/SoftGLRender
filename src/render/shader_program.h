@@ -24,8 +24,6 @@ class ShaderProgram {
       AddDefine(str);
     }
   }
-
-  virtual bool CompileAndLink(const std::string &vsSource, const std::string &fsSource) = 0;
 };
 
 }

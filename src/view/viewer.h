@@ -30,6 +30,7 @@ class Viewer {
 
  protected:
   virtual std::shared_ptr<Renderer> CreateRenderer() = 0;
+  virtual bool LoadShaders(ShaderProgram &program, ShadingModel shading) = 0;
 
  private:
   void FXAASetup();

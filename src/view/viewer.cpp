@@ -8,7 +8,6 @@
 #include <algorithm>
 #include "base/logger.h"
 #include "base/hash_utils.h"
-#include "shader/opengl/shader_glsl.h"
 #include "environment.h"
 
 namespace SoftGL {
@@ -47,7 +46,11 @@ void Viewer::Create(int width, int height, int outTexId) {
   uniforms_block_mvp_ = renderer_->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
   uniforms_block_color_ = renderer_->CreateUniformBlock("UniformsColor", sizeof(UniformsColor));
 
+  // reset variables
+  fxaa_filter_ = nullptr;
+  color_tex_fxaa_ = nullptr;
   ibl_placeholder_ = CreateTextureCubeDefault(1, 1);
+  program_cache_.clear();
 }
 
 void Viewer::DrawFrame(DemoScene &scene) {
@@ -150,8 +153,11 @@ void Viewer::FXAASetup() {
 
   if (!fxaa_filter_) {
     fxaa_filter_ = std::make_shared<QuadFilter>(CreateRenderer(),
-                                                color_tex_fxaa_, color_tex_out_,
-                                                FXAA_VS, FXAA_FS);
+                                                [&](ShaderProgram &program) -> bool {
+                                                  return LoadShaders(program, Shading_FXAA);
+                                                },
+                                                color_tex_fxaa_,
+                                                color_tex_out_);
   }
 }
 
@@ -372,22 +378,7 @@ void Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
   auto program = renderer_->CreateShaderProgram();
   program->AddDefines(shader_defines);
 
-  bool success = false;
-  switch (material.shading) {
-    case Shading_BaseColor:
-      success = program->CompileAndLink(BASIC_VS, BASIC_FS);
-      break;
-    case Shading_BlinnPhong:
-      success = program->CompileAndLink(BLINN_PHONG_VS, BLINN_PHONG_FS);
-      break;
-    case Shading_PBR:
-      success = program->CompileAndLink(PBR_IBL_VS, PBR_IBL_FS);
-      break;
-    case Shading_Skybox:
-      success = program->CompileAndLink(SKYBOX_VS, SKYBOX_FS);
-      break;
-  }
-
+  bool success = LoadShaders(*program, material.shading);
   if (success) {
     // add to cache
     program_cache_[cache_key] = program;
@@ -461,7 +452,12 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
       auto texture_2d = std::dynamic_pointer_cast<Texture2D>(tex_eq_it->second);
       auto cube_size = std::min(texture_2d->width, texture_2d->height);
       auto tex_cvt = CreateTextureCubeDefault(cube_size, cube_size);
-      auto success = Environment::ConvertEquirectangular(CreateRenderer(), texture_2d, tex_cvt);
+      auto success = Environment::ConvertEquirectangular(CreateRenderer(),
+                                                         [&](ShaderProgram &program) -> bool {
+                                                           return LoadShaders(program, Shading_Skybox);
+                                                         },
+                                                         texture_2d,
+                                                         tex_cvt);
       if (success) {
         texture_cube = tex_cvt;
         skybox.material.textures[TextureUsage_CUBE] = tex_cvt;
@@ -482,7 +478,12 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
 
   // generate irradiance map
   auto texture_irradiance = CreateTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize);
-  if (Environment::GenerateIrradianceMap(CreateRenderer(), texture_cube, texture_irradiance)) {
+  if (Environment::GenerateIrradianceMap(CreateRenderer(),
+                                         [&](ShaderProgram &program) -> bool {
+                                           return LoadShaders(program, Shading_IBL_Irradiance);
+                                         },
+                                         texture_cube,
+                                         texture_irradiance)) {
     skybox.material.textures[TextureUsage_IBL_IRRADIANCE] = std::move(texture_irradiance);
   } else {
     LOGE("InitSkyboxIBL failed: generate irradiance map failed");
@@ -491,7 +492,12 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
 
   // generate prefilter map
   auto texture_prefilter = CreateTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, true);
-  if (Environment::GeneratePrefilterMap(CreateRenderer(), texture_cube, texture_prefilter)) {
+  if (Environment::GeneratePrefilterMap(CreateRenderer(),
+                                        [&](ShaderProgram &program) -> bool {
+                                          return LoadShaders(program, Shading_IBL_Prefilter);
+                                        },
+                                        texture_cube,
+                                        texture_prefilter)) {
     skybox.material.textures[TextureUsage_IBL_PREFILTER] = std::move(texture_prefilter);
   } else {
     LOGE("InitSkyboxIBL failed: generate prefilter map failed");

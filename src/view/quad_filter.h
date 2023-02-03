@@ -15,10 +15,9 @@ namespace View {
 class QuadFilter {
  public:
   QuadFilter(const std::shared_ptr<Renderer> &renderer,
+             const std::function<bool(ShaderProgram &program)> &shader_func,
              std::shared_ptr<Texture2D> &tex_in,
-             std::shared_ptr<Texture2D> &tex_out,
-             const std::string &vsSource,
-             const std::string &fsSource);
+             std::shared_ptr<Texture2D> &tex_out);
 
   void Draw();
 

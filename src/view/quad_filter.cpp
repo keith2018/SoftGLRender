@@ -6,9 +6,6 @@
 
 #include "quad_filter.h"
 
-#include <utility>
-#include "render/opengl/renderer_opengl.h"
-
 namespace SoftGL {
 namespace View {
 
@@ -17,10 +14,9 @@ struct UniformsQuadFilter {
 };
 
 QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
+                       const std::function<bool(ShaderProgram &program)> &shader_func,
                        std::shared_ptr<Texture2D> &tex_in,
-                       std::shared_ptr<Texture2D> &tex_out,
-                       const std::string &vsSource,
-                       const std::string &fsSource) {
+                       std::shared_ptr<Texture2D> &tex_out) {
   width_ = tex_out->width;
   height_ = tex_out->height;
 
@@ -45,7 +41,7 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
 
   // program
   auto program = renderer_->CreateShaderProgram();
-  bool success = program->CompileAndLink(vsSource, fsSource);
+  bool success = shader_func(*program);
   if (!success) {
     LOGE("create shader program failed");
     return;

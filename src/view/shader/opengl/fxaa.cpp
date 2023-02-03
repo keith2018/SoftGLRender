@@ -45,7 +45,7 @@ float rgb2luma(vec3 rgb) {
     return dot(rgb, vec3(0.299, 0.587, 0.114));
 }
 
-void main(){
+void main() {
     vec2 inverseScreenSize = vec2(1.0) / u_screenSize;
 	vec3 colorCenter = texture(u_screenTexture, v_texCoord).rgb;
 
@@ -155,7 +155,6 @@ void main(){
 
 	// If both sides have not been reached, continue to explore.
 	if(!reachedBoth){
-
 		for(int i = 2; i < ITERATIONS; i++){
 			// If needed, read luma in 1st direction, compute delta.
 			if(!reached1){
@@ -183,7 +182,6 @@ void main(){
 			// If both sides have been reached, stop the exploration.
 			if(reachedBoth){ break;}
 		}
-
 	}
 
 	// Compute the distances to each side edge of the edge (!).
