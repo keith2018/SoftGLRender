@@ -235,7 +235,7 @@ std::shared_ptr<Buffer<T>> Buffer<T>::MakeLayout(BufferLayout layout) {
   }
 }
 
-using BufferRGBA = Buffer<glm::tvec4<uint8_t>>;
+using BufferRGBA = Buffer<glm::u8vec4>;
 using BufferDepth = Buffer<float>;
 
 }

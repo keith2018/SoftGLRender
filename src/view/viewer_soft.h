@@ -7,8 +7,10 @@
 #pragma once
 
 #include "viewer.h"
+#include "render/opengl/opengl_utils.h"
 #include "render/soft/renderer_soft.h"
 #include "render/soft/texture_soft.h"
+#include "shader/soft/shader_soft.h"
 
 namespace SoftGL {
 namespace View {
@@ -20,15 +22,15 @@ class ViewerSoft : public Viewer {
   void SwapBuffer() override {
     auto *tex_out = dynamic_cast<Texture2DSoft *>(color_tex_out_.get());
     auto buffer = tex_out->GetBuffer();
-    glTexImage2D(GL_TEXTURE_2D,
-                 0,
-                 GL_RGBA,
-                 (int) buffer->GetWidth(),
-                 (int) buffer->GetHeight(),
-                 0,
-                 GL_RGBA,
-                 GL_UNSIGNED_BYTE,
-                 buffer->GetRawDataPtr());
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
+                          0,
+                          GL_RGBA,
+                          (int) buffer->GetWidth(),
+                          (int) buffer->GetHeight(),
+                          0,
+                          GL_RGBA,
+                          GL_UNSIGNED_BYTE,
+                          buffer->GetRawDataPtr()));
   }
 
   std::shared_ptr<Renderer> CreateRenderer() override {
@@ -36,6 +38,15 @@ class ViewerSoft : public Viewer {
   }
 
   bool LoadShaders(ShaderProgram &program, ShadingModel shading) override {
+    auto *program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
+    switch (shading) {
+      case Shading_BaseColor:
+        return program_soft->SetShaders(std::make_shared<ShaderBasic::VS_BASIC>(),
+                                        std::make_shared<ShaderBasic::FS_BASIC>());
+      default:
+        break;
+    }
+
     return false;
   }
 };

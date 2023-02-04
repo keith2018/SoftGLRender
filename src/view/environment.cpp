@@ -174,10 +174,10 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
     // draw
     context.fbo->SetColorAttachment(tex_out, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), tex_out_level);
     context.renderer->Clear({});
-    context.renderer->SetVertexArray(context.model_skybox);
+    context.renderer->SetVertexArrayObject(context.model_skybox.vao);
     context.renderer->SetRenderState(context.model_skybox.material.render_state);
-    context.renderer->SetShaderProgram(*context.model_skybox.material.shader_program);
-    context.renderer->SetShaderUniforms(*context.model_skybox.material.shader_uniforms);
+    context.renderer->SetShaderProgram(context.model_skybox.material.shader_program);
+    context.renderer->SetShaderUniforms(context.model_skybox.material.shader_uniforms);
     context.renderer->Draw(context.model_skybox.primitive_type);
   }
 }

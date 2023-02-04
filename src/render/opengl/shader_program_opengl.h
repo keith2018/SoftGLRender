@@ -32,47 +32,9 @@ class ShaderProgramOpenGL : public ShaderProgram {
     program_glsl_.Use();
   }
 
-  void BindUniforms(ShaderUniforms &uniforms) {
-    int binding = 0;
-    for (auto &uniform : uniforms.blocks) {
-      bool success = SetUniform(*uniform, binding);
-      if (success) {
-        binding++;
-      }
-    }
-
-    binding = 0;
-    for (auto &kv : uniforms.samplers) {
-      bool success = SetUniform(*kv.second, binding);
-      if (success) {
-        binding++;
-      }
-    }
-  }
-
- protected:
-  bool SetUniform(Uniform &uniform, int binding) {
-    int hash = uniform.GetHash();
-    int loc = -1;
-    if (uniform_locations_.find(hash) == uniform_locations_.end()) {
-      loc = uniform.GetLocation(*this);
-      uniform_locations_[hash] = loc;
-    } else {
-      loc = uniform_locations_[hash];
-    }
-
-    if (loc < 0) {
-      return false;
-    }
-
-    uniform.BindProgram(*this, loc, binding);
-    return true;
-  };
-
  private:
   GLuint programId_ = 0;
   ProgramGLSL program_glsl_;
-  std::unordered_map<int, int> uniform_locations_;
 };
 
 }

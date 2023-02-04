@@ -93,26 +93,34 @@ void RendererOpenGL::SetRenderState(const RenderState &state) {
   GL_CHECK(glPointSize(state.point_size));
 }
 
-void RendererOpenGL::SetVertexArray(VertexArray &vertex) {
-  vertexArray_ = &vertex;
-  auto vao = dynamic_cast<VertexArrayObjectOpenGL *>(vertex.vao.get());
-  vao->Bind();
+void RendererOpenGL::SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
+  if (!vao) {
+    return;
+  }
+  vao_ = dynamic_cast<VertexArrayObjectOpenGL *>(vao.get());
+  vao_->Bind();
 }
 
-void RendererOpenGL::SetShaderProgram(ShaderProgram &program) {
-  shader_program_ = dynamic_cast<ShaderProgramOpenGL *>(&program);
+void RendererOpenGL::SetShaderProgram(std::shared_ptr<ShaderProgram> &program) {
+  if (!program) {
+    return;
+  }
+  shader_program_ = dynamic_cast<ShaderProgramOpenGL *>(program.get());
   shader_program_->Use();
 }
 
-void RendererOpenGL::SetShaderUniforms(ShaderUniforms &uniforms) {
+void RendererOpenGL::SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
+  if (!uniforms) {
+    return;
+  }
   if (shader_program_) {
-    shader_program_->BindUniforms(uniforms);
+    shader_program_->BindUniforms(*uniforms);
   }
 }
 
 void RendererOpenGL::Draw(PrimitiveType type) {
   GLenum mode = OpenGL::ConvertPrimitiveType(type);
-  GL_CHECK(glDrawElements(mode, (GLsizei) vertexArray_->indices.size(), GL_UNSIGNED_INT, nullptr));
+  GL_CHECK(glDrawElements(mode, (GLsizei) vao_->GetIndicesCnt(), GL_UNSIGNED_INT, nullptr));
 }
 
 }

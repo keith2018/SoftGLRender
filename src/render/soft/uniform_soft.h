@@ -8,31 +8,38 @@
 
 #include "base/logger.h"
 #include "render/uniform.h"
+#include "render/soft/shader_program_soft.h"
 
 namespace SoftGL {
 
 class UniformBlockSoft : public UniformBlock {
  public:
   UniformBlockSoft(const std::string &name, int size) : UniformBlock(name, size) {
+    buffer_.resize(size);
   }
 
   ~UniformBlockSoft() = default;
 
   int GetLocation(ShaderProgram &program) override {
+    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
+    return program_soft->GetUniformBlockLocation(name);
   }
 
   void BindProgram(ShaderProgram &program, int location, int binding) override {
-
+    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
+    program_soft->BindUniformBlockBuffer(buffer_.data(), buffer_.size(), location);
   }
 
   void SetSubData(void *data, int len, int offset) override {
-
+    memcpy(buffer_.data() + offset, data, len);
   }
 
   void SetData(void *data, int len) override {
+    memcpy(buffer_.data(), data, len);
   }
 
  private:
+  std::vector<uint8_t> buffer_;
 };
 
 class UniformSamplerSoft : public UniformSampler {
@@ -42,6 +49,8 @@ class UniformSamplerSoft : public UniformSampler {
   ~UniformSamplerSoft() = default;
 
   int GetLocation(ShaderProgram &program) override {
+    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
+    return program_soft->GetUniformBlockLocation(name);
   }
 
   void BindProgram(ShaderProgram &program, int location, int binding) override {

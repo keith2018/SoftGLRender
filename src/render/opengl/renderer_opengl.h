@@ -7,12 +7,18 @@
 #pragma once
 
 #include "render/renderer.h"
+#include "render/opengl/vertex_opengl.h"
 #include "render/opengl/shader_program_opengl.h"
 
 namespace SoftGL {
 
 class RendererOpenGL : public Renderer {
  public:
+  // config
+  bool ReverseZ() const override {
+    return false;
+  }
+
   // framebuffer
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
 
@@ -36,13 +42,13 @@ class RendererOpenGL : public Renderer {
   void SetViewPort(int x, int y, int width, int height) override;
   void Clear(const ClearState &state) override;
   void SetRenderState(const RenderState &state) override;
-  void SetVertexArray(VertexArray &vertex) override;
-  void SetShaderProgram(ShaderProgram &program) override;
-  void SetShaderUniforms(ShaderUniforms &uniforms) override;
+  void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
+  void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
+  void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
   void Draw(PrimitiveType type) override;
 
  private:
-  VertexArray *vertexArray_ = nullptr;
+  VertexArrayObjectOpenGL *vao_ = nullptr;
   ShaderProgramOpenGL *shader_program_ = nullptr;
 };
 

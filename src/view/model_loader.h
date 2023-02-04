@@ -27,7 +27,7 @@ class ModelLoader {
 
   inline DemoScene &GetScene() { return scene_; }
 
-  static void LoadCubeMesh(VertexArray &mesh);
+  static void LoadCubeMesh(ModelVertexes &mesh);
 
  private:
   void LoadWorldAxis();

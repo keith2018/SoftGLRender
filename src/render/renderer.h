@@ -17,6 +17,9 @@ namespace SoftGL {
 
 class Renderer {
  public:
+  // config
+  virtual bool ReverseZ() const = 0;
+
   // framebuffer
   virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
 
@@ -40,9 +43,9 @@ class Renderer {
   virtual void SetViewPort(int x, int y, int width, int height) = 0;
   virtual void Clear(const ClearState &state) = 0;
   virtual void SetRenderState(const RenderState &state) = 0;
-  virtual void SetVertexArray(VertexArray &vertex) = 0;
-  virtual void SetShaderProgram(ShaderProgram &program) = 0;
-  virtual void SetShaderUniforms(ShaderUniforms &uniforms) = 0;
+  virtual void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
+  virtual void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
+  virtual void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
   virtual void Draw(PrimitiveType type) = 0;
 };
 

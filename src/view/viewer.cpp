@@ -201,7 +201,7 @@ void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
                 {uniforms_block_mvp_},
                 false,
                 [&](RenderState &rs) -> void {
-                  rs.depth_func = Depth_LEQUAL;
+                  rs.depth_func = renderer_->ReverseZ() ? Depth_GREATER : Depth_LEQUAL;
                   rs.depth_mask = false;
                 });
   PipelineDraw(skybox, skybox.material);
@@ -266,7 +266,7 @@ void Viewer::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
   }
 }
 
-void Viewer::PipelineSetup(VertexArray &vertexes,
+void Viewer::PipelineSetup(ModelVertexes &vertexes,
                            Material &material,
                            const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks,
                            bool blend,
@@ -276,15 +276,15 @@ void Viewer::PipelineSetup(VertexArray &vertexes,
   SetupMaterial(material, uniform_blocks);
 }
 
-void Viewer::PipelineDraw(VertexArray &vertexes, Material &material) {
-  renderer_->SetVertexArray(vertexes);
+void Viewer::PipelineDraw(ModelVertexes &vertexes, Material &material) {
+  renderer_->SetVertexArrayObject(vertexes.vao);
   renderer_->SetRenderState(material.render_state);
-  renderer_->SetShaderProgram(*material.shader_program);
-  renderer_->SetShaderUniforms(*material.shader_uniforms);
+  renderer_->SetShaderProgram(material.shader_program);
+  renderer_->SetShaderUniforms(material.shader_uniforms);
   renderer_->Draw(vertexes.primitive_type);
 }
 
-void Viewer::SetupVertexArray(VertexArray &vertexes) {
+void Viewer::SetupVertexArray(ModelVertexes &vertexes) {
   if (!vertexes.vao) {
     vertexes.vao = renderer_->CreateVertexArrayObject(vertexes);
   }
@@ -297,7 +297,7 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
 
   rs.depth_test = config_.depth_test;
   rs.depth_mask = !blend;  // disable depth write
-  rs.depth_func = Depth_LESS;
+  rs.depth_func = renderer_->ReverseZ() ? Depth_GEQUAL : Depth_LESS;
 
   rs.cull_face = config_.cull_face;
   rs.polygon_mode = FILL;
@@ -365,13 +365,13 @@ void Viewer::SetupSamplerUniforms(Material &material) {
 }
 
 bool Viewer::SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines) {
-  material.shader_uniforms = std::make_shared<ShaderUniforms>();
+  size_t cache_key = GetShaderProgramCacheKey(material.shading, shader_defines);
 
   // try cache
-  size_t cache_key = GetShaderProgramCacheKey(material.shading, shader_defines);
   auto cached_program = program_cache_.find(cache_key);
   if (cached_program != program_cache_.end()) {
     material.shader_program = cached_program->second;
+    material.shader_uniforms = std::make_shared<ShaderUniforms>();
     return true;
   }
 

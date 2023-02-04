@@ -28,6 +28,7 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   quad_mesh_.vertexes.push_back({{1.f, 1.f, 0.f}, {1.f, 1.f}});
   quad_mesh_.vertexes.push_back({{-1.f, 1.f, 0.f}, {0.f, 1.f}});
   quad_mesh_.indices = {0, 1, 2, 1, 2, 3};
+  quad_mesh_.InitVertexes();
 
   // renderer
   renderer_ = renderer;
@@ -72,10 +73,10 @@ void QuadFilter::Draw() {
   renderer_->SetViewPort(0, 0, width_, height_);
 
   renderer_->Clear({});
-  renderer_->SetVertexArray(quad_mesh_);
+  renderer_->SetVertexArrayObject(quad_mesh_.vao);
   renderer_->SetRenderState(quad_mesh_.material_textured.render_state);
-  renderer_->SetShaderProgram(*quad_mesh_.material_textured.shader_program);
-  renderer_->SetShaderUniforms(*quad_mesh_.material_textured.shader_uniforms);
+  renderer_->SetShaderProgram(quad_mesh_.material_textured.shader_program);
+  renderer_->SetShaderUniforms(quad_mesh_.material_textured.shader_uniforms);
   renderer_->Draw(quad_mesh_.primitive_type);
 }
 

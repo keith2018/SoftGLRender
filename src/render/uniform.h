@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <utility>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -17,7 +18,7 @@ class ShaderProgram;
 
 class Uniform {
  public:
-  explicit Uniform(const std::string &name) : name(name), uuid_(uuid_counter_++) {}
+  explicit Uniform(std::string name) : name(std::move(name)), uuid_(uuid_counter_++) {}
 
   inline int GetHash() const {
     return uuid_;

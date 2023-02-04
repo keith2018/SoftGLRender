@@ -39,12 +39,12 @@ ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
   });
   config_panel_.SetUpdateLightFunc([&](glm::vec3 &position, glm::vec3 &color) -> void {
     scene_.point_light.vertexes[0].a_position = position;
-    scene_.point_light.UpdateVertexData();
+    scene_.point_light.UpdateVertexes();
     scene_.point_light.material.base_color = glm::vec4(color, 1.f);
   });
 }
 
-void ModelLoader::LoadCubeMesh(VertexArray &mesh) {
+void ModelLoader::LoadCubeMesh(ModelVertexes &mesh) {
   const float *cube_vertexes = Cube::GetCubeVertexes();
 
   mesh.primitive_type = Primitive_TRIANGLES;
@@ -59,6 +59,7 @@ void ModelLoader::LoadCubeMesh(VertexArray &mesh) {
       mesh.indices.push_back(i * 3 + j);
     }
   }
+  mesh.InitVertexes();
 }
 
 void ModelLoader::LoadWorldAxis() {
@@ -83,6 +84,7 @@ void ModelLoader::LoadWorldAxis() {
     scene_.world_axis.indices.push_back(idx++);
     scene_.world_axis.indices.push_back(idx++);
   }
+  scene_.world_axis.InitVertexes();
 
   scene_.world_axis.primitive_type = Primitive_LINES;
   scene_.world_axis.primitive_cnt = scene_.world_axis.indices.size() / 2;
@@ -106,6 +108,7 @@ void ModelLoader::LoadLights() {
   scene_.point_light.material.shading = Shading_BaseColor;
   scene_.point_light.material.base_color = glm::vec4(config_.point_light_color, 1.f);
   scene_.point_light.point_size = 10.f;
+  scene_.point_light.InitVertexes();
 }
 
 bool ModelLoader::LoadSkybox(const std::string &filepath) {
@@ -304,6 +307,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
   out_mesh.vertexes = std::move(vertexes);
   out_mesh.indices = std::move(indices);
   out_mesh.aabb = ConvertBoundingBox(ai_mesh->mAABB);
+  out_mesh.InitVertexes();
 
   return true;
 }

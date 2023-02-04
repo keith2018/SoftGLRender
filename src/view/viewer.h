@@ -43,14 +43,14 @@ class Viewer {
   void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
   void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
 
-  void PipelineSetup(VertexArray &vertexes,
+  void PipelineSetup(ModelVertexes &vertexes,
                      Material &material,
                      const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks,
                      bool blend,
                      const std::function<void(RenderState &rs)> &extra_states);
-  void PipelineDraw(VertexArray &vertexes, Material &material);
+  void PipelineDraw(ModelVertexes &vertexes, Material &material);
 
-  void SetupVertexArray(VertexArray &vertexes);
+  void SetupVertexArray(ModelVertexes &vertexes);
   void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
   bool SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
   void SetupTextures(Material &material, std::set<std::string> &shader_defines);

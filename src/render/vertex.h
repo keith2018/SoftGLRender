@@ -18,32 +18,26 @@ enum PrimitiveType {
   Primitive_TRIANGLES,
 };
 
-struct Vertex {
-  glm::vec3 a_position;
-  glm::vec2 a_texCoord;
-  glm::vec3 a_normal;
-  glm::vec3 a_tangent;
-};
-
 class VertexArrayObject {
  public:
   virtual int GetId() const = 0;
-  virtual void UpdateVertexData(std::vector<Vertex> &vertexes) = 0;
+  virtual void UpdateVertexData(void *data, size_t length) = 0;
 };
 
-class VertexArray {
- public:
-  inline void UpdateVertexData() {
-    if (vao) { vao->UpdateVertexData(vertexes); }
-  };
+// only support float type attributes
+struct VertexAttributeDesc {
+  size_t size;
+  size_t stride;
+  size_t offset;
+};
 
- public:
-  PrimitiveType primitive_type;
-  size_t primitive_cnt = 0;
-  std::vector<Vertex> vertexes;
-  std::vector<int32_t> indices;
+struct VertexArray {
+  std::vector<VertexAttributeDesc> vertexes_desc;
+  uint8_t *vertexes_buffer = nullptr;
+  size_t vertexes_buffer_length = 0;
 
-  std::shared_ptr<VertexArrayObject> vao = nullptr;
+  int32_t *indices_buffer = nullptr;
+  size_t indices_buffer_length = 0;
 };
 
 }
