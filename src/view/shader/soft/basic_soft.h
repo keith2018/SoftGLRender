@@ -11,14 +11,17 @@
 namespace SoftGL {
 namespace ShaderBasic {
 
-struct VertexAttributes {
+struct ShaderDefines {
+};
+
+struct ShaderAttributes {
   glm::vec3 a_position;
   glm::vec2 a_texCoord;
   glm::vec3 a_normal;
   glm::vec3 a_tangent;
 };
 
-struct UniformBlocks {
+struct ShaderUniforms {
   // UniformsMVP
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
@@ -28,46 +31,35 @@ struct UniformBlocks {
   glm::vec4 u_baseColor;
 };
 
+struct ShaderVaryings {
+};
+
 class ShaderBasic : public ShaderSoft {
  public:
-  void BindBuiltin(void *ptr) override {
-    gl = static_cast<ShaderBuiltin *>(ptr);
+  CREATE_SHADER_OVERRIDE
+
+  std::vector<std::string> &GetDefines() override {
+    static std::vector<std::string> defines;
+    return defines;
   }
 
-  void BindVertexAttributes(void *ptr) override {
-    a = static_cast<VertexAttributes *>(ptr);
-  }
-
-  void BindUniformBlocks(void *ptr) override {
-    u = static_cast<UniformBlocks *>(ptr);
-  }
-
-  std::vector<UniformBlockDesc> &GetUniformBlockDesc() override {
-    static std::vector<UniformBlockDesc> desc = {
-        {"UniformsMVP", offsetof(UniformBlocks, u_modelMatrix)},
-        {"UniformsColor", offsetof(UniformBlocks, u_baseColor)},
+  std::vector<UniformDesc> &GetUniformsDesc() override {
+    static std::vector<UniformDesc> desc = {
+        {"UniformsMVP", offsetof(ShaderUniforms, u_modelMatrix)},
+        {"UniformsColor", offsetof(ShaderUniforms, u_baseColor)},
     };
     return desc;
   };
-
-  size_t GetUniformBlocksSize() override {
-    return sizeof(UniformBlocks);
-  }
-
- public:
-  ShaderBuiltin *gl = nullptr;
-  VertexAttributes *a = nullptr;
-  UniformBlocks *u = nullptr;
 };
 
-class VS_BASIC : public ShaderBasic {
+class VS : public ShaderBasic {
  public:
   void ShaderMain() override {
     gl->Position = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0);
   }
 };
 
-class FS_BASIC : public ShaderBasic {
+class FS : public ShaderBasic {
  public:
   void ShaderMain() override {
     gl->FragColor = u->u_baseColor;

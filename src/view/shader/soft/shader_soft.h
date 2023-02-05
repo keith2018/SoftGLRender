@@ -7,3 +7,4 @@
 #pragma once
 
 #include "basic_soft.h"
+#include "blinn_phong_soft.h"

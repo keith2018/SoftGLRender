@@ -47,8 +47,8 @@ std::shared_ptr<UniformBlock> RendererSoft::CreateUniformBlock(const std::string
   return std::make_shared<UniformBlockSoft>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::string &name) {
-  return std::make_shared<UniformSamplerSoft>(name);
+std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::string &name, TextureType type) {
+  return std::make_shared<UniformSamplerSoft>(name, type);
 }
 
 // pipeline

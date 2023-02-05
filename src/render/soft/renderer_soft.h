@@ -66,7 +66,7 @@ class RendererSoft : public Renderer {
 
   // uniform
   std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name) override;
+  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) override;
 
   // pipeline
   void SetFrameBuffer(FrameBuffer &frame_buffer) override;

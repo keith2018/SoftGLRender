@@ -39,18 +39,18 @@ enum CubeMapFace {
   TEXTURE_CUBE_MAP_NEGATIVE_Z = 5,
 };
 
-struct Sampler {
+struct SamplerDesc {
   bool use_mipmaps = false;
-  virtual ~Sampler() = default;
+  virtual ~SamplerDesc() = default;
 };
 
-struct Sampler2D : Sampler {
+struct Sampler2DDesc : SamplerDesc {
   WrapMode wrap_s;
   WrapMode wrap_t;
   FilterMode filter_min;
   FilterMode filter_mag;
 
-  Sampler2D() {
+  Sampler2DDesc() {
     use_mipmaps = true;
     wrap_s = Wrap_REPEAT;
     wrap_t = Wrap_REPEAT;
@@ -59,10 +59,10 @@ struct Sampler2D : Sampler {
   }
 };
 
-struct SamplerCube : Sampler2D {
+struct SamplerCubeDesc : Sampler2DDesc {
   WrapMode wrap_r;
 
-  SamplerCube() {
+  SamplerCubeDesc() {
     use_mipmaps = true;
     wrap_s = Wrap_CLAMP_TO_EDGE;
     wrap_t = Wrap_CLAMP_TO_EDGE;
@@ -82,7 +82,7 @@ class Texture {
  public:
   virtual int GetId() const = 0;
   virtual TextureType Type() = 0;
-  virtual void SetSampler(Sampler &sampler) {};
+  virtual void SetSamplerDesc(SamplerDesc &sampler) {};
   virtual void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) {};
   virtual void InitImageData(int w, int h) {};
 

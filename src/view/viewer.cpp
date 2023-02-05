@@ -30,12 +30,12 @@ void Viewer::Create(int width, int height, int outTexId) {
   fbo_->SetDepthAttachment(depth_attachment);
 
   // color attachment
-  Sampler2D sampler;
+  Sampler2DDesc sampler;
   sampler.use_mipmaps = false;
   sampler.filter_min = Filter_NEAREST;
   color_tex_out_ = renderer_->CreateTexture2D();
   color_tex_out_->InitImageData(width, height);
-  color_tex_out_->SetSampler(sampler);
+  color_tex_out_->SetSamplerDesc(sampler);
   fbo_->SetColorAttachment(color_tex_out_, 0);
 
   if (!fbo_->IsValid()) {
@@ -142,13 +142,13 @@ void Viewer::Destroy() {}
 
 void Viewer::FXAASetup() {
   if (!color_tex_fxaa_) {
-    Sampler2D sampler;
+    Sampler2DDesc sampler;
     sampler.use_mipmaps = false;
     sampler.filter_min = Filter_NEAREST;
 
     color_tex_fxaa_ = renderer_->CreateTexture2D();
     color_tex_fxaa_->InitImageData(width_, height_);
-    color_tex_fxaa_->SetSampler(sampler);
+    color_tex_fxaa_->SetSamplerDesc(sampler);
   }
 
   if (!fxaa_filter_) {
@@ -311,8 +311,8 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
 }
 
 void Viewer::SetupTextures(Material &material, std::set<std::string> &shader_defines) {
-  SamplerCube sampler_cube;
-  Sampler2D sampler_2d;
+  SamplerCubeDesc sampler_cube;
+  Sampler2DDesc sampler_2d;
 
   for (auto &kv : material.texture_data) {
     std::shared_ptr<Texture> texture = nullptr;
@@ -324,12 +324,12 @@ void Viewer::SetupTextures(Material &material, std::set<std::string> &shader_def
       }
       case TextureUsage_CUBE: {
         texture = renderer_->CreateTextureCube();
-        texture->SetSampler(sampler_cube);
+        texture->SetSamplerDesc(sampler_cube);
         break;
       }
       default: {
         texture = renderer_->CreateTexture2D();
-        texture->SetSampler(sampler_2d);
+        texture->SetSamplerDesc(sampler_2d);
         break;
       }
     }
@@ -357,7 +357,7 @@ void Viewer::SetupSamplerUniforms(Material &material) {
     // create sampler uniform
     const char *sampler_name = Material::SamplerName((TextureUsage) kv.first);
     if (sampler_name) {
-      auto uniform = renderer_->CreateUniformSampler(sampler_name);
+      auto uniform = renderer_->CreateUniformSampler(sampler_name, kv.second->Type());
       uniform->SetTexture(kv.second);
       material.shader_uniforms->samplers[kv.first] = std::move(uniform);
     }
@@ -531,12 +531,12 @@ void Viewer::UpdateIBLTextures(Material &material) {
 }
 
 std::shared_ptr<TextureCube> Viewer::CreateTextureCubeDefault(int width, int height, bool mipmaps) {
-  SamplerCube sampler_cube;
+  SamplerCubeDesc sampler_cube;
   sampler_cube.use_mipmaps = mipmaps;
   sampler_cube.filter_min = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
 
   auto texture_cube = renderer_->CreateTextureCube();
-  texture_cube->SetSampler(sampler_cube);
+  texture_cube->SetSamplerDesc(sampler_cube);
   texture_cube->InitImageData(width, height);
 
   return texture_cube;

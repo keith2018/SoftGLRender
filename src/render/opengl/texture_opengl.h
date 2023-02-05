@@ -27,8 +27,8 @@ class Texture2DOpenGL : public Texture2D {
     return (int) texId_;
   }
 
-  void SetSampler(Sampler &sampler) override {
-    auto &sampler_2d = dynamic_cast<Sampler2D &>(sampler);
+  void SetSamplerDesc(SamplerDesc &sampler) override {
+    auto &sampler_2d = dynamic_cast<Sampler2DDesc &>(sampler);
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId_));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler_2d.wrap_s)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler_2d.wrap_t)));
@@ -88,8 +88,8 @@ class TextureCubeOpenGL : public TextureCube {
     return (int) texId_;
   }
 
-  void SetSampler(Sampler &sampler) override {
-    auto &sampler_cube = dynamic_cast<SamplerCube &>(sampler);
+  void SetSamplerDesc(SamplerDesc &sampler) override {
+    auto &sampler_cube = dynamic_cast<SamplerCubeDesc &>(sampler);
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler_cube.wrap_s)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler_cube.wrap_t)));

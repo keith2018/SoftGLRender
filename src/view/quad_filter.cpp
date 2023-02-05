@@ -52,7 +52,7 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
 
   // uniforms
   const char *sampler_name = Material::SamplerName(TextureUsage_QUAD_FILTER);
-  auto uniform = renderer_->CreateUniformSampler(sampler_name);
+  auto uniform = renderer_->CreateUniformSampler(sampler_name, tex_in->Type());
   uniform->SetTexture(tex_in);
   quad_mesh_.material_textured.shader_uniforms->samplers[TextureUsage_QUAD_FILTER] = uniform;
 

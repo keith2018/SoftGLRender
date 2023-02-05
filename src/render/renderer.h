@@ -36,7 +36,7 @@ class Renderer {
 
   // uniform
   virtual std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) = 0;
-  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name) = 0;
+  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) = 0;
 
   // pipeline
   virtual void SetFrameBuffer(FrameBuffer &frame_buffer) = 0;

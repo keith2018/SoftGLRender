@@ -48,7 +48,8 @@ class UniformBlockOpenGL : public UniformBlock {
 
 class UniformSamplerOpenGL : public UniformSampler {
  public:
-  explicit UniformSamplerOpenGL(const std::string &name) : UniformSampler(name) {}
+  explicit UniformSamplerOpenGL(const std::string &name, TextureType type)
+      : UniformSampler(name, type) {}
   ~UniformSamplerOpenGL() = default;
 
   int GetLocation(ShaderProgram &program) override {

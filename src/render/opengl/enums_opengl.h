@@ -11,14 +11,14 @@
 namespace SoftGL {
 namespace OpenGL {
 
-#define CVT_CASE(PRE, TOKEN) case PRE##TOKEN: return GL_##TOKEN
+#define CASE_CVT_GL(PRE, TOKEN) case PRE##TOKEN: return GL_##TOKEN
 
 static inline GLint ConvertWrap(WrapMode mode) {
   switch (mode) {
-    CVT_CASE(Wrap_, REPEAT);
-    CVT_CASE(Wrap_, MIRRORED_REPEAT);
-    CVT_CASE(Wrap_, CLAMP_TO_EDGE);
-    CVT_CASE(Wrap_, CLAMP_TO_BORDER);
+    CASE_CVT_GL(Wrap_, REPEAT);
+    CASE_CVT_GL(Wrap_, MIRRORED_REPEAT);
+    CASE_CVT_GL(Wrap_, CLAMP_TO_EDGE);
+    CASE_CVT_GL(Wrap_, CLAMP_TO_BORDER);
     default:
       break;
   }
@@ -27,12 +27,12 @@ static inline GLint ConvertWrap(WrapMode mode) {
 
 static inline GLint ConvertFilter(FilterMode mode) {
   switch (mode) {
-    CVT_CASE(Filter_, LINEAR);
-    CVT_CASE(Filter_, NEAREST);
-    CVT_CASE(Filter_, LINEAR_MIPMAP_LINEAR);
-    CVT_CASE(Filter_, LINEAR_MIPMAP_NEAREST);
-    CVT_CASE(Filter_, NEAREST_MIPMAP_LINEAR);
-    CVT_CASE(Filter_, NEAREST_MIPMAP_NEAREST);
+    CASE_CVT_GL(Filter_, LINEAR);
+    CASE_CVT_GL(Filter_, NEAREST);
+    CASE_CVT_GL(Filter_, LINEAR_MIPMAP_LINEAR);
+    CASE_CVT_GL(Filter_, LINEAR_MIPMAP_NEAREST);
+    CASE_CVT_GL(Filter_, NEAREST_MIPMAP_LINEAR);
+    CASE_CVT_GL(Filter_, NEAREST_MIPMAP_NEAREST);
     default:
       break;
   }
@@ -41,12 +41,12 @@ static inline GLint ConvertFilter(FilterMode mode) {
 
 static inline GLint ConvertCubeFace(CubeMapFace face) {
   switch (face) {
-    CVT_CASE(, TEXTURE_CUBE_MAP_POSITIVE_X);
-    CVT_CASE(, TEXTURE_CUBE_MAP_NEGATIVE_X);
-    CVT_CASE(, TEXTURE_CUBE_MAP_POSITIVE_Y);
-    CVT_CASE(, TEXTURE_CUBE_MAP_NEGATIVE_Y);
-    CVT_CASE(, TEXTURE_CUBE_MAP_POSITIVE_Z);
-    CVT_CASE(, TEXTURE_CUBE_MAP_NEGATIVE_Z);
+    CASE_CVT_GL(, TEXTURE_CUBE_MAP_POSITIVE_X);
+    CASE_CVT_GL(, TEXTURE_CUBE_MAP_NEGATIVE_X);
+    CASE_CVT_GL(, TEXTURE_CUBE_MAP_POSITIVE_Y);
+    CASE_CVT_GL(, TEXTURE_CUBE_MAP_NEGATIVE_Y);
+    CASE_CVT_GL(, TEXTURE_CUBE_MAP_POSITIVE_Z);
+    CASE_CVT_GL(, TEXTURE_CUBE_MAP_NEGATIVE_Z);
     default:
       break;
   }
@@ -55,14 +55,14 @@ static inline GLint ConvertCubeFace(CubeMapFace face) {
 
 static inline GLint ConvertDepthFunc(DepthFunc func) {
   switch (func) {
-    CVT_CASE(Depth_, NEVER);
-    CVT_CASE(Depth_, LESS);
-    CVT_CASE(Depth_, EQUAL);
-    CVT_CASE(Depth_, LEQUAL);
-    CVT_CASE(Depth_, GREATER);
-    CVT_CASE(Depth_, NOTEQUAL);
-    CVT_CASE(Depth_, GEQUAL);
-    CVT_CASE(Depth_, ALWAYS);
+    CASE_CVT_GL(Depth_, NEVER);
+    CASE_CVT_GL(Depth_, LESS);
+    CASE_CVT_GL(Depth_, EQUAL);
+    CASE_CVT_GL(Depth_, LEQUAL);
+    CASE_CVT_GL(Depth_, GREATER);
+    CASE_CVT_GL(Depth_, NOTEQUAL);
+    CASE_CVT_GL(Depth_, GEQUAL);
+    CASE_CVT_GL(Depth_, ALWAYS);
     default:
       break;
   }
@@ -71,16 +71,16 @@ static inline GLint ConvertDepthFunc(DepthFunc func) {
 
 static inline GLint ConvertBlendFactor(BlendFactor factor) {
   switch (factor) {
-    CVT_CASE(Factor_, ZERO);
-    CVT_CASE(Factor_, ONE);
-    CVT_CASE(Factor_, SRC_COLOR);
-    CVT_CASE(Factor_, SRC_ALPHA);
-    CVT_CASE(Factor_, DST_COLOR);
-    CVT_CASE(Factor_, DST_ALPHA);
-    CVT_CASE(Factor_, ONE_MINUS_SRC_COLOR);
-    CVT_CASE(Factor_, ONE_MINUS_SRC_ALPHA);
-    CVT_CASE(Factor_, ONE_MINUS_DST_COLOR);
-    CVT_CASE(Factor_, ONE_MINUS_DST_ALPHA);
+    CASE_CVT_GL(Factor_, ZERO);
+    CASE_CVT_GL(Factor_, ONE);
+    CASE_CVT_GL(Factor_, SRC_COLOR);
+    CASE_CVT_GL(Factor_, SRC_ALPHA);
+    CASE_CVT_GL(Factor_, DST_COLOR);
+    CASE_CVT_GL(Factor_, DST_ALPHA);
+    CASE_CVT_GL(Factor_, ONE_MINUS_SRC_COLOR);
+    CASE_CVT_GL(Factor_, ONE_MINUS_SRC_ALPHA);
+    CASE_CVT_GL(Factor_, ONE_MINUS_DST_COLOR);
+    CASE_CVT_GL(Factor_, ONE_MINUS_DST_ALPHA);
     default:
       break;
   }
@@ -89,16 +89,16 @@ static inline GLint ConvertBlendFactor(BlendFactor factor) {
 
 static inline GLint ConvertPolygonMode(PolygonMode mode) {
   switch (mode) {
-    CVT_CASE(Polygon_, POINT);
-    CVT_CASE(Polygon_, LINE);
-    CVT_CASE(Polygon_, FILL);
+    CASE_CVT_GL(Polygon_, POINT);
+    CASE_CVT_GL(Polygon_, LINE);
+    CASE_CVT_GL(Polygon_, FILL);
     default:
       break;
   }
   return 0;
 }
 
-static inline GLint ConvertPrimitiveType(PrimitiveType type) {
+static inline GLint ConvertDrawMode(PrimitiveType type) {
   switch (type) {
     case Primitive_POINT:
       return GL_POINTS;

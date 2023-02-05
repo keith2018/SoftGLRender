@@ -22,7 +22,7 @@ class UniformBlockSoft : public UniformBlock {
 
   int GetLocation(ShaderProgram &program) override {
     auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
-    return program_soft->GetUniformBlockLocation(name);
+    return program_soft->GetUniformLocation(name);
   }
 
   void BindProgram(ShaderProgram &program, int location, int binding) override {
@@ -44,22 +44,39 @@ class UniformBlockSoft : public UniformBlock {
 
 class UniformSamplerSoft : public UniformSampler {
  public:
-  explicit UniformSamplerSoft(const std::string &name) : UniformSampler(name) {}
+  explicit UniformSamplerSoft(const std::string &name, TextureType type)
+      : UniformSampler(name, type) {
+    switch (type) {
+      case TextureType_2D:
+        sampler_ = std::make_shared<Sampler2DSoft>();
+        break;
+      case TextureType_CUBE:
+        sampler_ = std::make_shared<SamplerCubeSoft>();
+        break;
+      default:
+        sampler_ = nullptr;
+        break;
+    }
+  }
 
   ~UniformSamplerSoft() = default;
 
   int GetLocation(ShaderProgram &program) override {
     auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
-    return program_soft->GetUniformBlockLocation(name);
+    return program_soft->GetUniformLocation(name);
   }
 
   void BindProgram(ShaderProgram &program, int location, int binding) override {
+    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
+    program_soft->BindUniformSampler(sampler_, location);
   }
 
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
+    sampler_->SetTexture(tex);
   }
 
  private:
+  std::shared_ptr<SamplerSoft> sampler_;
 };
 
 }

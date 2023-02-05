@@ -126,7 +126,7 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
 
   // uniforms
   const char *sampler_name = Material::SamplerName(tex_usage);
-  auto uniform = context.renderer->CreateUniformSampler(sampler_name);
+  auto uniform = context.renderer->CreateUniformSampler(sampler_name, tex_in->Type());
   uniform->SetTexture(tex_in);
   context.model_skybox.material.shader_uniforms->samplers[tex_usage] = uniform;
 

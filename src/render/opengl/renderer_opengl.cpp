@@ -47,8 +47,8 @@ std::shared_ptr<UniformBlock> RendererOpenGL::CreateUniformBlock(const std::stri
   return std::make_shared<UniformBlockOpenGL>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::string &name) {
-  return std::make_shared<UniformSamplerOpenGL>(name);
+std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::string &name, TextureType type) {
+  return std::make_shared<UniformSamplerOpenGL>(name, type);
 }
 
 // pipeline
@@ -119,7 +119,7 @@ void RendererOpenGL::SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms
 }
 
 void RendererOpenGL::Draw(PrimitiveType type) {
-  GLenum mode = OpenGL::ConvertPrimitiveType(type);
+  GLenum mode = OpenGL::ConvertDrawMode(type);
   GL_CHECK(glDrawElements(mode, (GLsizei) vao_->GetIndicesCnt(), GL_UNSIGNED_INT, nullptr));
 }
 

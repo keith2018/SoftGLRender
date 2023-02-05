@@ -26,7 +26,7 @@ class Texture2DSoft : public Texture2D {
     return buffer_;
   }
 
-  void SetSampler(Sampler &sampler) override {
+  void SetSamplerDesc(SamplerDesc &sampler) override {
   }
 
   void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
@@ -68,7 +68,7 @@ class TextureCubeSoft : public TextureCube {
     return buffers_[face];
   }
 
-  void SetSampler(Sampler &sampler) override {
+  void SetSamplerDesc(SamplerDesc &sampler) override {
   }
 
   void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {

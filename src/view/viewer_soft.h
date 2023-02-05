@@ -15,6 +15,9 @@
 namespace SoftGL {
 namespace View {
 
+#define CASE_CREATE_SHADER_SOFT(shading, source) case shading: \
+  return program_soft->SetShaders(std::make_shared<source::VS>(), std::make_shared<source::FS>());
+
 class ViewerSoft : public Viewer {
  public:
   ViewerSoft(Config &config, Camera &camera) : Viewer(config, camera) {}
@@ -40,9 +43,8 @@ class ViewerSoft : public Viewer {
   bool LoadShaders(ShaderProgram &program, ShadingModel shading) override {
     auto *program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
     switch (shading) {
-      case Shading_BaseColor:
-        return program_soft->SetShaders(std::make_shared<ShaderBasic::VS_BASIC>(),
-                                        std::make_shared<ShaderBasic::FS_BASIC>());
+      CASE_CREATE_SHADER_SOFT(Shading_BaseColor, ShaderBasic)
+      CASE_CREATE_SHADER_SOFT(Shading_BlinnPhong, ShaderBlinnPhong)
       default:
         break;
     }
