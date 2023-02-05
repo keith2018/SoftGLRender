@@ -35,8 +35,9 @@ enum BlendFactor {
 };
 
 enum PolygonMode {
-  LINE,
-  FILL,
+  Polygon_POINT,
+  Polygon_LINE,
+  Polygon_FILL,
 };
 
 struct RenderState {
@@ -49,7 +50,7 @@ struct RenderState {
   DepthFunc depth_func = Depth_LESS;
 
   bool cull_face = false;
-  PolygonMode polygon_mode = FILL;
+  PolygonMode polygon_mode = Polygon_FILL;
 
   float line_width = 1.f;
   float point_size = 1.f;

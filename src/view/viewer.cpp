@@ -215,7 +215,7 @@ void Viewer::DrawMeshWireframe(ModelMesh &mesh) {
                 {uniforms_block_mvp_, uniform_block_scene_, uniforms_block_color_},
                 false,
                 [&](RenderState &rs) -> void {
-                  rs.polygon_mode = LINE;
+                  rs.polygon_mode = Polygon_LINE;
                 });
   PipelineDraw(mesh, mesh.material_wireframe);
 }
@@ -300,7 +300,7 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
   rs.depth_func = renderer_->ReverseZ() ? Depth_GEQUAL : Depth_LESS;
 
   rs.cull_face = config_.cull_face;
-  rs.polygon_mode = FILL;
+  rs.polygon_mode = Polygon_FILL;
 
   rs.line_width = 1.f;
   rs.point_size = 1.f;

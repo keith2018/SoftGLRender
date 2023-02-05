@@ -47,7 +47,7 @@ ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
 void ModelLoader::LoadCubeMesh(ModelVertexes &mesh) {
   const float *cube_vertexes = Cube::GetCubeVertexes();
 
-  mesh.primitive_type = Primitive_TRIANGLES;
+  mesh.primitive_type = Primitive_TRIANGLE;
   mesh.primitive_cnt = 12;
   for (int i = 0; i < 12; i++) {
     for (int j = 0; j < 3; j++) {
@@ -86,7 +86,7 @@ void ModelLoader::LoadWorldAxis() {
   }
   scene_.world_axis.InitVertexes();
 
-  scene_.world_axis.primitive_type = Primitive_LINES;
+  scene_.world_axis.primitive_type = Primitive_LINE;
   scene_.world_axis.primitive_cnt = scene_.world_axis.indices.size() / 2;
   scene_.world_axis.material.Reset();
   scene_.world_axis.material.shading = Shading_BaseColor;
@@ -95,7 +95,7 @@ void ModelLoader::LoadWorldAxis() {
 }
 
 void ModelLoader::LoadLights() {
-  scene_.point_light.primitive_type = Primitive_POINTS;
+  scene_.point_light.primitive_type = Primitive_POINT;
   scene_.point_light.primitive_cnt = 1;
   scene_.point_light.vertexes.resize(scene_.point_light.primitive_cnt);
   scene_.point_light.indices.resize(scene_.point_light.primitive_cnt);
@@ -302,7 +302,7 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
   out_mesh.material_wireframe.shading = Shading_BaseColor;
   out_mesh.material_wireframe.base_color = glm::vec4(1.f);
 
-  out_mesh.primitive_type = Primitive_TRIANGLES;
+  out_mesh.primitive_type = Primitive_TRIANGLE;
   out_mesh.primitive_cnt = ai_mesh->mNumFaces;
   out_mesh.vertexes = std::move(vertexes);
   out_mesh.indices = std::move(indices);

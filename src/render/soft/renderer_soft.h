@@ -13,41 +13,41 @@
 
 namespace SoftGL {
 
-struct DepthRange {
-  float near = 0.f;
-  float far = 1.f;
-  float diff = 1.f;   // far - near
-  float sum = 1.f;    // far + near
+struct Viewport {
+  float x;
+  float y;
+  float width;
+  float height;
+  float depth_near;
+  float depth_far;
+
+  // ref: https://registry.khronos.org/vulkan/specs/1.0/html/chap24.html#vertexpostproc-viewport
+  glm::vec4 inner_o;
+  glm::vec4 inner_p;
 };
 
 struct VertexHolder {
-  size_t index = 0;
-  bool discard = true;  // default true, set false via ProcessClipping()
+  size_t index;
+  bool discard;
   glm::vec4 position;
 };
 
-struct Primitive {
-  bool discard = false;    // default true, set false via ProcessClipping()
-};
-
-struct PrimitivePoint : Primitive {
-  VertexHolder *vertexes[1];
-};
-
-struct PrimitiveLine : Primitive {
-  VertexHolder *vertexes[2];
-};
-
-struct PrimitiveTriangle : Primitive {
+struct PrimitiveHolder {
+  bool discard;
   VertexHolder *vertexes[3];
-  bool front_facing = true;
+  bool front_facing;
 };
 
 class RendererSoft : public Renderer {
  public:
+  RendererSoft() {
+    viewport_.depth_near = 0.f;
+    viewport_.depth_far = 1.f;
+  }
+
   // config
   bool ReverseZ() const override {
-    return true;
+    return false;
   }
 
   // framebuffer
@@ -78,32 +78,31 @@ class RendererSoft : public Renderer {
   void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
   void Draw(PrimitiveType type) override;
 
- public:
-  void SetDepthRange(float near, float far);
-
  private:
   void ProcessVertexShader();
   void ProcessPrimitiveAssembly();
-  void ProcessFaceCulling();
   void ProcessClipping();
   void ProcessPerspectiveDivide();
   void ProcessViewportTransform();
+  void ProcessFaceCulling();
   void ProcessRasterization();
   void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing);
+  void ProcessPerSampleOperations(int x, int y, ShaderBuiltin &builtin);
   bool ProcessDepthTest(int x, int y, float depth);
+  void ProcessColorBlending(int x, int y, glm::vec4 &color);
 
-  void RasterizationPoint();
-  void RasterizationLine();
-  void RasterizationTriangle();
+  void RasterizationPoint(glm::vec4 &pos, float point_size);
+  void RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float line_width);
+  void RasterizationTriangle(glm::vec4 &pos0, glm::vec4 &pos1, glm::vec4 &pos2, bool front_facing);
 
+ private:
   inline glm::u8vec4 GetFrameColor(int x, int y);
   inline void SetFrameColor(int x, int y, const glm::u8vec4 &color);
 
-  inline static bool DepthTest(float &a, float &b, DepthFunc func);
+  static bool DepthTest(float &a, float &b, DepthFunc func);
 
  private:
-  DepthRange depth_range_;
-  glm::vec4 viewport_;
+  Viewport viewport_;
   PrimitiveType primitive_type_;
   FrameBufferSoft *fbo_ = nullptr;
   const RenderState *render_state_ = nullptr;
@@ -114,9 +113,7 @@ class RendererSoft : public Renderer {
   std::shared_ptr<BufferDepth> fbo_depth_ = nullptr;
 
   std::vector<VertexHolder> vertexes_;
-  std::vector<PrimitivePoint> primitive_points_;
-  std::vector<PrimitiveLine> primitive_lines_;
-  std::vector<PrimitiveTriangle> primitive_triangles_;
+  std::vector<PrimitiveHolder> primitives_;
 };
 
 }

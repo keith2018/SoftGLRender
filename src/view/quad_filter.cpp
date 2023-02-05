@@ -21,7 +21,7 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   height_ = tex_out->height;
 
   // quad mesh
-  quad_mesh_.primitive_type = Primitive_TRIANGLES;
+  quad_mesh_.primitive_type = Primitive_TRIANGLE;
   quad_mesh_.primitive_cnt = 2;
   quad_mesh_.vertexes.push_back({{1.f, -1.f, 0.f}, {1.f, 0.f}});
   quad_mesh_.vertexes.push_back({{-1.f, -1.f, 0.f}, {0.f, 0.f}});
@@ -56,10 +56,10 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   uniform->SetTexture(tex_in);
   quad_mesh_.material_textured.shader_uniforms->samplers[TextureUsage_QUAD_FILTER] = uniform;
 
-  auto uniforms_block_filter = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
+  auto uniforms_block = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
   UniformsQuadFilter uniforms_filter{glm::vec2(width_, height_)};
-  uniforms_block_filter->SetData(&uniforms_filter, sizeof(UniformsQuadFilter));
-  quad_mesh_.material_textured.shader_uniforms->blocks.emplace_back(uniforms_block_filter);
+  uniforms_block->SetData(&uniforms_filter, sizeof(UniformsQuadFilter));
+  quad_mesh_.material_textured.shader_uniforms->blocks.emplace_back(uniforms_block);
 
   init_ready_ = true;
 }

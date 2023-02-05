@@ -89,8 +89,9 @@ static inline GLint ConvertBlendFactor(BlendFactor factor) {
 
 static inline GLint ConvertPolygonMode(PolygonMode mode) {
   switch (mode) {
-    CVT_CASE(, LINE);
-    CVT_CASE(, FILL);
+    CVT_CASE(Polygon_, POINT);
+    CVT_CASE(Polygon_, LINE);
+    CVT_CASE(Polygon_, FILL);
     default:
       break;
   }
@@ -99,9 +100,12 @@ static inline GLint ConvertPolygonMode(PolygonMode mode) {
 
 static inline GLint ConvertPrimitiveType(PrimitiveType type) {
   switch (type) {
-    CVT_CASE(Primitive_, POINTS);
-    CVT_CASE(Primitive_, LINES);
-    CVT_CASE(Primitive_, TRIANGLES);
+    case Primitive_POINT:
+      return GL_POINTS;
+    case Primitive_LINE:
+      return GL_LINES;
+    case Primitive_TRIANGLE:
+      return GL_TRIANGLES;
     default:
       break;
   }

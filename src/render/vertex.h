@@ -13,9 +13,9 @@
 namespace SoftGL {
 
 enum PrimitiveType {
-  Primitive_POINTS,
-  Primitive_LINES,
-  Primitive_TRIANGLES,
+  Primitive_POINT,
+  Primitive_LINE,
+  Primitive_TRIANGLE,
 };
 
 class VertexArrayObject {
