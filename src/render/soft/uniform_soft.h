@@ -25,7 +25,7 @@ class UniformBlockSoft : public UniformBlock {
     return program_soft->GetUniformLocation(name);
   }
 
-  void BindProgram(ShaderProgram &program, int location, int binding) override {
+  void BindProgram(ShaderProgram &program, int location) override {
     auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
     program_soft->BindUniformBlockBuffer(buffer_.data(), buffer_.size(), location);
   }
@@ -66,7 +66,7 @@ class UniformSamplerSoft : public UniformSampler {
     return program_soft->GetUniformLocation(name);
   }
 
-  void BindProgram(ShaderProgram &program, int location, int binding) override {
+  void BindProgram(ShaderProgram &program, int location) override {
     auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
     program_soft->BindUniformSampler(sampler_, location);
   }

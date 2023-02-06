@@ -171,7 +171,10 @@ void Viewer::DrawPoints(ModelPoints &points, glm::mat4 &transform) {
 
   PipelineSetup(points,
                 points.material,
-                {uniforms_block_mvp_, uniforms_block_color_},
+                {
+                    {UniformBlock_MVP, uniforms_block_mvp_},
+                    {UniformBlock_Color, uniforms_block_color_},
+                },
                 false,
                 [&](RenderState &rs) -> void {
                   rs.point_size = points.point_size;
@@ -185,7 +188,10 @@ void Viewer::DrawLines(ModelLines &lines, glm::mat4 &transform) {
 
   PipelineSetup(lines,
                 lines.material,
-                {uniforms_block_mvp_, uniforms_block_color_},
+                {
+                    {UniformBlock_MVP, uniforms_block_mvp_},
+                    {UniformBlock_Color, uniforms_block_color_},
+                },
                 false,
                 [&](RenderState &rs) -> void {
                   rs.line_width = lines.line_width;
@@ -198,7 +204,9 @@ void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
 
   PipelineSetup(skybox,
                 skybox.material,
-                {uniforms_block_mvp_},
+                {
+                    {UniformBlock_MVP, uniforms_block_mvp_}
+                },
                 false,
                 [&](RenderState &rs) -> void {
                   rs.depth_func = renderer_->ReverseZ() ? Depth_GREATER : Depth_LEQUAL;
@@ -212,7 +220,11 @@ void Viewer::DrawMeshWireframe(ModelMesh &mesh) {
 
   PipelineSetup(mesh,
                 mesh.material_wireframe,
-                {uniforms_block_mvp_, uniform_block_scene_, uniforms_block_color_},
+                {
+                    {UniformBlock_MVP, uniforms_block_mvp_},
+                    {UniformBlock_Scene, uniform_block_scene_},
+                    {UniformBlock_Color, uniforms_block_color_},
+                },
                 false,
                 [&](RenderState &rs) -> void {
                   rs.polygon_mode = Polygon_LINE;
@@ -225,7 +237,11 @@ void Viewer::DrawMeshTextured(ModelMesh &mesh) {
 
   PipelineSetup(mesh,
                 mesh.material_textured,
-                {uniforms_block_mvp_, uniform_block_scene_, uniforms_block_color_},
+                {
+                    {UniformBlock_MVP, uniforms_block_mvp_},
+                    {UniformBlock_Scene, uniform_block_scene_},
+                    {UniformBlock_Color, uniforms_block_color_},
+                },
                 mesh.material_textured.alpha_mode == Alpha_Blend,
                 [&](RenderState &rs) -> void {
                   rs.cull_face = config_.cull_face && (!mesh.material_textured.double_sided);
@@ -268,7 +284,7 @@ void Viewer::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
 
 void Viewer::PipelineSetup(ModelVertexes &vertexes,
                            Material &material,
-                           const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks,
+                           const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks,
                            bool blend,
                            const std::function<void(RenderState &rs)> &extra_states) {
   SetupVertexArray(vertexes);
@@ -391,7 +407,8 @@ bool Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
   return success;
 }
 
-void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks) {
+void Viewer::SetupMaterial(Material &material,
+                           const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks) {
   std::set<std::string> shader_defines;
 
   material.CreateTextures([&]() -> void {
@@ -401,8 +418,8 @@ void Viewer::SetupMaterial(Material &material, const std::vector<std::shared_ptr
   material.CreateProgram([&]() -> void {
     if (SetupShaderProgram(material, shader_defines)) {
       SetupSamplerUniforms(material);
-      for (auto &block : uniform_blocks) {
-        material.shader_uniforms->blocks.emplace_back(block);
+      for (auto &kv : uniform_blocks) {
+        material.shader_uniforms->blocks.insert(kv);
       }
     }
   });

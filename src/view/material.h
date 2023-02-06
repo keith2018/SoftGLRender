@@ -55,6 +55,14 @@ enum MaterialType {
   Material_Skybox,
 };
 
+enum UniformBlockType {
+  UniformBlock_Scene,
+  UniformBlock_MVP,
+  UniformBlock_Color,
+  UniformBlock_QuadFilter,
+  UniformBlock_IBLPrefilter,
+};
+
 struct UniformsScene {
   glm::int32_t u_enablePointLight;
   glm::int32_t u_enableIBL;
@@ -73,6 +81,15 @@ struct UniformsMVP {
 
 struct UniformsColor {
   glm::vec4 u_baseColor;
+};
+
+struct UniformsQuadFilter {
+  glm::vec2 u_screenSize;
+};
+
+struct UniformsIBLPrefilter {
+  float u_srcResolution;
+  float u_roughness;
 };
 
 class Material {

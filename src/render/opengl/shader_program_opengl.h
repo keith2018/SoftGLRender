@@ -28,13 +28,26 @@ class ShaderProgramOpenGL : public ShaderProgram {
     return ret;
   }
 
-  void Use() {
+  inline void Use() {
     program_glsl_.Use();
+    uniform_block_binding_ = 0;
+    uniform_sampler_binding_ = 0;
+  }
+
+  inline int GetUniformBlockBinding() {
+    return uniform_block_binding_++;
+  }
+
+  inline int GetUniformSamplerBinding() {
+    return uniform_sampler_binding_++;
   }
 
  private:
   GLuint programId_ = 0;
   ProgramGLSL program_glsl_;
+
+  int uniform_block_binding_ = 0;
+  int uniform_sampler_binding_ = 0;
 };
 
 }

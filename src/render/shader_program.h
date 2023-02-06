@@ -26,25 +26,17 @@ class ShaderProgram {
   }
 
   virtual void BindUniforms(ShaderUniforms &uniforms) {
-    int binding = 0;
-    for (auto &uniform : uniforms.blocks) {
-      bool success = SetUniform(*uniform, binding);
-      if (success) {
-        binding++;
-      }
+    for (auto &kv : uniforms.blocks) {
+      BindUniform(*kv.second);
     }
 
-    binding = 0;
     for (auto &kv : uniforms.samplers) {
-      bool success = SetUniform(*kv.second, binding);
-      if (success) {
-        binding++;
-      }
+      BindUniform(*kv.second);
     }
   }
 
  protected:
-  virtual bool SetUniform(Uniform &uniform, int binding) {
+  virtual bool BindUniform(Uniform &uniform) {
     int hash = uniform.GetHash();
     int loc = -1;
     if (uniform_locations_.find(hash) == uniform_locations_.end()) {
@@ -58,7 +50,7 @@ class ShaderProgram {
       return false;
     }
 
-    uniform.BindProgram(*this, loc, binding);
+    uniform.BindProgram(*this, loc);
     return true;
   };
 

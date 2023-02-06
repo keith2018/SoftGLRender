@@ -6,6 +6,8 @@
 #include "render/opengl/shader_program_opengl.h"
 #include "render/opengl/opengl_utils.h"
 
+#define BIND_TEX_OPENGL(n) case n: GL_CHECK(glActiveTexture(GL_TEXTURE##n)); break;
+
 namespace SoftGL {
 
 class UniformBlockOpenGL : public UniformBlock {
@@ -24,11 +26,14 @@ class UniformBlockOpenGL : public UniformBlock {
     return glGetUniformBlockIndex(program.GetId(), name.c_str());
   }
 
-  void BindProgram(ShaderProgram &program, int location, int binding) override {
+  void BindProgram(ShaderProgram &program, int location) override {
     if (location < 0) {
       return;
     }
-    GL_CHECK(glUniformBlockBinding(program.GetId(), location, binding));
+    auto *program_gl = dynamic_cast<ShaderProgramOpenGL *>(&program);
+    int binding = program_gl->GetUniformBlockBinding();
+
+    GL_CHECK(glUniformBlockBinding(program_gl->GetId(), location, binding));
     GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, binding, ubo_));
   }
 
@@ -56,21 +61,23 @@ class UniformSamplerOpenGL : public UniformSampler {
     return glGetUniformLocation(program.GetId(), name.c_str());
   }
 
-  void BindProgram(ShaderProgram &program, int location, int binding) override {
+  void BindProgram(ShaderProgram &program, int location) override {
     if (location < 0) {
       return;
     }
 
-#define BIND_TEX(n) case n: GL_CHECK(glActiveTexture(GL_TEXTURE##n)); break;
+    auto *program_gl = dynamic_cast<ShaderProgramOpenGL *>(&program);
+    int binding = program_gl->GetUniformSamplerBinding();
+
     switch (binding) {
-      BIND_TEX(0)
-      BIND_TEX(1)
-      BIND_TEX(2)
-      BIND_TEX(3)
-      BIND_TEX(4)
-      BIND_TEX(5)
-      BIND_TEX(6)
-      BIND_TEX(7)
+      BIND_TEX_OPENGL(0)
+      BIND_TEX_OPENGL(1)
+      BIND_TEX_OPENGL(2)
+      BIND_TEX_OPENGL(3)
+      BIND_TEX_OPENGL(4)
+      BIND_TEX_OPENGL(5)
+      BIND_TEX_OPENGL(6)
+      BIND_TEX_OPENGL(7)
       default: {
         LOGE("UniformSampler::BindProgram error: texture unit not support");
         break;

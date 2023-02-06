@@ -7,7 +7,6 @@
 #include "environment.h"
 #include "model_loader.h"
 #include "base/logger.h"
-#include "render/opengl/renderer_opengl.h"
 
 namespace SoftGL {
 namespace View {
@@ -16,11 +15,6 @@ struct LookAtParam {
   glm::vec3 eye;
   glm::vec3 center;
   glm::vec3 up;
-};
-
-struct UniformsPrefilter {
-  float u_srcResolution;
-  float u_roughness;
 };
 
 bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
@@ -76,10 +70,11 @@ bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer
     return false;
   }
 
-  auto uniforms_block_prefilter = context.renderer->CreateUniformBlock("UniformsPrefilter", sizeof(UniformsPrefilter));
-  context.model_skybox.material.shader_uniforms->blocks.emplace_back(uniforms_block_prefilter);
+  auto uniforms_block_prefilter =
+      context.renderer->CreateUniformBlock("UniformsPrefilter", sizeof(UniformsIBLPrefilter));
+  context.model_skybox.material.shader_uniforms->blocks[UniformBlock_IBLPrefilter] = uniforms_block_prefilter;
 
-  UniformsPrefilter uniforms_prefilter{};
+  UniformsIBLPrefilter uniforms_prefilter{};
 
   for (int mip = 0; mip < kPrefilterMaxMipLevels; mip++) {
     int mip_width = (int) (tex_out->width * glm::pow(0.5f, mip));
@@ -88,7 +83,7 @@ bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer
     DrawCubeFaces(context, mip_width, mip_height, tex_out, mip, [&]() -> void {
       uniforms_prefilter.u_srcResolution = (float) tex_in->width;
       uniforms_prefilter.u_roughness = (float) mip / (float) (kPrefilterMaxMipLevels - 1);
-      uniforms_block_prefilter->SetData(&uniforms_prefilter, sizeof(UniformsPrefilter));
+      uniforms_block_prefilter->SetData(&uniforms_prefilter, sizeof(UniformsIBLPrefilter));
     });
   }
   return true;
@@ -131,7 +126,7 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   context.model_skybox.material.shader_uniforms->samplers[tex_usage] = uniform;
 
   context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  context.model_skybox.material.shader_uniforms->blocks.emplace_back(context.uniforms_block_mvp);
+  context.model_skybox.material.shader_uniforms->blocks[UniformBlock_MVP] = context.uniforms_block_mvp;
 
   return true;
 }

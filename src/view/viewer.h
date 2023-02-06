@@ -45,7 +45,7 @@ class Viewer {
 
   void PipelineSetup(ModelVertexes &vertexes,
                      Material &material,
-                     const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks,
+                     const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks,
                      bool blend,
                      const std::function<void(RenderState &rs)> &extra_states);
   void PipelineDraw(ModelVertexes &vertexes, Material &material);
@@ -55,7 +55,7 @@ class Viewer {
   bool SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
   void SetupTextures(Material &material, std::set<std::string> &shader_defines);
   void SetupSamplerUniforms(Material &material);
-  void SetupMaterial(Material &material, const std::vector<std::shared_ptr<UniformBlock>> &uniform_blocks);
+  void SetupMaterial(Material &material, const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks);
 
   void UpdateUniformScene();
   void UpdateUniformMVP(const glm::mat4 &transform, bool skybox = false);

@@ -9,10 +9,6 @@
 namespace SoftGL {
 namespace View {
 
-struct UniformsQuadFilter {
-  glm::vec2 u_screenSize;
-};
-
 QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
                        const std::function<bool(ShaderProgram &program)> &shader_func,
                        std::shared_ptr<Texture2D> &tex_in,
@@ -59,7 +55,7 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   auto uniforms_block = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
   UniformsQuadFilter uniforms_filter{glm::vec2(width_, height_)};
   uniforms_block->SetData(&uniforms_filter, sizeof(UniformsQuadFilter));
-  quad_mesh_.material_textured.shader_uniforms->blocks.emplace_back(uniforms_block);
+  quad_mesh_.material_textured.shader_uniforms->blocks[UniformBlock_QuadFilter] = std::move(uniforms_block);
 
   init_ready_ = true;
 }

@@ -25,7 +25,7 @@ class Uniform {
   }
 
   virtual int GetLocation(ShaderProgram &program) = 0;
-  virtual void BindProgram(ShaderProgram &program, int location, int binding) = 0;
+  virtual void BindProgram(ShaderProgram &program, int location) = 0;
 
  public:
   std::string name;
@@ -57,7 +57,7 @@ class UniformSampler : public Uniform {
 
 class ShaderUniforms {
  public:
-  std::vector<std::shared_ptr<UniformBlock>> blocks;
+  std::unordered_map<int, std::shared_ptr<UniformBlock>> blocks;
   std::unordered_map<int, std::shared_ptr<UniformSampler>> samplers;
 };
 
