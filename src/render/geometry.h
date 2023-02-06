@@ -87,4 +87,31 @@ struct Frustum {
   BoundingBox bbox;
 };
 
+enum FrustumClipMask {
+  POSITIVE_X = 1 << 0,
+  NEGATIVE_X = 1 << 1,
+  POSITIVE_Y = 1 << 2,
+  NEGATIVE_Y = 1 << 3,
+  POSITIVE_Z = 1 << 4,
+  NEGATIVE_Z = 1 << 5,
+};
+
+const int FrustumClipMaskArray[6] = {
+    FrustumClipMask::POSITIVE_X,
+    FrustumClipMask::NEGATIVE_X,
+    FrustumClipMask::POSITIVE_Y,
+    FrustumClipMask::NEGATIVE_Y,
+    FrustumClipMask::POSITIVE_Z,
+    FrustumClipMask::NEGATIVE_Z,
+};
+
+const glm::vec4 FrustumClipPlane[6] = {
+    {-1, 0, 0, 1},
+    {1, 0, 0, 1},
+    {0, -1, 0, 1},
+    {0, 1, 0, 1},
+    {0, 0, -1, 1},
+    {0, 0, 1, 1}
+};
+
 }

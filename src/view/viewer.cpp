@@ -209,7 +209,7 @@ void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
                 },
                 false,
                 [&](RenderState &rs) -> void {
-                  rs.depth_func = renderer_->ReverseZ() ? Depth_GREATER : Depth_LEQUAL;
+                  rs.depth_func = renderer_->ReverseZ() ? DepthFunc_GREATER : DepthFunc_LEQUAL;
                   rs.depth_mask = false;
                 });
   PipelineDraw(skybox, skybox.material);
@@ -227,7 +227,7 @@ void Viewer::DrawMeshWireframe(ModelMesh &mesh) {
                 },
                 false,
                 [&](RenderState &rs) -> void {
-                  rs.polygon_mode = Polygon_LINE;
+                  rs.polygon_mode = PolygonMode_LINE;
                 });
   PipelineDraw(mesh, mesh.material_wireframe);
 }
@@ -308,15 +308,14 @@ void Viewer::SetupVertexArray(ModelVertexes &vertexes) {
 
 void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const {
   rs.blend = blend;
-  rs.blend_src = Factor_SRC_ALPHA;
-  rs.blend_dst = Factor_ONE_MINUS_SRC_ALPHA;
+  rs.blend_parameters.SetBlendFactor(BlendFactor_SRC_ALPHA, BlendFactor_ONE_MINUS_SRC_ALPHA);
 
   rs.depth_test = config_.depth_test;
   rs.depth_mask = !blend;  // disable depth write
-  rs.depth_func = renderer_->ReverseZ() ? Depth_GEQUAL : Depth_LESS;
+  rs.depth_func = renderer_->ReverseZ() ? DepthFunc_GEQUAL : DepthFunc_LESS;
 
   rs.cull_face = config_.cull_face;
-  rs.polygon_mode = Polygon_FILL;
+  rs.polygon_mode = PolygonMode_FILL;
 
   rs.line_width = 1.f;
   rs.point_size = 1.f;

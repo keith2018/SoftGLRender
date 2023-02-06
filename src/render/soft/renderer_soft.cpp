@@ -6,11 +6,14 @@
 
 #include "renderer_soft.h"
 #include "base/hash_utils.h"
+#include "render/geometry.h"
 #include "framebuffer_soft.h"
 #include "texture_soft.h"
 #include "uniform_soft.h"
 #include "shader_program_soft.h"
 #include "vertex_soft.h"
+#include "blend_soft.h"
+#include "depth_soft.h"
 
 namespace SoftGL {
 
@@ -139,8 +142,8 @@ void RendererSoft::ProcessVertexShader() {
 
     VertexHolder &holder = vertexes_[idx];
     holder.index = idx;
-    holder.discard = false;
     holder.position = builtin.Position;
+    holder.clip_mask = CountFrustumClipMask(holder.position);
 
     vertex_ptr += vao_->vertex_stride;
   }
@@ -182,9 +185,29 @@ void RendererSoft::ProcessPrimitiveAssembly() {
 }
 
 void RendererSoft::ProcessClipping() {
-  // TODO clipping
+  for (auto &primitive : primitives_) {
+    if (primitive.discard) {
+      continue;
+    }
+    switch (primitive_type_) {
+      case Primitive_POINT:
+        ClippingPoint(primitive);
+        break;
+      case Primitive_LINE:
+        ClippingLine(primitive);
+        break;
+      case Primitive_TRIANGLE:
+        ClippingTriangle(primitive);
+        break;
+    }
+  }
 
-  // update vertexes discard flag
+  // set all vertexes discard flag to true
+  for (auto &vertex : vertexes_) {
+    vertex.discard = true;
+  }
+
+  // set discard flag to false base on primitive discard flag
   for (auto &primitive : primitives_) {
     if (primitive.discard) {
       continue;
@@ -252,52 +275,32 @@ void RendererSoft::ProcessFaceCulling() {
 
 void RendererSoft::ProcessRasterization() {
   switch (primitive_type_) {
-    case Primitive_POINT: {
+    case Primitive_POINT:
       for (auto &primitive : primitives_) {
-        auto &vert = primitive.vertexes;
         if (primitive.discard) {
           continue;
         }
+        auto &vert = primitive.vertexes;
         RasterizationPoint(vert[0]->position, render_state_->point_size);
       }
       break;
-    }
-    case Primitive_LINE: {
+    case Primitive_LINE:
       for (auto &primitive : primitives_) {
-        auto &vert = primitive.vertexes;
         if (primitive.discard) {
           continue;
         }
+        auto &vert = primitive.vertexes;
         RasterizationLine(vert[0]->position, vert[1]->position, render_state_->line_width);
       }
       break;
-    }
-    case Primitive_TRIANGLE: {
+    case Primitive_TRIANGLE:
       for (auto &primitive : primitives_) {
-        auto &vert = primitive.vertexes;
         if (primitive.discard) {
           continue;
         }
-        switch (render_state_->polygon_mode) {
-          case Polygon_POINT:
-            // TODO remove duplicate points
-            for (int i = 0; i < 3; i++) {
-              RasterizationPoint(vert[i]->position, render_state_->point_size);
-            }
-            break;
-          case Polygon_LINE:
-            // TODO remove duplicate lines
-            for (int i = 0; i < 3; i++) {
-              RasterizationLine(vert[i]->position, vert[(i + 1) % 3]->position, render_state_->line_width);
-            }
-            break;
-          case Polygon_FILL:
-            RasterizationTriangle(vert[0]->position, vert[1]->position, vert[2]->position, primitive.front_facing);
-            break;
-        }
+        RasterizationPolygon(primitive);
       }
       break;
-    }
   }
 }
 
@@ -353,8 +356,80 @@ void RendererSoft::ProcessColorBlending(int x, int y, glm::vec4 &color) {
   if (render_state_->blend) {
     glm::vec4 &src_color = color;
     glm::vec4 dst_color = glm::vec4(GetFrameColor(x, y)) / 255.f;
-    // TODO render_state_.blend_src/blend_dst
-    color = src_color * (src_color.a) + dst_color * (1.f - src_color.a);
+    color = CalcBlendColor(src_color, dst_color, render_state_->blend_parameters);
+  }
+}
+
+void RendererSoft::ClippingPoint(PrimitiveHolder &point) {
+  point.discard = (point.vertexes[0]->clip_mask != 0);
+}
+
+void RendererSoft::ClippingLine(PrimitiveHolder &line) {
+  glm::vec4 &p0 = line.vertexes[0]->position;
+  glm::vec4 &p1 = line.vertexes[1]->position;
+
+  int &mask0 = line.vertexes[0]->clip_mask;
+  int &mask1 = line.vertexes[1]->clip_mask;
+
+  bool full_clip = false;
+  float t0 = 0.f;
+  float t1 = 1.f;
+
+  int mask = mask0 | mask1;
+  if (mask != 0) {
+    for (int i = 0; i < 6; i++) {
+      if (mask & FrustumClipMaskArray[i]) {
+        float d0 = glm::dot(FrustumClipPlane[i], p0);
+        float d1 = glm::dot(FrustumClipPlane[i], p1);
+
+        if (d0 < 0 && d1 < 0) {
+          full_clip = true;
+          break;
+        } else if (d0 < 0) {
+          float t = -d0 / (d1 - d0);
+          t0 = std::max(t0, t);
+        } else {
+          float t = d0 / (d0 - d1);
+          t1 = std::min(t1, t);
+        }
+      }
+    }
+  }
+
+  if (full_clip) {
+    line.discard = true;
+    return;
+  }
+
+  if (mask0) {
+    p0 = glm::mix(p0, p1, t0);
+  }
+
+  if (mask1) {
+    p1 = glm::mix(p0, p1, t1);
+  }
+}
+
+void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
+
+}
+
+void RendererSoft::RasterizationPolygon(PrimitiveHolder &primitive) {
+  auto &vert = primitive.vertexes;
+  switch (render_state_->polygon_mode) {
+    case PolygonMode_POINT:
+      for (auto &v : vert) {
+        RasterizationPoint(v->position, render_state_->point_size);
+      }
+      break;
+    case PolygonMode_LINE:
+      for (int i = 0; i < 3; i++) {
+        RasterizationLine(vert[i]->position, vert[(i + 1) % 3]->position, render_state_->line_width);
+      }
+      break;
+    case PolygonMode_FILL:
+      RasterizationTriangle(vert[0]->position, vert[1]->position, vert[2]->position, primitive.front_facing);
+      break;
   }
 }
 
@@ -443,26 +518,15 @@ void RendererSoft::SetFrameColor(int x, int y, const glm::u8vec4 &color) {
   fbo_color_->Set(x, y, color);
 }
 
-bool RendererSoft::DepthTest(float &a, float &b, DepthFunc func) {
-  switch (func) {
-    case Depth_NEVER:
-      return false;
-    case Depth_LESS:
-      return a < b;
-    case Depth_EQUAL:
-      return std::fabs(a - b) <= std::numeric_limits<float>::epsilon();
-    case Depth_LEQUAL:
-      return a <= b;
-    case Depth_GREATER:
-      return a > b;
-    case Depth_NOTEQUAL:
-      return std::fabs(a - b) > std::numeric_limits<float>::epsilon();
-    case Depth_GEQUAL:
-      return a >= b;
-    case Depth_ALWAYS:
-      return true;
-  }
-  return a < b;
+int RendererSoft::CountFrustumClipMask(glm::vec4 &clip_pos) {
+  int mask = 0;
+  if (clip_pos.w < clip_pos.x) mask |= FrustumClipMask::POSITIVE_X;
+  if (clip_pos.w < -clip_pos.x) mask |= FrustumClipMask::NEGATIVE_X;
+  if (clip_pos.w < clip_pos.y) mask |= FrustumClipMask::POSITIVE_Y;
+  if (clip_pos.w < -clip_pos.y) mask |= FrustumClipMask::NEGATIVE_Y;
+  if (clip_pos.w < clip_pos.z) mask |= FrustumClipMask::POSITIVE_Z;
+  if (clip_pos.w < -clip_pos.z) mask |= FrustumClipMask::NEGATIVE_Z;
+  return mask;
 }
 
 }

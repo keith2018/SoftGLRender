@@ -53,16 +53,16 @@ static inline GLint ConvertCubeFace(CubeMapFace face) {
   return 0;
 }
 
-static inline GLint ConvertDepthFunc(DepthFunc func) {
+static inline GLint ConvertDepthFunc(DepthFunction func) {
   switch (func) {
-    CASE_CVT_GL(Depth_, NEVER);
-    CASE_CVT_GL(Depth_, LESS);
-    CASE_CVT_GL(Depth_, EQUAL);
-    CASE_CVT_GL(Depth_, LEQUAL);
-    CASE_CVT_GL(Depth_, GREATER);
-    CASE_CVT_GL(Depth_, NOTEQUAL);
-    CASE_CVT_GL(Depth_, GEQUAL);
-    CASE_CVT_GL(Depth_, ALWAYS);
+    CASE_CVT_GL(DepthFunc_, NEVER);
+    CASE_CVT_GL(DepthFunc_, LESS);
+    CASE_CVT_GL(DepthFunc_, EQUAL);
+    CASE_CVT_GL(DepthFunc_, LEQUAL);
+    CASE_CVT_GL(DepthFunc_, GREATER);
+    CASE_CVT_GL(DepthFunc_, NOTEQUAL);
+    CASE_CVT_GL(DepthFunc_, GEQUAL);
+    CASE_CVT_GL(DepthFunc_, ALWAYS);
     default:
       break;
   }
@@ -71,16 +71,34 @@ static inline GLint ConvertDepthFunc(DepthFunc func) {
 
 static inline GLint ConvertBlendFactor(BlendFactor factor) {
   switch (factor) {
-    CASE_CVT_GL(Factor_, ZERO);
-    CASE_CVT_GL(Factor_, ONE);
-    CASE_CVT_GL(Factor_, SRC_COLOR);
-    CASE_CVT_GL(Factor_, SRC_ALPHA);
-    CASE_CVT_GL(Factor_, DST_COLOR);
-    CASE_CVT_GL(Factor_, DST_ALPHA);
-    CASE_CVT_GL(Factor_, ONE_MINUS_SRC_COLOR);
-    CASE_CVT_GL(Factor_, ONE_MINUS_SRC_ALPHA);
-    CASE_CVT_GL(Factor_, ONE_MINUS_DST_COLOR);
-    CASE_CVT_GL(Factor_, ONE_MINUS_DST_ALPHA);
+    CASE_CVT_GL(BlendFactor_, ZERO);
+    CASE_CVT_GL(BlendFactor_, ONE);
+    CASE_CVT_GL(BlendFactor_, SRC_COLOR);
+    CASE_CVT_GL(BlendFactor_, SRC_ALPHA);
+    CASE_CVT_GL(BlendFactor_, DST_COLOR);
+    CASE_CVT_GL(BlendFactor_, DST_ALPHA);
+    CASE_CVT_GL(BlendFactor_, ONE_MINUS_SRC_COLOR);
+    CASE_CVT_GL(BlendFactor_, ONE_MINUS_SRC_ALPHA);
+    CASE_CVT_GL(BlendFactor_, ONE_MINUS_DST_COLOR);
+    CASE_CVT_GL(BlendFactor_, ONE_MINUS_DST_ALPHA);
+    default:
+      break;
+  }
+  return 0;
+}
+
+static inline GLint ConvertBlendFunction(BlendFunction func) {
+  switch (func) {
+    case BlendFunc_ADD:
+      return GL_FUNC_ADD;
+    case BlendFunc_SUBTRACT:
+      return GL_FUNC_SUBTRACT;
+    case BlendFunc_REVERSE_SUBTRACT:
+      return GL_FUNC_REVERSE_SUBTRACT;
+    case BlendFunc_MIN:
+      return GL_MIN;
+    case BlendFunc_MAX:
+      return GL_MAX;
     default:
       break;
   }
@@ -89,9 +107,9 @@ static inline GLint ConvertBlendFactor(BlendFactor factor) {
 
 static inline GLint ConvertPolygonMode(PolygonMode mode) {
   switch (mode) {
-    CASE_CVT_GL(Polygon_, POINT);
-    CASE_CVT_GL(Polygon_, LINE);
-    CASE_CVT_GL(Polygon_, FILL);
+    CASE_CVT_GL(PolygonMode_, POINT);
+    CASE_CVT_GL(PolygonMode_, LINE);
+    CASE_CVT_GL(PolygonMode_, FILL);
     default:
       break;
   }

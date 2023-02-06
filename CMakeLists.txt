@@ -47,6 +47,7 @@ file(GLOB SOFTGL_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/render/opengl/shader/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/view/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/view/shader/opengl/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/view/shader/soft/*.cpp
         )
 
 # imgui src

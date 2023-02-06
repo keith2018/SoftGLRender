@@ -10,47 +10,76 @@
 
 namespace SoftGL {
 
-enum DepthFunc {
-  Depth_NEVER,
-  Depth_LESS,
-  Depth_EQUAL,
-  Depth_LEQUAL,
-  Depth_GREATER,
-  Depth_NOTEQUAL,
-  Depth_GEQUAL,
-  Depth_ALWAYS,
+enum DepthFunction {
+  DepthFunc_NEVER,
+  DepthFunc_LESS,
+  DepthFunc_EQUAL,
+  DepthFunc_LEQUAL,
+  DepthFunc_GREATER,
+  DepthFunc_NOTEQUAL,
+  DepthFunc_GEQUAL,
+  DepthFunc_ALWAYS,
 };
 
 enum BlendFactor {
-  Factor_ZERO,
-  Factor_ONE,
-  Factor_SRC_COLOR,
-  Factor_SRC_ALPHA,
-  Factor_DST_COLOR,
-  Factor_DST_ALPHA,
-  Factor_ONE_MINUS_SRC_COLOR,
-  Factor_ONE_MINUS_SRC_ALPHA,
-  Factor_ONE_MINUS_DST_COLOR,
-  Factor_ONE_MINUS_DST_ALPHA,
+  BlendFactor_ZERO,
+  BlendFactor_ONE,
+  BlendFactor_SRC_COLOR,
+  BlendFactor_SRC_ALPHA,
+  BlendFactor_DST_COLOR,
+  BlendFactor_DST_ALPHA,
+  BlendFactor_ONE_MINUS_SRC_COLOR,
+  BlendFactor_ONE_MINUS_SRC_ALPHA,
+  BlendFactor_ONE_MINUS_DST_COLOR,
+  BlendFactor_ONE_MINUS_DST_ALPHA,
+};
+
+enum BlendFunction {
+  BlendFunc_ADD,
+  BlendFunc_SUBTRACT,
+  BlendFunc_REVERSE_SUBTRACT,
+  BlendFunc_MIN,
+  BlendFunc_MAX,
 };
 
 enum PolygonMode {
-  Polygon_POINT,
-  Polygon_LINE,
-  Polygon_FILL,
+  PolygonMode_POINT,
+  PolygonMode_LINE,
+  PolygonMode_FILL,
+};
+
+struct BlendParameters {
+  BlendFunction blend_func_rgb = BlendFunc_ADD;
+  BlendFactor blend_src_rgb = BlendFactor_ONE;
+  BlendFactor blend_dst_rgb = BlendFactor_ZERO;
+
+  BlendFunction blend_func_alpha = BlendFunc_ADD;
+  BlendFactor blend_src_alpha = BlendFactor_ONE;
+  BlendFactor blend_dst_alpha = BlendFactor_ZERO;
+
+  void SetBlendFactor(BlendFactor src, BlendFactor dst) {
+    blend_src_rgb = src;
+    blend_src_alpha = src;
+    blend_dst_rgb = dst;
+    blend_dst_alpha = dst;
+  }
+
+  void SetBlendFunc(BlendFunction func) {
+    blend_func_rgb = func;
+    blend_func_alpha = func;
+  }
 };
 
 struct RenderState {
   bool blend = false;
-  BlendFactor blend_src = Factor_ONE;
-  BlendFactor blend_dst = Factor_ZERO;
+  BlendParameters blend_parameters;
 
   bool depth_test = false;
   bool depth_mask = true;
-  DepthFunc depth_func = Depth_LESS;
+  DepthFunction depth_func = DepthFunc_LESS;
 
   bool cull_face = false;
-  PolygonMode polygon_mode = Polygon_FILL;
+  PolygonMode polygon_mode = PolygonMode_FILL;
 
   float line_width = 1.f;
   float point_size = 1.f;

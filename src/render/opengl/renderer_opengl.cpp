@@ -12,6 +12,8 @@
 #include "vertex_opengl.h"
 #include "enums_opengl.h"
 
+#define GL_STATE_SET(var, gl_state) if (var) GL_CHECK(glEnable(gl_state)); else GL_CHECK(glDisable(gl_state));
+
 namespace SoftGL {
 
 // framebuffer
@@ -77,11 +79,16 @@ void RendererOpenGL::Clear(const ClearState &state) {
 }
 
 void RendererOpenGL::SetRenderState(const RenderState &state) {
-#define GL_STATE_SET(var, gl_state) if (var) GL_CHECK(glEnable(gl_state)); else GL_CHECK(glDisable(gl_state));
-
+  // blend
   GL_STATE_SET(state.blend, GL_BLEND)
-  GL_CHECK(glBlendFunc(OpenGL::ConvertBlendFactor(state.blend_src), OpenGL::ConvertBlendFactor(state.blend_dst)));
+  GL_CHECK(glBlendEquationSeparate(OpenGL::ConvertBlendFunction(state.blend_parameters.blend_func_rgb),
+                                   OpenGL::ConvertBlendFunction(state.blend_parameters.blend_func_alpha)));
+  GL_CHECK(glBlendFuncSeparate(OpenGL::ConvertBlendFactor(state.blend_parameters.blend_src_rgb),
+                               OpenGL::ConvertBlendFactor(state.blend_parameters.blend_dst_rgb),
+                               OpenGL::ConvertBlendFactor(state.blend_parameters.blend_src_alpha),
+                               OpenGL::ConvertBlendFactor(state.blend_parameters.blend_dst_alpha)));
 
+  // depth
   GL_STATE_SET(state.depth_test, GL_DEPTH_TEST)
   GL_CHECK(glDepthMask(state.depth_mask));
   GL_CHECK(glDepthFunc(OpenGL::ConvertDepthFunc(state.depth_func)));

@@ -27,8 +27,9 @@ struct Viewport {
 };
 
 struct VertexHolder {
-  size_t index;
   bool discard;
+  size_t index;
+  int clip_mask;
   glm::vec4 position;
 };
 
@@ -91,6 +92,11 @@ class RendererSoft : public Renderer {
   bool ProcessDepthTest(int x, int y, float depth);
   void ProcessColorBlending(int x, int y, glm::vec4 &color);
 
+  void ClippingPoint(PrimitiveHolder &point);
+  void ClippingLine(PrimitiveHolder &line);
+  void ClippingTriangle(PrimitiveHolder &triangle);
+
+  void RasterizationPolygon(PrimitiveHolder &primitive);
   void RasterizationPoint(glm::vec4 &pos, float point_size);
   void RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float line_width);
   void RasterizationTriangle(glm::vec4 &pos0, glm::vec4 &pos1, glm::vec4 &pos2, bool front_facing);
@@ -99,7 +105,7 @@ class RendererSoft : public Renderer {
   inline glm::u8vec4 GetFrameColor(int x, int y);
   inline void SetFrameColor(int x, int y, const glm::u8vec4 &color);
 
-  static bool DepthTest(float &a, float &b, DepthFunc func);
+  int CountFrustumClipMask(glm::vec4 &clip_pos);
 
  private:
   Viewport viewport_;
