@@ -63,17 +63,17 @@ class PixelQuadContext {
   PixelContext pixels[4];
 
   // triangle vertex screen space position
-  glm::aligned_vec4 screen_pos[3];
-  glm::aligned_vec4 vert_flat[4];
+  glm::aligned_vec4 vert_pos[3];
+  glm::aligned_vec4 vert_pos_flat[4];
 
   // triangle vertex clip space z, clip_z = { v0.clip_z, v1.clip_z, v2.clip_z, 1.f}
-  glm::aligned_vec4 clip_z{1.f};
+  glm::aligned_vec4 vert_clip_z{1.f};
+
+  // triangle vertex shader varyings
+  const float *vert_varyings[3];
 
   // triangle Facing
   bool front_facing = true;
-
-  // triangle vertex shader varyings
-  const float *varyings_vert[3];
 
  private:
   std::shared_ptr<float> varyings_pool_;
@@ -150,10 +150,10 @@ class RendererSoft : public Renderer {
   BoundingBox TriangleBoundingBox(glm::vec4 *vert, float width, float height);
   bool Barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
   void BarycentricCorrect(PixelQuadContext &quad);
-  void VaryingsInterpolate(float *out_vary,
-                           const float *in_varyings[],
-                           size_t elem_cnt,
-                           glm::aligned_vec4 &bc);
+  void VaryingsInterpolateTriangle(float *varyings_out,
+                                   const float *varyings_in[],
+                                   size_t elem_cnt,
+                                   glm::aligned_vec4 &bc);
 
  private:
   Viewport viewport_;
@@ -169,7 +169,7 @@ class RendererSoft : public Renderer {
   std::vector<VertexHolder> vertexes_;
   std::vector<PrimitiveHolder> primitives_;
 
-  std::shared_ptr<float> varyings_ = nullptr;
+  AlignedBuffer<float> varyings_;
   size_t varyings_cnt_ = 0;
   size_t varyings_buffer_size_ = 0;
 

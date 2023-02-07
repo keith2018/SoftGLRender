@@ -13,10 +13,7 @@ namespace SoftGL {
 
 class Texture2DSoft : public Texture2D {
  public:
-  Texture2DSoft() : uuid_(uuid_counter_++) {
-  }
-
-  ~Texture2DSoft() = default;
+  Texture2DSoft() : uuid_(uuid_counter_++) {}
 
   int GetId() const override {
     return uuid_;
@@ -27,6 +24,7 @@ class Texture2DSoft : public Texture2D {
   }
 
   void SetSamplerDesc(SamplerDesc &sampler) override {
+    sampler_desc_ = dynamic_cast<Sampler2DDesc &>(sampler);
   }
 
   void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
@@ -47,18 +45,20 @@ class Texture2DSoft : public Texture2D {
     buffer_->Create(w, h);
   }
 
+  inline Sampler2DDesc &GetSamplerDesc() {
+    return sampler_desc_;
+  }
+
  private:
   int uuid_ = -1;
   static int uuid_counter_;
+  Sampler2DDesc sampler_desc_;
   std::shared_ptr<BufferRGBA> buffer_ = nullptr;
 };
 
 class TextureCubeSoft : public TextureCube {
  public:
-  TextureCubeSoft() : uuid_(uuid_counter_++) {
-  }
-
-  ~TextureCubeSoft() = default;
+  TextureCubeSoft() : uuid_(uuid_counter_++) {}
 
   int GetId() const override {
     return uuid_;
@@ -69,6 +69,7 @@ class TextureCubeSoft : public TextureCube {
   }
 
   void SetSamplerDesc(SamplerDesc &sampler) override {
+    sampler_desc_ = dynamic_cast<SamplerCubeDesc &>(sampler);
   }
 
   void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
@@ -93,18 +94,20 @@ class TextureCubeSoft : public TextureCube {
     }
   }
 
+  inline SamplerCubeDesc &GetSamplerDesc() {
+    return sampler_desc_;
+  }
+
  private:
   int uuid_ = -1;
   static int uuid_counter_;
+  SamplerCubeDesc sampler_desc_;
   std::shared_ptr<BufferRGBA> buffers_[6];
 };
 
 class TextureDepthSoft : public TextureDepth {
  public:
-  TextureDepthSoft() : uuid_(uuid_counter_++) {
-  }
-
-  ~TextureDepthSoft() = default;
+  TextureDepthSoft() : uuid_(uuid_counter_++) {}
 
   int GetId() const override {
     return uuid_;

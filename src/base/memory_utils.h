@@ -56,7 +56,31 @@ class MemoryUtils {
     return std::shared_ptr<T>((T *) MemoryUtils::AlignedMalloc(size),
                               [](const T *ptr) { MemoryUtils::AlignedFree((void *) ptr); });
   }
+};
 
+template<typename T>
+class AlignedBuffer {
+ public:
+  void Resize(size_t size) {
+    if (size_ > size) {
+      return;
+    }
+
+    buffer_ = MemoryUtils::MakeAlignedBuffer<T>(size);
+    size_ = size;
+  }
+
+  inline const std::shared_ptr<T> &GetBuffer() const {
+    return buffer_;
+  }
+
+  inline size_t GetSize() const {
+    return size_;
+  }
+
+ private:
+  std::shared_ptr<T> buffer_ = nullptr;
+  size_t size_ = 0;
 };
 
 }

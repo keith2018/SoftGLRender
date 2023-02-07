@@ -159,26 +159,25 @@ void RendererSoft::ProcessVertexShader() {
   // init shader varyings
   varyings_cnt_ = shader_program_->GetShaderVaryingsSize();
   varyings_buffer_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
-  varyings_ = MemoryUtils::MakeAlignedBuffer<float>(vao_->vertex_cnt * varyings_buffer_size_);
+  varyings_.Resize(vao_->vertex_cnt * varyings_buffer_size_);
 
   auto &builtin = shader_program_->GetShaderBuiltin();
   uint8_t *vertex_ptr = vao_->vertexes.data();
   size_t varying_elem_cnt_ = varyings_buffer_size_ / sizeof(float);
+  float *varying_buffer = varyings_.GetBuffer().get();
 
   vertexes_.resize(vao_->vertex_cnt);
   for (int idx = 0; idx < vao_->vertex_cnt; idx++) {
     VertexHolder &holder = vertexes_[idx];
     holder.index = idx;
-    holder.clip_mask = CountFrustumClipMask(holder.position);
-    if (varyings_buffer_size_ > 0) {
-      holder.varyings = varyings_.get() + idx * varying_elem_cnt_;
-    }
+    holder.varyings = (varyings_buffer_size_ > 0) ? (varying_buffer + idx * varying_elem_cnt_) : nullptr;
 
     shader_program_->BindVertexShaderVaryings(holder.varyings);
     shader_program_->BindVertexAttributes(vertex_ptr);
     shader_program_->ExecVertexShader();
 
     holder.position = builtin.Position;
+    holder.clip_mask = CountFrustumClipMask(holder.position);
 
     vertex_ptr += vao_->vertex_stride;
   }
@@ -561,15 +560,15 @@ void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
       pixel_quad.front_facing = triangle.front_facing;
 
       for (int i = 0; i < 3; i++) {
-        pixel_quad.screen_pos[i] = screen_pos[i];
-        pixel_quad.clip_z[i] = screen_pos[i].z * screen_pos[i].w;
-        pixel_quad.varyings_vert[i] = vert[i]->varyings;
+        pixel_quad.vert_pos[i] = screen_pos[i];
+        pixel_quad.vert_clip_z[i] = screen_pos[i].z * screen_pos[i].w;
+        pixel_quad.vert_varyings[i] = vert[i]->varyings;
       }
 
-      pixel_quad.vert_flat[0] = {screen_pos[2].x, screen_pos[1].x, screen_pos[0].x, 0.f};
-      pixel_quad.vert_flat[1] = {screen_pos[2].y, screen_pos[1].y, screen_pos[0].y, 0.f};
-      pixel_quad.vert_flat[2] = {screen_pos[0].z, screen_pos[1].z, screen_pos[2].z, 0.f};
-      pixel_quad.vert_flat[3] = {screen_pos[0].w, screen_pos[1].w, screen_pos[2].w, 0.f};
+      pixel_quad.vert_pos_flat[0] = {screen_pos[2].x, screen_pos[1].x, screen_pos[0].x, 0.f};
+      pixel_quad.vert_pos_flat[1] = {screen_pos[2].y, screen_pos[1].y, screen_pos[0].y, 0.f};
+      pixel_quad.vert_pos_flat[2] = {screen_pos[0].z, screen_pos[1].z, screen_pos[2].z, 0.f};
+      pixel_quad.vert_pos_flat[3] = {screen_pos[0].w, screen_pos[1].w, screen_pos[2].w, 0.f};
 
       // block rasterization
       int block_start_x = bounds.min.x + block_x * block_size;
@@ -585,8 +584,8 @@ void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
 }
 
 void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
-  glm::aligned_vec4 *vert = quad.vert_flat;
-  glm::aligned_vec4 &v0 = quad.screen_pos[0];
+  glm::aligned_vec4 *vert = quad.vert_pos_flat;
+  glm::aligned_vec4 &v0 = quad.vert_pos[0];
 
   // barycentric
   for (auto &pixel : quad.pixels) {
@@ -604,8 +603,8 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
   // varying interpolate
   // note: all quad pixels should perform varying interpolate to enable varying partial derivative
   for (auto &pixel : quad.pixels) {
-    VaryingsInterpolate((float *) pixel.varyings_frag, quad.varyings_vert,
-                        varyings_cnt_, pixel.barycentric);
+    VaryingsInterpolateTriangle((float *) pixel.varyings_frag, quad.vert_varyings,
+                                varyings_cnt_, pixel.barycentric);
   }
 
   // pixel shading
@@ -694,9 +693,9 @@ bool RendererSoft::Barycentric(glm::aligned_vec4 *vert,
 }
 
 void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
-  glm::aligned_vec4 *vert = quad.vert_flat;
+  glm::aligned_vec4 *vert = quad.vert_pos_flat;
 #ifdef SOFTGL_SIMD_OPT
-  __m128 m_clip_z = _mm_load_ps(&quad.clip_z.x);
+  __m128 m_clip_z = _mm_load_ps(&quad.vert_clip_z.x);
   __m128 m_screen_z = _mm_load_ps(&vert[2].x);
   __m128 m_screen_w = _mm_load_ps(&vert[3].x);
   for (auto &pixel : quad.pixels) {
@@ -720,7 +719,7 @@ void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
     auto &bc = pixel.barycentric;
 
     // barycentric correction
-    bc /= quad.clip_z;
+    bc /= quad.vert_clip_z;
     bc /= (bc.x + bc.y + bc.z);
 
     // interpolate z, w
@@ -730,19 +729,19 @@ void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
 #endif
 }
 
-void RendererSoft::VaryingsInterpolate(float *out_vary,
-                                       const float *in_varyings[],
-                                       size_t elem_cnt,
-                                       glm::aligned_vec4 &bc) {
-  const float *in_vary0 = in_varyings[0];
-  const float *in_vary1 = in_varyings[1];
-  const float *in_vary2 = in_varyings[2];
+void RendererSoft::VaryingsInterpolateTriangle(float *varyings_out,
+                                               const float *varyings_in[],
+                                               size_t elem_cnt,
+                                               glm::aligned_vec4 &bc) {
+  const float *in_vary0 = varyings_in[0];
+  const float *in_vary1 = varyings_in[1];
+  const float *in_vary2 = varyings_in[2];
 
 #ifdef SOFTGL_SIMD_OPT
   assert(PTR_ADDR(in_vary0) % SOFTGL_ALIGNMENT == 0);
   assert(PTR_ADDR(in_vary1) % SOFTGL_ALIGNMENT == 0);
   assert(PTR_ADDR(in_vary2) % SOFTGL_ALIGNMENT == 0);
-  assert(PTR_ADDR(out_vary) % SOFTGL_ALIGNMENT == 0);
+  assert(PTR_ADDR(varyings_out) % SOFTGL_ALIGNMENT == 0);
 
   uint32_t idx = 0;
   uint32_t end;
@@ -757,7 +756,7 @@ void RendererSoft::VaryingsInterpolate(float *out_vary,
       __m256 sum = _mm256_mul_ps(_mm256_load_ps(in_vary0 + idx), bc0);
       sum = _mm256_fmadd_ps(_mm256_load_ps(in_vary1 + idx), bc1, sum);
       sum = _mm256_fmadd_ps(_mm256_load_ps(in_vary2 + idx), bc2, sum);
-      _mm256_store_ps(out_vary + idx, sum);
+      _mm256_store_ps(varyings_out + idx, sum);
     }
   }
 
@@ -771,19 +770,19 @@ void RendererSoft::VaryingsInterpolate(float *out_vary,
       __m128 sum = _mm_mul_ps(_mm_load_ps(in_vary0 + idx), bc0);
       sum = _mm_fmadd_ps(_mm_load_ps(in_vary1 + idx), bc1, sum);
       sum = _mm_fmadd_ps(_mm_load_ps(in_vary2 + idx), bc2, sum);
-      _mm_store_ps(out_vary + idx, sum);
+      _mm_store_ps(varyings_out + idx, sum);
     }
   }
 
   for (; idx < elem_cnt; idx++) {
-    out_vary[idx] = 0;
-    out_vary[idx] += *(in_vary0 + idx) * bc[0];
-    out_vary[idx] += *(in_vary1 + idx) * bc[1];
-    out_vary[idx] += *(in_vary2 + idx) * bc[2];
+    varyings_out[idx] = 0;
+    varyings_out[idx] += *(in_vary0 + idx) * bc[0];
+    varyings_out[idx] += *(in_vary1 + idx) * bc[1];
+    varyings_out[idx] += *(in_vary2 + idx) * bc[2];
   }
 #else
   for (int i = 0; i < elem_cnt; i++) {
-    out_vary[i] = glm::dot(bc, glm::vec4(*(in_vary0 + i), *(in_vary1 + i), *(in_vary2 + i), 0.f));
+    varyings_out[i] = glm::dot(bc, glm::vec4(*(in_vary0 + i), *(in_vary1 + i), *(in_vary2 + i), 0.f));
   }
 #endif
 }
