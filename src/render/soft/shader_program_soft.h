@@ -52,11 +52,6 @@ class ShaderProgramSoft : public ShaderProgram {
     vertex_shader_->BindShaderUniforms(uniform_buffer_.data());
     fragment_shader_->BindShaderUniforms(uniform_buffer_.data());
 
-    // varyings
-    varying_buffer_.resize(vertex_shader_->GetShaderVaryingsSize());
-    vertex_shader_->BindShaderVaryings(varying_buffer_.data());
-    fragment_shader_->BindShaderVaryings(varying_buffer_.data());
-
     return true;
   }
 
@@ -73,6 +68,18 @@ class ShaderProgramSoft : public ShaderProgram {
     int offset = vertex_shader_->GetUniformOffset(location);
     auto **ptr = reinterpret_cast<SamplerSoft **>(uniform_buffer_.data() + offset);
     *ptr = sampler.get();
+  }
+
+  inline void BindVertexShaderVaryings(void *ptr) {
+    vertex_shader_->BindShaderVaryings(ptr);
+  }
+
+  inline void BindFragmentShaderVaryings(void *ptr) {
+    fragment_shader_->BindShaderVaryings(ptr);
+  }
+
+  inline size_t GetShaderVaryingsSize() {
+    return vertex_shader_->GetShaderVaryingsSize();
   }
 
   inline int GetUniformLocation(const std::string &name) {
@@ -100,7 +107,6 @@ class ShaderProgramSoft : public ShaderProgram {
 
   std::vector<uint8_t> defines_buffer_;  // 0->false; 1->true
   std::vector<uint8_t> uniform_buffer_;
-  std::vector<uint8_t> varying_buffer_;
 
  private:
   int uuid_ = -1;

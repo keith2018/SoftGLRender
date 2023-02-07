@@ -36,6 +36,7 @@ T CalcBlendFactor(const T &src, const float &src_alpha,
     case BlendFactor_ONE_MINUS_DST_ALPHA:
       return T(1.f - dst_alpha);
   }
+  return T(0.f);
 }
 
 template<typename T>
@@ -52,6 +53,7 @@ T CalcBlendFunc(const T &src, const T &dst, const BlendFunction &func) {
     case BlendFunc_MAX:
       return glm::max(src, dst);
   }
+  return src + dst;
 }
 
 glm::vec4 CalcBlendColor(glm::vec4 &src, glm::vec4 &dst, const BlendParameters &params) {

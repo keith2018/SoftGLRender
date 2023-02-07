@@ -5,6 +5,7 @@
  */
 
 #include "renderer_soft.h"
+#include "base/simd.h"
 #include "base/hash_utils.h"
 #include "render/geometry.h"
 #include "framebuffer_soft.h"
@@ -16,6 +17,29 @@
 #include "depth_soft.h"
 
 namespace SoftGL {
+
+void PixelQuadContext::Init(int x, int y, size_t varyings_size) {
+  pixels[0].position.x = x;
+  pixels[0].position.y = y;
+
+  pixels[1].position.x = x + 1;
+  pixels[1].position.y = y;
+
+  pixels[2].position.x = x;
+  pixels[2].position.y = y + 1;
+
+  pixels[3].position.x = x + 1;
+  pixels[3].position.y = y + 1;
+
+  varyings_pool_ = MemoryUtils::MakeAlignedBuffer<float>(4 * varyings_size);
+  for (int i = 0; i < 4; i++) {
+    pixels[i].varyings_frag = varyings_pool_.get() + i * varyings_size / sizeof(float);
+  }
+}
+
+bool PixelQuadContext::QuadInside() {
+  return pixels[0].inside || pixels[1].inside || pixels[2].inside || pixels[3].inside;
+}
 
 // framebuffer
 std::shared_ptr<FrameBuffer> RendererSoft::CreateFrameBuffer() {
@@ -132,18 +156,29 @@ void RendererSoft::Draw(PrimitiveType type) {
 }
 
 void RendererSoft::ProcessVertexShader() {
-  vertexes_.resize(vao_->vertex_cnt);
+  // init shader varyings
+  varyings_cnt_ = shader_program_->GetShaderVaryingsSize();
+  varyings_buffer_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
+  varyings_ = MemoryUtils::MakeAlignedBuffer<float>(vao_->vertex_cnt * varyings_buffer_size_);
+
   auto &builtin = shader_program_->GetShaderBuiltin();
   uint8_t *vertex_ptr = vao_->vertexes.data();
+  size_t varying_elem_cnt_ = varyings_buffer_size_ / sizeof(float);
 
+  vertexes_.resize(vao_->vertex_cnt);
   for (int idx = 0; idx < vao_->vertex_cnt; idx++) {
+    VertexHolder &holder = vertexes_[idx];
+    holder.index = idx;
+    holder.clip_mask = CountFrustumClipMask(holder.position);
+    if (varyings_buffer_size_ > 0) {
+      holder.varyings = varyings_.get() + idx * varying_elem_cnt_;
+    }
+
+    shader_program_->BindVertexShaderVaryings(holder.varyings);
     shader_program_->BindVertexAttributes(vertex_ptr);
     shader_program_->ExecVertexShader();
 
-    VertexHolder &holder = vertexes_[idx];
-    holder.index = idx;
     holder.position = builtin.Position;
-    holder.clip_mask = CountFrustumClipMask(holder.position);
 
     vertex_ptr += vao_->vertex_stride;
   }
@@ -304,7 +339,7 @@ void RendererSoft::ProcessRasterization() {
   }
 }
 
-void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing) {
+void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings) {
   auto pos_x = (int) screen_pos.x;
   auto pos_y = (int) screen_pos.y;
 
@@ -314,6 +349,7 @@ void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facin
   builtin.FrontFacing = front_facing;
   builtin.FragDepth = builtin.FragCoord.z;   // default depth
 
+  shader_program_->BindFragmentShaderVaryings(varyings);
   shader_program_->ExecFragmentShader();
   if (builtin.discard) {
     return;
@@ -428,7 +464,7 @@ void RendererSoft::RasterizationPolygon(PrimitiveHolder &primitive) {
       }
       break;
     case PolygonMode_FILL:
-      RasterizationTriangle(vert[0]->position, vert[1]->position, vert[2]->position, primitive.front_facing);
+      RasterizationTriangle(primitive);
       break;
   }
 }
@@ -444,7 +480,7 @@ void RendererSoft::RasterizationPoint(glm::vec4 &pos, float point_size) {
     for (int y = (int) top; y < (int) bottom; y++) {
       screen_pos.x = (float) x;
       screen_pos.y = (float) y;
-      ProcessFragmentShader(screen_pos, true);
+      ProcessFragmentShader(screen_pos, true, nullptr);  // TODO varyings
     }
   }
 }
@@ -496,7 +532,7 @@ void RendererSoft::RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float lin
     if (steep) {
       std::swap(screen_pos.x, screen_pos.y);
     }
-    RasterizationPoint(screen_pos, line_width);
+    RasterizationPoint(screen_pos, line_width);  // TODO varyings
 
     error += dError;
     if (error > dx) {
@@ -506,8 +542,81 @@ void RendererSoft::RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float lin
   }
 }
 
-void RendererSoft::RasterizationTriangle(glm::vec4 &pos0, glm::vec4 &pos1, glm::vec4 &pos2, bool front_facing) {
+void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
+  auto &vert = triangle.vertexes;
+  glm::aligned_vec4 screen_pos[3] = {vert[0]->position,
+                                     vert[1]->position,
+                                     vert[2]->position};
+  BoundingBox bounds = TriangleBoundingBox(screen_pos, viewport_.width, viewport_.height);
+  bounds.min -= 1.f;
 
+  auto block_size = raster_block_size_;
+  int block_cnt_x = (bounds.max.x - bounds.min.x + block_size - 1.f) / block_size;
+  int block_cnt_y = (bounds.max.y - bounds.min.y + block_size - 1.f) / block_size;
+
+  for (int block_y = 0; block_y < block_cnt_y; block_y++) {
+    for (int block_x = 0; block_x < block_cnt_x; block_x++) {
+      // init pixel quad
+      PixelQuadContext pixel_quad;
+      pixel_quad.front_facing = triangle.front_facing;
+
+      for (int i = 0; i < 3; i++) {
+        pixel_quad.screen_pos[i] = screen_pos[i];
+        pixel_quad.clip_z[i] = screen_pos[i].z * screen_pos[i].w;
+        pixel_quad.varyings_vert[i] = vert[i]->varyings;
+      }
+
+      pixel_quad.vert_flat[0] = {screen_pos[2].x, screen_pos[1].x, screen_pos[0].x, 0.f};
+      pixel_quad.vert_flat[1] = {screen_pos[2].y, screen_pos[1].y, screen_pos[0].y, 0.f};
+      pixel_quad.vert_flat[2] = {screen_pos[0].z, screen_pos[1].z, screen_pos[2].z, 0.f};
+      pixel_quad.vert_flat[3] = {screen_pos[0].w, screen_pos[1].w, screen_pos[2].w, 0.f};
+
+      // block rasterization
+      int block_start_x = bounds.min.x + block_x * block_size;
+      int block_start_y = bounds.min.y + block_y * block_size;
+      for (int y = block_start_y + 1; y < block_start_y + block_size && y <= bounds.max.y; y += 2) {
+        for (int x = block_start_x + 1; x < block_start_x + block_size && x <= bounds.max.x; x += 2) {
+          pixel_quad.Init(x, y, varyings_buffer_size_);
+          RasterizationPixelQuad(pixel_quad);
+        }
+      }
+    }
+  }
+}
+
+void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
+  glm::aligned_vec4 *vert = quad.vert_flat;
+  glm::aligned_vec4 &v0 = quad.screen_pos[0];
+
+  // barycentric
+  for (auto &pixel : quad.pixels) {
+    pixel.inside = Barycentric(vert, v0, pixel.position, pixel.barycentric);
+  }
+
+  // skip total outside quad
+  if (!quad.QuadInside()) {
+    return;
+  }
+
+  // barycentric correction
+  BarycentricCorrect(quad);
+
+  // varying interpolate
+  // note: all quad pixels should perform varying interpolate to enable varying partial derivative
+  for (auto &pixel : quad.pixels) {
+    VaryingsInterpolate((float *) pixel.varyings_frag, quad.varyings_vert,
+                        varyings_cnt_, pixel.barycentric);
+  }
+
+  // pixel shading
+  for (auto &pixel : quad.pixels) {
+    if (!pixel.inside) {
+      continue;
+    }
+
+    // fragment shader
+    ProcessFragmentShader(pixel.position, quad.front_facing, pixel.varyings_frag);
+  }
 }
 
 glm::u8vec4 RendererSoft::GetFrameColor(int x, int y) {
@@ -527,6 +636,156 @@ int RendererSoft::CountFrustumClipMask(glm::vec4 &clip_pos) {
   if (clip_pos.w < clip_pos.z) mask |= FrustumClipMask::POSITIVE_Z;
   if (clip_pos.w < -clip_pos.z) mask |= FrustumClipMask::NEGATIVE_Z;
   return mask;
+}
+
+BoundingBox RendererSoft::TriangleBoundingBox(glm::vec4 *vert, float width, float height) {
+  float minX = std::min(std::min(vert[0].x, vert[1].x), vert[2].x);
+  float minY = std::min(std::min(vert[0].y, vert[1].y), vert[2].y);
+  float maxX = std::max(std::max(vert[0].x, vert[1].x), vert[2].x);
+  float maxY = std::max(std::max(vert[0].y, vert[1].y), vert[2].y);
+
+  minX = std::max(minX - 0.5f, 0.f);
+  minY = std::max(minY - 0.5f, 0.f);
+  maxX = std::min(maxX + 0.5f, width - 1.f);
+  maxY = std::min(maxY + 0.5f, height - 1.f);
+
+  auto min = glm::vec3(minX, minY, 0.f);
+  auto max = glm::vec3(maxX, maxY, 0.f);
+  return {min, max};
+}
+
+bool RendererSoft::Barycentric(glm::aligned_vec4 *vert,
+                               glm::aligned_vec4 &v0,
+                               glm::aligned_vec4 &p,
+                               glm::aligned_vec4 &bc) {
+#ifdef SOFTGL_SIMD_OPT
+  // Ref: https://geometrian.com/programming/tutorials/cross-product/index.php
+  __m128 vec0 = _mm_sub_ps(_mm_load_ps(&vert[0].x), _mm_set_ps(0, p.x + 0.5f, v0.x, v0.x));
+  __m128 vec1 = _mm_sub_ps(_mm_load_ps(&vert[1].x), _mm_set_ps(0, p.y + 0.5f, v0.y, v0.y));
+
+  __m128 tmp0 = _mm_shuffle_ps(vec0, vec0, _MM_SHUFFLE(3, 0, 2, 1));
+  __m128 tmp1 = _mm_shuffle_ps(vec1, vec1, _MM_SHUFFLE(3, 1, 0, 2));
+  __m128 tmp2 = _mm_mul_ps(tmp0, vec1);
+  __m128 tmp3 = _mm_shuffle_ps(tmp2, tmp2, _MM_SHUFFLE(3, 0, 2, 1));
+  __m128 u = _mm_sub_ps(_mm_mul_ps(tmp0, tmp1), tmp3);
+
+  if (std::abs(MM_F32(u, 2)) < FLT_EPSILON) {
+    return false;
+  }
+
+  u = _mm_div_ps(u, _mm_set1_ps(MM_F32(u, 2)));
+  bc = {1.f - (MM_F32(u, 0) + MM_F32(u, 1)), MM_F32(u, 1), MM_F32(u, 0), 0.f};
+#else
+  glm::vec3 u = glm::cross(glm::vec3(vert[0]) - glm::vec3(v0.x, v0.x, p.x + 0.5f),
+                           glm::vec3(vert[1]) - glm::vec3(v0.y, v0.y, p.y + 0.5f));
+  if (std::abs(u.z) < FLT_EPSILON) {
+    return false;
+  }
+
+  u /= u.z;
+  bc = {1.f - (u.x + u.y), u.y, u.x, 0.f};
+#endif
+
+  if (bc.x < 0 || bc.y < 0 || bc.z < 0) {
+    return false;
+  }
+
+  return true;
+}
+
+void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
+  glm::aligned_vec4 *vert = quad.vert_flat;
+#ifdef SOFTGL_SIMD_OPT
+  __m128 m_clip_z = _mm_load_ps(&quad.clip_z.x);
+  __m128 m_screen_z = _mm_load_ps(&vert[2].x);
+  __m128 m_screen_w = _mm_load_ps(&vert[3].x);
+  for (auto &pixel : quad.pixels) {
+    auto &bc = pixel.barycentric;
+    __m128 m_bc = _mm_load_ps(&bc.x);
+
+    // barycentric correction
+    m_bc = _mm_div_ps(m_bc, m_clip_z);
+    m_bc = _mm_div_ps(m_bc, _mm_set1_ps(MM_F32(m_bc, 0) + MM_F32(m_bc, 1) + MM_F32(m_bc, 2)));
+    _mm_store_ps(&bc.x, m_bc);
+
+    // interpolate z, w
+    auto dz = _mm_dp_ps(m_screen_z, m_bc, 0x7f);
+    auto dw = _mm_dp_ps(m_screen_w, m_bc, 0x7f);
+
+    pixel.position.z = MM_F32(dz, 0);
+    pixel.position.w = MM_F32(dw, 0);
+  }
+#else
+  for (auto &pixel : quad.pixels) {
+    auto &bc = pixel.barycentric;
+
+    // barycentric correction
+    bc /= quad.clip_z;
+    bc /= (bc.x + bc.y + bc.z);
+
+    // interpolate z, w
+    pixel.position.z = glm::dot(vert[2], bc);
+    pixel.position.w = glm::dot(vert[3], bc);
+  }
+#endif
+}
+
+void RendererSoft::VaryingsInterpolate(float *out_vary,
+                                       const float *in_varyings[],
+                                       size_t elem_cnt,
+                                       glm::aligned_vec4 &bc) {
+  const float *in_vary0 = in_varyings[0];
+  const float *in_vary1 = in_varyings[1];
+  const float *in_vary2 = in_varyings[2];
+
+#ifdef SOFTGL_SIMD_OPT
+  assert(PTR_ADDR(in_vary0) % SOFTGL_ALIGNMENT == 0);
+  assert(PTR_ADDR(in_vary1) % SOFTGL_ALIGNMENT == 0);
+  assert(PTR_ADDR(in_vary2) % SOFTGL_ALIGNMENT == 0);
+  assert(PTR_ADDR(out_vary) % SOFTGL_ALIGNMENT == 0);
+
+  uint32_t idx = 0;
+  uint32_t end;
+
+  end = elem_cnt & (~7);
+  if (end > 0) {
+    __m256 bc0 = _mm256_set1_ps(bc[0]);
+    __m256 bc1 = _mm256_set1_ps(bc[1]);
+    __m256 bc2 = _mm256_set1_ps(bc[2]);
+
+    for (; idx < end; idx += 8) {
+      __m256 sum = _mm256_mul_ps(_mm256_load_ps(in_vary0 + idx), bc0);
+      sum = _mm256_fmadd_ps(_mm256_load_ps(in_vary1 + idx), bc1, sum);
+      sum = _mm256_fmadd_ps(_mm256_load_ps(in_vary2 + idx), bc2, sum);
+      _mm256_store_ps(out_vary + idx, sum);
+    }
+  }
+
+  end = (elem_cnt - idx) & (~3);
+  if (end > 0) {
+    __m128 bc0 = _mm_set1_ps(bc[0]);
+    __m128 bc1 = _mm_set1_ps(bc[1]);
+    __m128 bc2 = _mm_set1_ps(bc[2]);
+
+    for (; idx < end; idx += 4) {
+      __m128 sum = _mm_mul_ps(_mm_load_ps(in_vary0 + idx), bc0);
+      sum = _mm_fmadd_ps(_mm_load_ps(in_vary1 + idx), bc1, sum);
+      sum = _mm_fmadd_ps(_mm_load_ps(in_vary2 + idx), bc2, sum);
+      _mm_store_ps(out_vary + idx, sum);
+    }
+  }
+
+  for (; idx < elem_cnt; idx++) {
+    out_vary[idx] = 0;
+    out_vary[idx] += *(in_vary0 + idx) * bc[0];
+    out_vary[idx] += *(in_vary1 + idx) * bc[1];
+    out_vary[idx] += *(in_vary2 + idx) * bc[2];
+  }
+#else
+  for (int i = 0; i < elem_cnt; i++) {
+    out_vary[i] = glm::dot(bc, glm::vec4(*(in_vary0 + i), *(in_vary1 + i), *(in_vary2 + i), 0.f));
+  }
+#endif
 }
 
 }

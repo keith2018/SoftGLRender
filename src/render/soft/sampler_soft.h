@@ -28,7 +28,7 @@ class Sampler2DSoft : public SamplerSoft {
 
   glm::vec4 Texture2D(glm::vec2 coord) {
     // TODO
-    return {};
+    return glm::vec4(1.f, 0, 0, 0);
   }
 };
 
