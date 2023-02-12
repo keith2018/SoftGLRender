@@ -18,7 +18,17 @@
 
 namespace SoftGL {
 
-void PixelQuadContext::Init(int x, int y, size_t varyings_size) {
+void PixelQuadContext::SetVaryingsSize(size_t size) {
+  if (varyings_size_ != size) {
+    varyings_size_ = size;
+    varyings_pool_ = MemoryUtils::MakeAlignedBuffer<float>(4 * varyings_size_);
+    for (int i = 0; i < 4; i++) {
+      pixels[i].varyings_frag = varyings_pool_.get() + i * varyings_size_ / sizeof(float);
+    }
+  }
+}
+
+void PixelQuadContext::Init(int x, int y) {
   pixels[0].position.x = x;
   pixels[0].position.y = y;
 
@@ -30,15 +40,15 @@ void PixelQuadContext::Init(int x, int y, size_t varyings_size) {
 
   pixels[3].position.x = x + 1;
   pixels[3].position.y = y + 1;
-
-  varyings_pool_ = MemoryUtils::MakeAlignedBuffer<float>(4 * varyings_size);
-  for (int i = 0; i < 4; i++) {
-    pixels[i].varyings_frag = varyings_pool_.get() + i * varyings_size / sizeof(float);
-  }
 }
 
 bool PixelQuadContext::QuadInside() {
   return pixels[0].inside || pixels[1].inside || pixels[2].inside || pixels[3].inside;
+}
+
+RendererSoft::RendererSoft() {
+  viewport_.depth_near = 0.f;
+  viewport_.depth_far = 1.f;
 }
 
 // framebuffer
@@ -157,7 +167,7 @@ void RendererSoft::Draw(PrimitiveType type) {
 
 void RendererSoft::ProcessVertexShader() {
   // init shader varyings
-  varyings_cnt_ = shader_program_->GetShaderVaryingsSize();
+  varyings_cnt_ = shader_program_->GetShaderVaryingsSize() / sizeof(float);
   varyings_buffer_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
   varyings_.Resize(vao_->vertex_cnt * varyings_buffer_size_);
 
@@ -328,28 +338,39 @@ void RendererSoft::ProcessRasterization() {
       }
       break;
     case Primitive_TRIANGLE:
+      thread_quad_ctx_.resize(thread_pool_.GetThreadCnt());
+      for (auto &ctx : thread_quad_ctx_) {
+        ctx.SetVaryingsSize(varyings_buffer_size_);
+        ctx.shader_program = shader_program_->clone();
+      }
+
       for (auto &primitive : primitives_) {
         if (primitive.discard) {
           continue;
         }
         RasterizationPolygon(primitive);
       }
+
+      thread_pool_.WaitTasksFinish();
       break;
   }
 }
 
-void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings) {
+void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos,
+                                         bool front_facing,
+                                         void *varyings,
+                                         ShaderProgramSoft *shader) {
   auto pos_x = (int) screen_pos.x;
   auto pos_y = (int) screen_pos.y;
 
-  auto &builtin = shader_program_->GetShaderBuiltin();
+  auto &builtin = shader->GetShaderBuiltin();
   builtin.FragCoord = screen_pos;
   builtin.FragCoord.w = 1.f / builtin.FragCoord.w;
   builtin.FrontFacing = front_facing;
   builtin.FragDepth = builtin.FragCoord.z;   // default depth
 
-  shader_program_->BindFragmentShaderVaryings(varyings);
-  shader_program_->ExecFragmentShader();
+  shader->BindFragmentShaderVaryings(varyings);
+  shader->ExecFragmentShader();
   if (builtin.discard) {
     return;
   }
@@ -479,7 +500,7 @@ void RendererSoft::RasterizationPoint(glm::vec4 &pos, float point_size) {
     for (int y = (int) top; y < (int) bottom; y++) {
       screen_pos.x = (float) x;
       screen_pos.y = (float) y;
-      ProcessFragmentShader(screen_pos, true, nullptr);  // TODO varyings
+      ProcessFragmentShader(screen_pos, true, nullptr, shader_program_);  // TODO varyings
     }
   }
 }
@@ -543,9 +564,7 @@ void RendererSoft::RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float lin
 
 void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
   auto &vert = triangle.vertexes;
-  glm::aligned_vec4 screen_pos[3] = {vert[0]->position,
-                                     vert[1]->position,
-                                     vert[2]->position};
+  glm::aligned_vec4 screen_pos[3] = {vert[0]->position, vert[1]->position, vert[2]->position};
   BoundingBox bounds = TriangleBoundingBox(screen_pos, viewport_.width, viewport_.height);
   bounds.min -= 1.f;
 
@@ -555,30 +574,33 @@ void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
 
   for (int block_y = 0; block_y < block_cnt_y; block_y++) {
     for (int block_x = 0; block_x < block_cnt_x; block_x++) {
-      // init pixel quad
-      PixelQuadContext pixel_quad;
-      pixel_quad.front_facing = triangle.front_facing;
+      thread_pool_.PushTask([&, bounds, block_size, block_x, block_y](int thread_id) {
+        // init pixel quad
+        auto pixel_quad = thread_quad_ctx_[thread_id];
+        pixel_quad.front_facing = triangle.front_facing;
+        glm::aligned_vec4 *vert_pos = pixel_quad.vert_pos;
 
-      for (int i = 0; i < 3; i++) {
-        pixel_quad.vert_pos[i] = screen_pos[i];
-        pixel_quad.vert_clip_z[i] = screen_pos[i].z * screen_pos[i].w;
-        pixel_quad.vert_varyings[i] = vert[i]->varyings;
-      }
-
-      pixel_quad.vert_pos_flat[0] = {screen_pos[2].x, screen_pos[1].x, screen_pos[0].x, 0.f};
-      pixel_quad.vert_pos_flat[1] = {screen_pos[2].y, screen_pos[1].y, screen_pos[0].y, 0.f};
-      pixel_quad.vert_pos_flat[2] = {screen_pos[0].z, screen_pos[1].z, screen_pos[2].z, 0.f};
-      pixel_quad.vert_pos_flat[3] = {screen_pos[0].w, screen_pos[1].w, screen_pos[2].w, 0.f};
-
-      // block rasterization
-      int block_start_x = bounds.min.x + block_x * block_size;
-      int block_start_y = bounds.min.y + block_y * block_size;
-      for (int y = block_start_y + 1; y < block_start_y + block_size && y <= bounds.max.y; y += 2) {
-        for (int x = block_start_x + 1; x < block_start_x + block_size && x <= bounds.max.x; x += 2) {
-          pixel_quad.Init(x, y, varyings_buffer_size_);
-          RasterizationPixelQuad(pixel_quad);
+        for (int i = 0; i < 3; i++) {
+          pixel_quad.vert_pos[i] = vert[i]->position;
+          pixel_quad.vert_clip_z[i] = vert_pos[i].z * vert_pos[i].w;
+          pixel_quad.vert_varyings[i] = vert[i]->varyings;
         }
-      }
+
+        pixel_quad.vert_pos_flat[0] = {vert_pos[2].x, vert_pos[1].x, vert_pos[0].x, 0.f};
+        pixel_quad.vert_pos_flat[1] = {vert_pos[2].y, vert_pos[1].y, vert_pos[0].y, 0.f};
+        pixel_quad.vert_pos_flat[2] = {vert_pos[0].z, vert_pos[1].z, vert_pos[2].z, 0.f};
+        pixel_quad.vert_pos_flat[3] = {vert_pos[0].w, vert_pos[1].w, vert_pos[2].w, 0.f};
+
+        // block rasterization
+        int block_start_x = bounds.min.x + block_x * block_size;
+        int block_start_y = bounds.min.y + block_y * block_size;
+        for (int y = block_start_y + 1; y < block_start_y + block_size && y <= bounds.max.y; y += 2) {
+          for (int x = block_start_x + 1; x < block_start_x + block_size && x <= bounds.max.x; x += 2) {
+            pixel_quad.Init(x, y);
+            RasterizationPixelQuad(pixel_quad);
+          }
+        }
+      });
     }
   }
 }
@@ -591,8 +613,6 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
   for (auto &pixel : quad.pixels) {
     pixel.inside = Barycentric(vert, v0, pixel.position, pixel.barycentric);
   }
-
-  // skip total outside quad
   if (!quad.QuadInside()) {
     return;
   }
@@ -614,7 +634,7 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
     }
 
     // fragment shader
-    ProcessFragmentShader(pixel.position, quad.front_facing, pixel.varyings_frag);
+    ProcessFragmentShader(pixel.position, quad.front_facing, pixel.varyings_frag, quad.shader_program.get());
   }
 }
 

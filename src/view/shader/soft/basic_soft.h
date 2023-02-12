@@ -54,6 +54,8 @@ class ShaderBasic : public ShaderSoft {
 
 class VS : public ShaderBasic {
  public:
+  CREATE_SHADER_CLONE(VS)
+
   void ShaderMain() override {
     gl->Position = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0);
   }
@@ -61,6 +63,8 @@ class VS : public ShaderBasic {
 
 class FS : public ShaderBasic {
  public:
+  CREATE_SHADER_CLONE(FS)
+
   void ShaderMain() override {
     gl->FragColor = u->u_baseColor;
   }

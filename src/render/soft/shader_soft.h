@@ -10,6 +10,8 @@
 
 namespace SoftGL {
 
+constexpr float PI = 3.14159265359;
+
 class UniformDesc {
  public:
   UniformDesc(const char *name, int offset)
@@ -50,13 +52,27 @@ class ShaderSoft {
   virtual std::vector<std::string> &GetDefines() = 0;
   virtual std::vector<UniformDesc> &GetUniformsDesc() = 0;
 
+  virtual std::shared_ptr<ShaderSoft> clone() = 0;
+
  public:
-  static inline glm::vec4 texture2D(Sampler2DSoft *sampler, glm::vec2 coord) {
+  static inline glm::vec4 texture(Sampler2DSoft *sampler, glm::vec2 coord) {
     return sampler->Texture2D(coord);
   }
 
-  static inline glm::vec4 textureCube(SamplerCubeSoft *sampler, glm::vec3 coord) {
+  static inline glm::vec4 texture(SamplerCubeSoft *sampler, glm::vec3 coord) {
     return sampler->TextureCube(coord);
+  }
+
+  static inline glm::vec4 textureLod(Sampler2DSoft *sampler, glm::vec2 coord, float lod = 0.f) {
+    return sampler->Texture2DLod(coord, lod);
+  }
+
+  static inline glm::vec4 textureLod(SamplerCubeSoft *sampler, glm::vec3 coord, float lod = 0.f) {
+    return sampler->TextureCubeLod(coord, lod);
+  }
+
+  static inline glm::vec4 textureLodOffset(Sampler2DSoft *sampler, glm::vec2 coord, float lod, glm::ivec2 offset) {
+    return sampler->Texture2DLodOffset(coord, lod, offset);
   }
 
  public:
@@ -114,5 +130,9 @@ class ShaderSoft {
     return sizeof(ShaderVaryings);                      \
   }
 
+#define CREATE_SHADER_CLONE(T)                          \
+  std::shared_ptr<ShaderSoft> clone() override {        \
+    return std::make_shared<T>(*this);                  \
+  }
 
 }

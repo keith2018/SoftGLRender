@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include <memory>
 #include "glm_inc.h"
+#include "memory_utils.h"
 
 namespace SoftGL {
 
@@ -36,7 +36,7 @@ class Buffer {
     return Layout_Linear;
   }
 
-  void Create(size_t w, size_t h) {
+  void Create(size_t w, size_t h, const uint8_t *data = nullptr) {
     if (w > 0 && h > 0) {
       if (width_ == w && height_ == h) {
         return;
@@ -46,7 +46,7 @@ class Buffer {
 
       InitLayout();
       data_size_ = inner_width_ * inner_height_;
-      data_ = std::shared_ptr<T>(new T[data_size_], [](const T *ptr) { delete[] ptr; });
+      data_ = MemoryUtils::MakeBuffer<T>(data_size_, data);
     }
   }
 
@@ -61,6 +61,10 @@ class Buffer {
 
   inline T *GetRawDataPtr() const {
     return data_.get();
+  }
+
+  inline size_t GetRawDataSize() const {
+    return data_size_;
   }
 
   inline bool Empty() const {

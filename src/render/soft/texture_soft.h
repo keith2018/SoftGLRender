@@ -6,10 +6,17 @@
 
 #pragma once
 
+#include <thread>
 #include "base/buffer.h"
 #include "render/texture.h"
 
 namespace SoftGL {
+
+template<typename T>
+class TextureImageSoft {
+ public:
+  std::shared_ptr<Buffer<glm::tvec4<T>>> buffer = nullptr;
+};
 
 class Texture2DSoft : public Texture2D {
  public:
@@ -19,10 +26,6 @@ class Texture2DSoft : public Texture2D {
     return uuid_;
   }
 
-  std::shared_ptr<BufferRGBA> GetBuffer() {
-    return buffer_;
-  }
-
   void SetSamplerDesc(SamplerDesc &sampler) override {
     sampler_desc_ = dynamic_cast<Sampler2DDesc &>(sampler);
   }
@@ -30,7 +33,8 @@ class Texture2DSoft : public Texture2D {
   void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
     width = (int) buffers[0]->GetWidth();
     height = (int) buffers[0]->GetHeight();
-    buffer_ = buffers[0];
+
+    image_.buffer = buffers[0];
   }
 
   void InitImageData(int w, int h) override {
@@ -39,21 +43,30 @@ class Texture2DSoft : public Texture2D {
     }
     width = w;
     height = h;
-    if (!buffer_) {
-      buffer_ = BufferRGBA::MakeDefault();
+
+    if (!image_.buffer) {
+      image_.buffer = BufferRGBA::MakeDefault();
     }
-    buffer_->Create(w, h);
+    image_.buffer->Create(w, h);
+  }
+
+  inline std::shared_ptr<BufferRGBA> GetBuffer() const {
+    return image_.buffer;
   }
 
   inline Sampler2DDesc &GetSamplerDesc() {
     return sampler_desc_;
   }
 
+  inline TextureImageSoft<uint8_t> &GetImage() {
+    return image_;
+  }
+
  private:
   int uuid_ = -1;
   static int uuid_counter_;
   Sampler2DDesc sampler_desc_;
-  std::shared_ptr<BufferRGBA> buffer_ = nullptr;
+  TextureImageSoft<uint8_t> image_;
 };
 
 class TextureCubeSoft : public TextureCube {

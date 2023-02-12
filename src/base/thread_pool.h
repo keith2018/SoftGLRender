@@ -31,6 +31,10 @@ class ThreadPool {
     JoinThreads();
   }
 
+  inline size_t GetThreadCnt() const {
+    return thread_cnt_;
+  }
+
   template<typename F>
   void PushTask(const F &task) {
     tasks_cnt_++;

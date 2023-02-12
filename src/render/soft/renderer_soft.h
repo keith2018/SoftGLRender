@@ -7,6 +7,7 @@
 #pragma once
 
 #include "base/memory_utils.h"
+#include "base/thread_pool.h"
 #include "render/renderer.h"
 #include "render/soft/vertex_soft.h"
 #include "render/soft/framebuffer_soft.h"
@@ -51,7 +52,8 @@ struct PixelContext {
 
 class PixelQuadContext {
  public:
-  void Init(int x, int y, size_t varyings_size);
+  void SetVaryingsSize(size_t size);
+  void Init(int x, int y);
   bool QuadInside();
 
  public:
@@ -75,16 +77,17 @@ class PixelQuadContext {
   // triangle Facing
   bool front_facing = true;
 
+  // shader program
+  std::shared_ptr<ShaderProgramSoft> shader_program = nullptr;
+
  private:
+  size_t varyings_size_ = 0;
   std::shared_ptr<float> varyings_pool_;
 };
 
 class RendererSoft : public Renderer {
  public:
-  RendererSoft() {
-    viewport_.depth_near = 0.f;
-    viewport_.depth_far = 1.f;
-  }
+  RendererSoft();
 
   // config
   bool ReverseZ() const override {
@@ -127,7 +130,7 @@ class RendererSoft : public Renderer {
   void ProcessViewportTransform();
   void ProcessFaceCulling();
   void ProcessRasterization();
-  void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings);
+  void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings, ShaderProgramSoft *shader);
   void ProcessPerSampleOperations(int x, int y, ShaderBuiltin &builtin);
   bool ProcessDepthTest(int x, int y, float depth);
   void ProcessColorBlending(int x, int y, glm::vec4 &color);
@@ -174,6 +177,8 @@ class RendererSoft : public Renderer {
   size_t varyings_buffer_size_ = 0;
 
   int raster_block_size_ = 32;
+  ThreadPool thread_pool_;
+  std::vector<PixelQuadContext> thread_quad_ctx_;
 };
 
 }

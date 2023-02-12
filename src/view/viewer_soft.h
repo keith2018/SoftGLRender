@@ -45,6 +45,7 @@ class ViewerSoft : public Viewer {
     switch (shading) {
       CASE_CREATE_SHADER_SOFT(Shading_BaseColor, ShaderBasic)
       CASE_CREATE_SHADER_SOFT(Shading_BlinnPhong, ShaderBlinnPhong)
+      CASE_CREATE_SHADER_SOFT(Shading_PBR, ShaderPbrIBL)
       default:
         break;
     }

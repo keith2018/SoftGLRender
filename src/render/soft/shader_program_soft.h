@@ -30,15 +30,15 @@ class ShaderProgramSoft : public ShaderProgram {
 
     // defines
     auto &define_desc = vertex_shader_->GetDefines();
-    defines_buffer_.resize(define_desc.size());
-    vertex_shader_->BindDefines(defines_buffer_.data());
-    fragment_shader_->BindDefines(defines_buffer_.data());
+    defines_buffer_ = MemoryUtils::MakeBuffer<uint8_t>(define_desc.size());
+    vertex_shader_->BindDefines(defines_buffer_.get());
+    fragment_shader_->BindDefines(defines_buffer_.get());
 
-    memset(defines_buffer_.data(), 0, defines_buffer_.size());
+    memset(defines_buffer_.get(), 0, sizeof(uint8_t) * define_desc.size());
     for (auto &name : defines_) {
       for (int i = 0; i < define_desc.size(); i++) {
         if (define_desc[i] == name) {
-          defines_buffer_[i] = 1;
+          defines_buffer_.get()[i] = 1;
         }
       }
     }
@@ -48,9 +48,9 @@ class ShaderProgramSoft : public ShaderProgram {
     fragment_shader_->BindBuiltin(&builtin_);
 
     // uniforms
-    uniform_buffer_.resize(vertex_shader_->GetShaderUniformsSize());
-    vertex_shader_->BindShaderUniforms(uniform_buffer_.data());
-    fragment_shader_->BindShaderUniforms(uniform_buffer_.data());
+    uniform_buffer_ = MemoryUtils::MakeBuffer<uint8_t>(vertex_shader_->GetShaderUniformsSize());
+    vertex_shader_->BindShaderUniforms(uniform_buffer_.get());
+    fragment_shader_->BindShaderUniforms(uniform_buffer_.get());
 
     return true;
   }
@@ -61,12 +61,12 @@ class ShaderProgramSoft : public ShaderProgram {
 
   inline void BindUniformBlockBuffer(void *data, size_t len, int location) {
     int offset = vertex_shader_->GetUniformOffset(location);
-    memcpy(uniform_buffer_.data() + offset, data, len);
+    memcpy(uniform_buffer_.get() + offset, data, len);
   }
 
   inline void BindUniformSampler(std::shared_ptr<SamplerSoft> &sampler, int location) {
     int offset = vertex_shader_->GetUniformOffset(location);
-    auto **ptr = reinterpret_cast<SamplerSoft **>(uniform_buffer_.data() + offset);
+    auto **ptr = reinterpret_cast<SamplerSoft **>(uniform_buffer_.get() + offset);
     *ptr = sampler.get();
   }
 
@@ -98,15 +98,26 @@ class ShaderProgramSoft : public ShaderProgram {
     fragment_shader_->ShaderMain();
   }
 
+  inline std::shared_ptr<ShaderProgramSoft> clone() const {
+    auto ret = std::make_shared<ShaderProgramSoft>(*this);
+
+    ret->vertex_shader_ = vertex_shader_->clone();
+    ret->fragment_shader_ = fragment_shader_->clone();
+    ret->vertex_shader_->BindBuiltin(&ret->builtin_);
+    ret->fragment_shader_->BindBuiltin(&ret->builtin_);
+
+    return ret;
+  }
+
  private:
+  ShaderBuiltin builtin_;
+  std::vector<std::string> defines_;
+
   std::shared_ptr<ShaderSoft> vertex_shader_;
   std::shared_ptr<ShaderSoft> fragment_shader_;
 
-  std::vector<std::string> defines_;
-  ShaderBuiltin builtin_;
-
-  std::vector<uint8_t> defines_buffer_;  // 0->false; 1->true
-  std::vector<uint8_t> uniform_buffer_;
+  std::shared_ptr<uint8_t> defines_buffer_;  // 0->false; 1->true
+  std::shared_ptr<uint8_t> uniform_buffer_;
 
  private:
   int uuid_ = -1;

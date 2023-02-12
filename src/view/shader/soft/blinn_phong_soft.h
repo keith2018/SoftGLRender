@@ -86,6 +86,8 @@ class ShaderBlinnPhong : public ShaderSoft {
 
 class VS : public ShaderBlinnPhong {
  public:
+  CREATE_SHADER_CLONE(VS)
+
   void ShaderMain() override {
     glm::vec4 position = glm::vec4(a->a_position, 1.0);
     gl->Position = u->u_modelViewProjectionMatrix * position;
@@ -114,9 +116,11 @@ class VS : public ShaderBlinnPhong {
 
 class FS : public ShaderBlinnPhong {
  public:
+  CREATE_SHADER_CLONE(FS)
+
   glm::vec3 GetNormalFromMap() {
     if (def->NORMAL_MAP) {
-      glm::vec3 normalVector = texture2D(u->u_normalMap, v->v_texCoord);
+      glm::vec3 normalVector = texture(u->u_normalMap, v->v_texCoord);
       return normalize(normalVector * 2.f - 1.f);
     } else {
       return normalize(v->v_normalVector);
@@ -124,12 +128,12 @@ class FS : public ShaderBlinnPhong {
   }
 
   void ShaderMain() override {
-    float pointLightRangeInverse = 1.0f / 5.f;
-    float specularExponent = 128.f;
+    const static float pointLightRangeInverse = 1.0f / 5.f;
+    const static float specularExponent = 128.f;
 
     glm::vec4 baseColor;
     if (def->ALBEDO_MAP) {
-      baseColor = texture2D(u->u_albedoMap, v->v_texCoord);
+      baseColor = texture(u->u_albedoMap, v->v_texCoord);
     } else {
       baseColor = u->u_baseColor;
     }
@@ -139,7 +143,7 @@ class FS : public ShaderBlinnPhong {
     // ambient
     float ao = 1.f;
     if (def->AO_MAP) {
-      ao = texture2D(u->u_aoMap, v->v_texCoord).r;
+      ao = texture(u->u_aoMap, v->v_texCoord).r;
     }
     glm::vec3 ambientColor = glm::vec3(baseColor) * u->u_ambientColor * ao;
     glm::vec3 diffuseColor = glm::vec3(0.f);
@@ -163,7 +167,7 @@ class FS : public ShaderBlinnPhong {
     }
 
     if (def->EMISSIVE_MAP) {
-      emissiveColor = texture2D(u->u_emissiveMap, v->v_texCoord);
+      emissiveColor = texture(u->u_emissiveMap, v->v_texCoord);
     }
 
     gl->FragColor = glm::vec4(ambientColor + diffuseColor + specularColor + emissiveColor, baseColor.a);

@@ -56,6 +56,18 @@ class MemoryUtils {
     return std::shared_ptr<T>((T *) MemoryUtils::AlignedMalloc(size),
                               [](const T *ptr) { MemoryUtils::AlignedFree((void *) ptr); });
   }
+
+  template<typename T>
+  static std::shared_ptr<T> MakeBuffer(size_t size, const uint8_t *data = nullptr) {
+    if (size == 0) {
+      return nullptr;
+    }
+    if (data != nullptr) {
+      return std::shared_ptr<T>((T *) data, [](const T *ptr) {});
+    } else {
+      return std::shared_ptr<T>(new T[size], [](const T *ptr) { delete[] ptr; });
+    }
+  }
 };
 
 template<typename T>
