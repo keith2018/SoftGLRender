@@ -54,7 +54,7 @@ struct PixelContext {
 class PixelQuadContext {
  public:
   void SetVaryingsSize(size_t size);
-  void Init(int x, int y);
+  void Init(float x, float y);
   bool QuadInside();
 
  public:
@@ -160,8 +160,8 @@ class RendererSoft : public Renderer {
                                    glm::aligned_vec4 &bc);
 
  private:
-  Viewport viewport_;
-  PrimitiveType primitive_type_;
+  Viewport viewport_{};
+  PrimitiveType primitive_type_ = Primitive_TRIANGLE;
   FrameBufferSoft *fbo_ = nullptr;
   const RenderState *render_state_ = nullptr;
   VertexArrayObjectSoft *vao_ = nullptr;

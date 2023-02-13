@@ -52,8 +52,8 @@ class Viewer {
 
   void SetupVertexArray(ModelVertexes &vertexes);
   void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
-  bool SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines = {});
-  void SetupTextures(Material &material, std::set<std::string> &shader_defines);
+  bool SetupShaderProgram(Material &material);
+  void SetupTextures(Material &material);
   void SetupSamplerUniforms(Material &material);
   void SetupMaterial(Material &material, const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks);
 
@@ -61,10 +61,11 @@ class Viewer {
   void UpdateUniformMVP(const glm::mat4 &transform, bool skybox = false);
   void UpdateUniformColor(const glm::vec4 &color);
 
-  void InitSkyboxIBL(ModelSkybox &skybox);
+  bool InitSkyboxIBL(ModelSkybox &skybox);
   bool IBLEnabled();
   void UpdateIBLTextures(Material &material);
 
+  static std::set<std::string> GenerateShaderDefines(Material &material);
   static size_t GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
   static glm::mat4 AdjustModelCenter(BoundingBox &bounds);
 

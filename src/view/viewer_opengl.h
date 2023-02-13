@@ -17,7 +17,7 @@ namespace SoftGL {
 namespace View {
 
 #define CASE_CREATE_SHADER_GL(shading, source) case shading: \
-  return program_gl->CompileAndLink(source##_VS, source##_FS);
+  return program_gl->CompileAndLink(source##_VS, source##_FS)
 
 class ViewerOpenGL : public Viewer {
  public:
@@ -56,13 +56,13 @@ class ViewerOpenGL : public Viewer {
   bool LoadShaders(ShaderProgram &program, ShadingModel shading) override {
     auto *program_gl = dynamic_cast<ShaderProgramOpenGL *>(&program);
     switch (shading) {
-      CASE_CREATE_SHADER_GL(Shading_BaseColor, BASIC)
-      CASE_CREATE_SHADER_GL(Shading_BlinnPhong, BLINN_PHONG)
-      CASE_CREATE_SHADER_GL(Shading_PBR, PBR_IBL)
-      CASE_CREATE_SHADER_GL(Shading_Skybox, SKYBOX)
-      CASE_CREATE_SHADER_GL(Shading_IBL_Irradiance, IBL_IRRADIANCE)
-      CASE_CREATE_SHADER_GL(Shading_IBL_Prefilter, IBL_PREFILTER)
-      CASE_CREATE_SHADER_GL(Shading_FXAA, FXAA)
+      CASE_CREATE_SHADER_GL(Shading_BaseColor, BASIC);
+      CASE_CREATE_SHADER_GL(Shading_BlinnPhong, BLINN_PHONG);
+      CASE_CREATE_SHADER_GL(Shading_PBR, PBR_IBL);
+      CASE_CREATE_SHADER_GL(Shading_Skybox, SKYBOX);
+      CASE_CREATE_SHADER_GL(Shading_IBL_Irradiance, IBL_IRRADIANCE);
+      CASE_CREATE_SHADER_GL(Shading_IBL_Prefilter, IBL_PREFILTER);
+      CASE_CREATE_SHADER_GL(Shading_FXAA, FXAA);
       default:
         break;
     }

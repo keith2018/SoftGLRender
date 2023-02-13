@@ -28,7 +28,7 @@ void PixelQuadContext::SetVaryingsSize(size_t size) {
   }
 }
 
-void PixelQuadContext::Init(int x, int y) {
+void PixelQuadContext::Init(float x, float y) {
   pixels[0].position.x = x;
   pixels[0].position.y = y;
 
@@ -281,9 +281,8 @@ void RendererSoft::ProcessPerspectiveDivide() {
     }
     auto &pos = vertex.position;
     float inv_w = 1.0f / pos.w;
-    pos.x *= inv_w;
-    pos.y *= inv_w;
-    pos.z *= inv_w;
+    pos.w *= pos.w;
+    pos *= inv_w;
   }
 }
 
@@ -597,7 +596,7 @@ void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
         int block_start_y = bounds.min.y + block_y * block_size;
         for (int y = block_start_y + 1; y < block_start_y + block_size && y <= bounds.max.y; y += 2) {
           for (int x = block_start_x + 1; x < block_start_x + block_size && x <= bounds.max.x; x += 2) {
-            pixel_quad.Init(x, y);
+            pixel_quad.Init((float) x, (float) y);
             RasterizationPixelQuad(pixel_quad);
           }
         }

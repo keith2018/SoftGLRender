@@ -325,7 +325,7 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
   }
 }
 
-void Viewer::SetupTextures(Material &material, std::set<std::string> &shader_defines) {
+void Viewer::SetupTextures(Material &material) {
   SamplerCubeDesc sampler_cube;
   Sampler2DDesc sampler_2d;
 
@@ -352,12 +352,6 @@ void Viewer::SetupTextures(Material &material, std::set<std::string> &shader_def
     // upload image data
     texture->SetImageData(kv.second);
     material.textures[kv.first] = texture;
-
-    // add shader defines
-    const char *sampler_define = Material::SamplerDefine((TextureUsage) kv.first);
-    if (sampler_define) {
-      shader_defines.insert(sampler_define);
-    }
   }
 
   // default IBL texture
@@ -379,7 +373,8 @@ void Viewer::SetupSamplerUniforms(Material &material) {
   }
 }
 
-bool Viewer::SetupShaderProgram(Material &material, const std::set<std::string> &shader_defines) {
+bool Viewer::SetupShaderProgram(Material &material) {
+  auto shader_defines = GenerateShaderDefines(material);
   size_t cache_key = GetShaderProgramCacheKey(material.shading, shader_defines);
 
   // try cache
@@ -408,14 +403,12 @@ bool Viewer::SetupShaderProgram(Material &material, const std::set<std::string> 
 
 void Viewer::SetupMaterial(Material &material,
                            const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks) {
-  std::set<std::string> shader_defines;
-
   material.CreateTextures([&]() -> void {
-    SetupTextures(material, shader_defines);
+    SetupTextures(material);
   });
 
   material.CreateProgram([&]() -> void {
-    if (SetupShaderProgram(material, shader_defines)) {
+    if (SetupShaderProgram(material)) {
       SetupSamplerUniforms(material);
       for (auto &kv : uniform_blocks) {
         material.shader_uniforms->blocks.insert(kv);
@@ -451,14 +444,17 @@ void Viewer::UpdateUniformColor(const glm::vec4 &color) {
   uniforms_block_color_->SetData(&uniforms_color_, sizeof(UniformsColor));
 }
 
-void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
+bool Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
   if (skybox.material.ibl_ready) {
-    return;
+    return true;
   }
 
-  std::set<std::string> shader_defines;
+  if (skybox.material.ibl_error) {
+    return false;
+  }
+
   skybox.material.CreateTextures([&]() -> void {
-    SetupTextures(skybox.material, shader_defines);
+    SetupTextures(skybox.material);
   });
 
   std::shared_ptr<TextureCube> texture_cube = nullptr;
@@ -492,7 +488,8 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
 
   if (!texture_cube) {
     LOGE("InitSkyboxIBL failed: skybox texture cube not available");
-    return;
+    skybox.material.ibl_error = true;
+    return false;
   }
 
   // generate irradiance map
@@ -506,7 +503,8 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
     skybox.material.textures[TextureUsage_IBL_IRRADIANCE] = std::move(texture_irradiance);
   } else {
     LOGE("InitSkyboxIBL failed: generate irradiance map failed");
-    return;
+    skybox.material.ibl_error = true;
+    return false;
   }
 
   // generate prefilter map
@@ -520,10 +518,12 @@ void Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
     skybox.material.textures[TextureUsage_IBL_PREFILTER] = std::move(texture_prefilter);
   } else {
     LOGE("InitSkyboxIBL failed: generate prefilter map failed");
-    return;
+    skybox.material.ibl_error = true;
+    return false;
   }
 
   skybox.material.ibl_ready = true;
+  return true;
 }
 
 bool Viewer::IBLEnabled() {
@@ -556,6 +556,17 @@ std::shared_ptr<TextureCube> Viewer::CreateTextureCubeDefault(int width, int hei
   texture_cube->InitImageData(width, height);
 
   return texture_cube;
+}
+
+std::set<std::string> Viewer::GenerateShaderDefines(Material &material) {
+  std::set<std::string> shader_defines;
+  for (auto &kv : material.textures) {
+    const char *sampler_define = Material::SamplerDefine((TextureUsage) kv.first);
+    if (sampler_define) {
+      shader_defines.insert(sampler_define);
+    }
+  }
+  return shader_defines;
 }
 
 size_t Viewer::GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines) {

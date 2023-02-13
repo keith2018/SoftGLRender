@@ -182,10 +182,12 @@ class SkyboxMaterial : public Material {
   void ResetRuntimeStates() override {
     Material::ResetRuntimeStates();
     ibl_ready = false;
+    ibl_error = false;
   }
 
  public:
   bool ibl_ready = false;
+  bool ibl_error = false;
 };
 
 }

@@ -15,7 +15,7 @@ namespace SoftGL {
 template<typename T>
 class TextureImageSoft {
  public:
-  std::shared_ptr<Buffer<glm::tvec4<T>>> buffer = nullptr;
+  std::shared_ptr<Buffer<T>> buffer = nullptr;
 };
 
 class Texture2DSoft : public Texture2D {
@@ -58,7 +58,7 @@ class Texture2DSoft : public Texture2D {
     return sampler_desc_;
   }
 
-  inline TextureImageSoft<uint8_t> &GetImage() {
+  inline TextureImageSoft<glm::tvec4<uint8_t>> &GetImage() {
     return image_;
   }
 
@@ -66,7 +66,7 @@ class Texture2DSoft : public Texture2D {
   int uuid_ = -1;
   static int uuid_counter_;
   Sampler2DDesc sampler_desc_;
-  TextureImageSoft<uint8_t> image_;
+  TextureImageSoft<glm::tvec4<uint8_t>> image_;
 };
 
 class TextureCubeSoft : public TextureCube {
@@ -77,10 +77,6 @@ class TextureCubeSoft : public TextureCube {
     return uuid_;
   }
 
-  std::shared_ptr<BufferRGBA> GetBuffer(CubeMapFace face) {
-    return buffers_[face];
-  }
-
   void SetSamplerDesc(SamplerDesc &sampler) override {
     sampler_desc_ = dynamic_cast<SamplerCubeDesc &>(sampler);
   }
@@ -89,7 +85,7 @@ class TextureCubeSoft : public TextureCube {
     width = (int) buffers[0]->GetWidth();
     height = (int) buffers[0]->GetHeight();
     for (int i = 0; i < 6; i++) {
-      buffers_[i] = buffers[i];
+      images_[i].buffer = buffers[i];
     }
   }
 
@@ -99,23 +95,32 @@ class TextureCubeSoft : public TextureCube {
     }
     width = w;
     height = h;
-    for (int i = 0; i < 6; i++) {
-      if (!buffers_[i]) {
-        buffers_[i] = BufferRGBA::MakeDefault();
+
+    for (auto &image : images_) {
+      if (!image.buffer) {
+        image.buffer = BufferRGBA::MakeDefault();
       }
-      buffers_[i]->Create(w, h);
+      image.buffer->Create(w, h);
     }
+  }
+
+  std::shared_ptr<BufferRGBA> GetBuffer(CubeMapFace face) {
+    return images_[face].buffer;
   }
 
   inline SamplerCubeDesc &GetSamplerDesc() {
     return sampler_desc_;
   }
 
+  inline TextureImageSoft<glm::tvec4<uint8_t>> &GetImage(CubeMapFace face) {
+    return images_[face];
+  }
+
  private:
   int uuid_ = -1;
   static int uuid_counter_;
   SamplerCubeDesc sampler_desc_;
-  std::shared_ptr<BufferRGBA> buffers_[6];
+  TextureImageSoft<glm::tvec4<uint8_t>> images_[6];
 };
 
 class TextureDepthSoft : public TextureDepth {
@@ -126,8 +131,12 @@ class TextureDepthSoft : public TextureDepth {
     return uuid_;
   }
 
-  std::shared_ptr<BufferDepth> GetBuffer() {
-    return buffer_;
+  std::shared_ptr<BufferDepth> GetBuffer() const {
+    return image_.buffer;
+  }
+
+  inline TextureImageSoft<float> &GetImage() {
+    return image_;
   }
 
   void InitImageData(int w, int h) override {
@@ -136,16 +145,17 @@ class TextureDepthSoft : public TextureDepth {
     }
     width = w;
     height = h;
-    if (!buffer_) {
-      buffer_ = BufferDepth::MakeDefault();
+
+    if (!image_.buffer) {
+      image_.buffer = BufferDepth::MakeDefault();
     }
-    buffer_->Create(w, h);
+    image_.buffer->Create(w, h);
   }
 
  private:
   int uuid_ = -1;
   static int uuid_counter_;
-  std::shared_ptr<BufferDepth> buffer_ = nullptr;
+  TextureImageSoft<float> image_;
 };
 
 }
