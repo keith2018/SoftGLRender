@@ -34,6 +34,7 @@ struct VertexHolder {
   size_t index;
   float *varyings;
   int clip_mask;
+  float clip_z;
   glm::vec4 position;
 };
 

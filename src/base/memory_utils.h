@@ -49,23 +49,23 @@ class MemoryUtils {
   }
 
   template<typename T>
-  static std::shared_ptr<T> MakeAlignedBuffer(size_t size) {
-    if (size == 0) {
+  static std::shared_ptr<T> MakeAlignedBuffer(size_t buffer_size) {
+    if (buffer_size == 0) {
       return nullptr;
     }
-    return std::shared_ptr<T>((T *) MemoryUtils::AlignedMalloc(size),
+    return std::shared_ptr<T>((T *) MemoryUtils::AlignedMalloc(buffer_size),
                               [](const T *ptr) { MemoryUtils::AlignedFree((void *) ptr); });
   }
 
   template<typename T>
-  static std::shared_ptr<T> MakeBuffer(size_t size, const uint8_t *data = nullptr) {
-    if (size == 0) {
+  static std::shared_ptr<T> MakeBuffer(size_t elem_cnt, const uint8_t *data = nullptr) {
+    if (elem_cnt == 0) {
       return nullptr;
     }
     if (data != nullptr) {
       return std::shared_ptr<T>((T *) data, [](const T *ptr) {});
     } else {
-      return std::shared_ptr<T>(new T[size], [](const T *ptr) { delete[] ptr; });
+      return std::shared_ptr<T>(new T[elem_cnt], [](const T *ptr) { delete[] ptr; });
     }
   }
 };
@@ -78,16 +78,12 @@ class AlignedBuffer {
       return;
     }
 
-    buffer_ = MemoryUtils::MakeAlignedBuffer<T>(size);
+    buffer_ = MemoryUtils::MakeAlignedBuffer<T>(size * sizeof(T));
     size_ = size;
   }
 
   inline const std::shared_ptr<T> &GetBuffer() const {
     return buffer_;
-  }
-
-  inline size_t GetSize() const {
-    return size_;
   }
 
  private:

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "base/simd.h"
 #include "texture_soft.h"
 
 namespace SoftGL {

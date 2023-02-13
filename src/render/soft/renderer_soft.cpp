@@ -169,11 +169,11 @@ void RendererSoft::ProcessVertexShader() {
   // init shader varyings
   varyings_cnt_ = shader_program_->GetShaderVaryingsSize() / sizeof(float);
   varyings_buffer_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
-  varyings_.Resize(vao_->vertex_cnt * varyings_buffer_size_);
+  size_t varying_elem_cnt_ = varyings_buffer_size_ / sizeof(float);
+  varyings_.Resize(vao_->vertex_cnt * varying_elem_cnt_);
 
   auto &builtin = shader_program_->GetShaderBuiltin();
   uint8_t *vertex_ptr = vao_->vertexes.data();
-  size_t varying_elem_cnt_ = varyings_buffer_size_ / sizeof(float);
   float *varying_buffer = varyings_.GetBuffer().get();
 
   vertexes_.resize(vao_->vertex_cnt);
@@ -187,6 +187,7 @@ void RendererSoft::ProcessVertexShader() {
     shader_program_->ExecVertexShader();
 
     holder.position = builtin.Position;
+    holder.clip_z = holder.position.z;
     holder.clip_mask = CountFrustumClipMask(holder.position);
 
     vertex_ptr += vao_->vertex_stride;
@@ -582,7 +583,7 @@ void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
 
         for (int i = 0; i < 3; i++) {
           pixel_quad.vert_pos[i] = vert[i]->position;
-          pixel_quad.vert_clip_z[i] = vert_pos[i].z * vert_pos[i].w;
+          pixel_quad.vert_clip_z[i] = vert[i]->clip_z;
           pixel_quad.vert_varyings[i] = vert[i]->varyings;
         }
 
