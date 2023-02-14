@@ -142,9 +142,9 @@ class RendererSoft : public Renderer {
   void ClippingTriangle(PrimitiveHolder &triangle);
 
   void RasterizationPolygon(PrimitiveHolder &primitive);
-  void RasterizationPoint(glm::vec4 &pos, float point_size);
-  void RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float line_width);
-  void RasterizationTriangle(PrimitiveHolder &triangle);
+  void RasterizationPoint(VertexHolder *v, float point_size);
+  void RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width);
+  void RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing);
   void RasterizationPixelQuad(PixelQuadContext &quad);
 
  private:
@@ -157,7 +157,7 @@ class RendererSoft : public Renderer {
   bool Barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
   void BarycentricCorrect(PixelQuadContext &quad);
 
-  void InterpolateLinear(float *varyings_out, const float *varyings_in[2], size_t elem_cnt, float weight);
+  void InterpolateLinear(float *varyings_out, const float *varyings_in[2], size_t elem_cnt, float t);
   void InterpolateBarycentric(float *varyings_out, const float *varyings_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
 
  private:

@@ -325,7 +325,7 @@ void RendererSoft::ProcessRasterization() {
           continue;
         }
         auto &vert = primitive.vertexes;
-        RasterizationPoint(vert[0]->position, render_state_->point_size);
+        RasterizationPoint(vert[0], render_state_->point_size);
       }
       break;
     case Primitive_LINE:
@@ -334,7 +334,7 @@ void RendererSoft::ProcessRasterization() {
           continue;
         }
         auto &vert = primitive.vertexes;
-        RasterizationLine(vert[0]->position, vert[1]->position, render_state_->line_width);
+        RasterizationLine(vert[0], vert[1], render_state_->line_width);
       }
       break;
     case Primitive_TRIANGLE:
@@ -470,7 +470,7 @@ void RendererSoft::ClippingLine(PrimitiveHolder &line) {
 }
 
 void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
-
+  // TODO
 }
 
 void RendererSoft::RasterizationPolygon(PrimitiveHolder &primitive) {
@@ -478,48 +478,45 @@ void RendererSoft::RasterizationPolygon(PrimitiveHolder &primitive) {
   switch (render_state_->polygon_mode) {
     case PolygonMode_POINT:
       for (auto &v : vert) {
-        RasterizationPoint(v->position, render_state_->point_size);
+        RasterizationPoint(v, render_state_->point_size);
       }
       break;
     case PolygonMode_LINE:
       for (int i = 0; i < 3; i++) {
-        RasterizationLine(vert[i]->position, vert[(i + 1) % 3]->position, render_state_->line_width);
+        RasterizationLine(vert[i], vert[(i + 1) % 3], render_state_->line_width);
       }
       break;
     case PolygonMode_FILL:
-      RasterizationTriangle(primitive);
+      RasterizationTriangle(vert[0], vert[1], vert[2], primitive.front_facing);
       break;
   }
 }
 
-void RendererSoft::RasterizationPoint(glm::vec4 &pos, float point_size) {
-  float left = pos.x - point_size / 2.f + 0.5f;
+void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
+  float left = v->position.x - point_size / 2.f + 0.5f;
   float right = left + point_size;
-  float top = pos.y - point_size / 2.f + 0.5f;
+  float top = v->position.y - point_size / 2.f + 0.5f;
   float bottom = top + point_size;
 
-  glm::vec4 screen_pos = pos;
+  glm::vec4 screen_pos = v->position;
   for (int x = (int) left; x < (int) right; x++) {
     for (int y = (int) top; y < (int) bottom; y++) {
       screen_pos.x = (float) x;
       screen_pos.y = (float) y;
-      ProcessFragmentShader(screen_pos, true, nullptr, shader_program_);  // TODO varyings
+      ProcessFragmentShader(screen_pos, true, v->varyings, shader_program_);
     }
   }
 }
 
-void RendererSoft::RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float line_width) {
-  auto &v0 = pos0;
-  auto &v1 = pos1;
+void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width) {
+  int x0 = (int) v0->position.x, y0 = (int) v0->position.y;
+  int x1 = (int) v1->position.x, y1 = (int) v1->position.y;
 
-  int x0 = (int) v0.x, y0 = (int) v0.y;
-  int x1 = (int) v1.x, y1 = (int) v1.y;
+  float z0 = v0->position.z;
+  float z1 = v1->position.z;
 
-  float z0 = v0.z;
-  float z1 = v1.z;
-
-  float w0 = v0.w;
-  float w1 = v1.w;
+  float w0 = v0->position.w;
+  float w1 = v1->position.w;
 
   bool steep = false;
   if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
@@ -534,28 +531,35 @@ void RendererSoft::RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float lin
   }
   int dx = x1 - x0;
   int dy = y1 - y0;
-  float dz = (x1 == x0) ? 0 : (z1 - z0) / (float) (x1 - x0);
-  float dw = (x1 == x0) ? 0 : (w1 - w0) / (float) (x1 - x0);
 
   int error = 0;
   int dError = 2 * std::abs(dy);
 
   int y = y0;
+
   float z = z0;
   float w = w0;
+  float dz = (x1 == x0) ? 0 : (z1 - z0) / (float) (x1 - x0);
+  float dw = (x1 == x0) ? 0 : (w1 - w0) / (float) (x1 - x0);
 
-  glm::vec4 screen_pos(0, 0, z, w);
+  const float *varyings_in[2] = {v0->varyings, v1->varyings};
+  auto varyings = MemoryUtils::MakeBuffer<float>(varyings_cnt_);
+  VertexHolder pt{};
+  pt.position = glm::vec4(0, 0, z, w);
+  pt.varyings = varyings.get();
+
+  float t = 0;
   for (int x = x0; x <= x1; x++) {
+    t = (float) (x - x0) / (float) dx;
     z += dz;
     w += dw;
 
-    screen_pos.x = (float) x;
-    screen_pos.y = (float) y;
-    screen_pos.z = (float) z;
+    pt.position = glm::vec4(x, y, z, w);
     if (steep) {
-      std::swap(screen_pos.x, screen_pos.y);
+      std::swap(pt.position.x, pt.position.y);
     }
-    RasterizationPoint(screen_pos, line_width);  // TODO varyings
+    InterpolateLinear(pt.varyings, varyings_in, varyings_cnt_, t);
+    RasterizationPoint(&pt, line_width);
 
     error += dError;
     if (error > dx) {
@@ -565,8 +569,8 @@ void RendererSoft::RasterizationLine(glm::vec4 &pos0, glm::vec4 &pos1, float lin
   }
 }
 
-void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
-  auto &vert = triangle.vertexes;
+void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing) {
+  VertexHolder *vert[3] = {v0, v1, v2};
   glm::aligned_vec4 screen_pos[3] = {vert[0]->position, vert[1]->position, vert[2]->position};
   BoundingBox bounds = TriangleBoundingBox(screen_pos, viewport_.width, viewport_.height);
   bounds.min -= 1.f;
@@ -577,10 +581,10 @@ void RendererSoft::RasterizationTriangle(PrimitiveHolder &triangle) {
 
   for (int block_y = 0; block_y < block_cnt_y; block_y++) {
     for (int block_x = 0; block_x < block_cnt_x; block_x++) {
-      thread_pool_.PushTask([&, bounds, block_size, block_x, block_y](int thread_id) {
+      thread_pool_.PushTask([&, vert, bounds, block_size, block_x, block_y](int thread_id) {
         // init pixel quad
         auto pixel_quad = thread_quad_ctx_[thread_id];
-        pixel_quad.front_facing = triangle.front_facing;
+        pixel_quad.front_facing = front_facing;
         glm::aligned_vec4 *vert_pos = pixel_quad.vert_pos;
 
         for (int i = 0; i < 3; i++) {
@@ -754,11 +758,16 @@ void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
 void RendererSoft::InterpolateLinear(float *varyings_out,
                                      const float *varyings_in[2],
                                      size_t elem_cnt,
-                                     float weight) {
+                                     float t) {
   const float *in_vary0 = varyings_in[0];
   const float *in_vary1 = varyings_in[1];
+
+  if (in_vary0 == nullptr || in_vary1 == nullptr) {
+    return;
+  }
+
   for (int i = 0; i < elem_cnt; i++) {
-    varyings_out[i] = glm::mix(*(in_vary0 + i), *(in_vary1 + i), weight);
+    varyings_out[i] = glm::mix(*(in_vary0 + i), *(in_vary1 + i), t);
   }
 }
 
@@ -769,6 +778,10 @@ void RendererSoft::InterpolateBarycentric(float *varyings_out,
   const float *in_vary0 = varyings_in[0];
   const float *in_vary1 = varyings_in[1];
   const float *in_vary2 = varyings_in[2];
+
+  if (in_vary0 == nullptr || in_vary1 == nullptr || in_vary2 == nullptr) {
+    return;
+  }
 
 #ifdef SOFTGL_SIMD_OPT
   assert(PTR_ADDR(in_vary0) % SOFTGL_ALIGNMENT == 0);
