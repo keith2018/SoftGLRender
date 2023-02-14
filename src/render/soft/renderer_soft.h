@@ -32,8 +32,9 @@ struct Viewport {
 struct VertexHolder {
   bool discard;
   size_t index;
-  float *varyings;
   int clip_mask;
+
+  float *varyings;
   float clip_z;
   glm::vec4 position;
 };
@@ -82,7 +83,7 @@ class PixelQuadContext {
   std::shared_ptr<ShaderProgramSoft> shader_program = nullptr;
 
  private:
-  size_t varyings_size_ = 0;
+  size_t varyings_aligned_cnt_ = 0;
   std::shared_ptr<float> varyings_pool_;
 };
 
@@ -152,12 +153,12 @@ class RendererSoft : public Renderer {
 
   int CountFrustumClipMask(glm::vec4 &clip_pos);
   BoundingBox TriangleBoundingBox(glm::vec4 *vert, float width, float height);
+
   bool Barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
   void BarycentricCorrect(PixelQuadContext &quad);
-  void VaryingsInterpolateTriangle(float *varyings_out,
-                                   const float *varyings_in[],
-                                   size_t elem_cnt,
-                                   glm::aligned_vec4 &bc);
+
+  void InterpolateLinear(float *varyings_out, const float *varyings_in[2], size_t elem_cnt, float weight);
+  void InterpolateBarycentric(float *varyings_out, const float *varyings_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
 
  private:
   Viewport viewport_{};
@@ -175,7 +176,8 @@ class RendererSoft : public Renderer {
 
   AlignedBuffer<float> varyings_;
   size_t varyings_cnt_ = 0;
-  size_t varyings_buffer_size_ = 0;
+  size_t varyings_aligned_cnt_ = 0;
+  size_t varyings_aligned_size_ = 0;
 
   int raster_block_size_ = 32;
   ThreadPool thread_pool_;

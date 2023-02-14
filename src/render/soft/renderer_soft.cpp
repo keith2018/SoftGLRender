@@ -19,11 +19,11 @@
 namespace SoftGL {
 
 void PixelQuadContext::SetVaryingsSize(size_t size) {
-  if (varyings_size_ != size) {
-    varyings_size_ = size;
-    varyings_pool_ = MemoryUtils::MakeAlignedBuffer<float>(4 * varyings_size_);
+  if (varyings_aligned_cnt_ != size) {
+    varyings_aligned_cnt_ = size;
+    varyings_pool_ = MemoryUtils::MakeAlignedBuffer<float>(4 * varyings_aligned_cnt_);
     for (int i = 0; i < 4; i++) {
-      pixels[i].varyings_frag = varyings_pool_.get() + i * varyings_size_ / sizeof(float);
+      pixels[i].varyings_frag = varyings_pool_.get() + i * varyings_aligned_cnt_;
     }
   }
 }
@@ -168,9 +168,9 @@ void RendererSoft::Draw(PrimitiveType type) {
 void RendererSoft::ProcessVertexShader() {
   // init shader varyings
   varyings_cnt_ = shader_program_->GetShaderVaryingsSize() / sizeof(float);
-  varyings_buffer_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
-  size_t varying_elem_cnt_ = varyings_buffer_size_ / sizeof(float);
-  varyings_.Resize(vao_->vertex_cnt * varying_elem_cnt_);
+  varyings_aligned_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
+  varyings_aligned_cnt_ = varyings_aligned_size_ / sizeof(float);
+  varyings_.Resize(vao_->vertex_cnt * varyings_aligned_cnt_);
 
   auto &builtin = shader_program_->GetShaderBuiltin();
   uint8_t *vertex_ptr = vao_->vertexes.data();
@@ -180,7 +180,7 @@ void RendererSoft::ProcessVertexShader() {
   for (int idx = 0; idx < vao_->vertex_cnt; idx++) {
     VertexHolder &holder = vertexes_[idx];
     holder.index = idx;
-    holder.varyings = (varyings_buffer_size_ > 0) ? (varying_buffer + idx * varying_elem_cnt_) : nullptr;
+    holder.varyings = (varyings_aligned_size_ > 0) ? (varying_buffer + idx * varyings_aligned_cnt_) : nullptr;
 
     shader_program_->BindVertexShaderVaryings(holder.varyings);
     shader_program_->BindVertexAttributes(vertex_ptr);
@@ -340,7 +340,7 @@ void RendererSoft::ProcessRasterization() {
     case Primitive_TRIANGLE:
       thread_quad_ctx_.resize(thread_pool_.GetThreadCnt());
       for (auto &ctx : thread_quad_ctx_) {
-        ctx.SetVaryingsSize(varyings_buffer_size_);
+        ctx.SetVaryingsSize(varyings_aligned_cnt_);
         ctx.shader_program = shader_program_->clone();
       }
 
@@ -421,22 +421,19 @@ void RendererSoft::ClippingPoint(PrimitiveHolder &point) {
 }
 
 void RendererSoft::ClippingLine(PrimitiveHolder &line) {
-  glm::vec4 &p0 = line.vertexes[0]->position;
-  glm::vec4 &p1 = line.vertexes[1]->position;
-
-  int &mask0 = line.vertexes[0]->clip_mask;
-  int &mask1 = line.vertexes[1]->clip_mask;
+  VertexHolder *v0 = line.vertexes[0];
+  VertexHolder *v1 = line.vertexes[1];
 
   bool full_clip = false;
   float t0 = 0.f;
   float t1 = 1.f;
 
-  int mask = mask0 | mask1;
+  int mask = v0->clip_mask | v1->clip_mask;
   if (mask != 0) {
     for (int i = 0; i < 6; i++) {
       if (mask & FrustumClipMaskArray[i]) {
-        float d0 = glm::dot(FrustumClipPlane[i], p0);
-        float d1 = glm::dot(FrustumClipPlane[i], p1);
+        float d0 = glm::dot(FrustumClipPlane[i], v0->position);
+        float d1 = glm::dot(FrustumClipPlane[i], v1->position);
 
         if (d0 < 0 && d1 < 0) {
           full_clip = true;
@@ -457,12 +454,18 @@ void RendererSoft::ClippingLine(PrimitiveHolder &line) {
     return;
   }
 
-  if (mask0) {
-    p0 = glm::mix(p0, p1, t0);
+  const float *varyings_in[2] = {v0->varyings, v1->varyings};
+
+  if (v0->clip_mask) {
+    v0->position = glm::mix(v0->position, v1->position, t0);
+    v0->clip_z = glm::mix(v0->clip_z, v1->clip_z, t0);
+    InterpolateLinear(v0->varyings, varyings_in, varyings_cnt_, t0);
   }
 
-  if (mask1) {
-    p1 = glm::mix(p0, p1, t1);
+  if (v1->clip_mask) {
+    v1->position = glm::mix(v0->position, v1->position, t1);
+    v1->clip_z = glm::mix(v0->clip_z, v1->clip_z, t1);
+    InterpolateLinear(v1->varyings, varyings_in, varyings_cnt_, t1);
   }
 }
 
@@ -623,8 +626,7 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
   // varying interpolate
   // note: all quad pixels should perform varying interpolate to enable varying partial derivative
   for (auto &pixel : quad.pixels) {
-    VaryingsInterpolateTriangle((float *) pixel.varyings_frag, quad.vert_varyings,
-                                varyings_cnt_, pixel.barycentric);
+    InterpolateBarycentric((float *) pixel.varyings_frag, quad.vert_varyings, varyings_cnt_, pixel.barycentric);
   }
 
   // pixel shading
@@ -749,10 +751,21 @@ void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
 #endif
 }
 
-void RendererSoft::VaryingsInterpolateTriangle(float *varyings_out,
-                                               const float *varyings_in[],
-                                               size_t elem_cnt,
-                                               glm::aligned_vec4 &bc) {
+void RendererSoft::InterpolateLinear(float *varyings_out,
+                                     const float *varyings_in[2],
+                                     size_t elem_cnt,
+                                     float weight) {
+  const float *in_vary0 = varyings_in[0];
+  const float *in_vary1 = varyings_in[1];
+  for (int i = 0; i < elem_cnt; i++) {
+    varyings_out[i] = glm::mix(*(in_vary0 + i), *(in_vary1 + i), weight);
+  }
+}
+
+void RendererSoft::InterpolateBarycentric(float *varyings_out,
+                                          const float *varyings_in[3],
+                                          size_t elem_cnt,
+                                          glm::aligned_vec4 &bc) {
   const float *in_vary0 = varyings_in[0];
   const float *in_vary1 = varyings_in[1];
   const float *in_vary2 = varyings_in[2];

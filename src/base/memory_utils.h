@@ -49,11 +49,11 @@ class MemoryUtils {
   }
 
   template<typename T>
-  static std::shared_ptr<T> MakeAlignedBuffer(size_t buffer_size) {
-    if (buffer_size == 0) {
+  static std::shared_ptr<T> MakeAlignedBuffer(size_t elem_cnt) {
+    if (elem_cnt == 0) {
       return nullptr;
     }
-    return std::shared_ptr<T>((T *) MemoryUtils::AlignedMalloc(buffer_size),
+    return std::shared_ptr<T>((T *) MemoryUtils::AlignedMalloc(elem_cnt * sizeof(T)),
                               [](const T *ptr) { MemoryUtils::AlignedFree((void *) ptr); });
   }
 
