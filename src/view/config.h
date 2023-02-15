@@ -33,7 +33,6 @@ class Config {
   size_t triangle_count_ = 0;
 
   bool wireframe = false;
-  bool wireframe_show_clip = false;
   bool world_axis = true;
   bool show_skybox = false;
   bool cull_face = true;

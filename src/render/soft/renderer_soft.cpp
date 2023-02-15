@@ -180,52 +180,24 @@ void RendererSoft::ProcessVertexShader() {
   for (int idx = 0; idx < vao_->vertex_cnt; idx++) {
     VertexHolder &holder = vertexes_[idx];
     holder.index = idx;
+    holder.vertex = vertex_ptr;
     holder.varyings = (varyings_aligned_size_ > 0) ? (varying_buffer + idx * varyings_aligned_cnt_) : nullptr;
-
-    shader_program_->BindVertexShaderVaryings(holder.varyings);
-    shader_program_->BindVertexAttributes(vertex_ptr);
-    shader_program_->ExecVertexShader();
-
-    holder.position = builtin.Position;
-    holder.clip_z = holder.position.z;
-    holder.clip_mask = CountFrustumClipMask(holder.position);
-
+    VertexShaderImpl(holder);
     vertex_ptr += vao_->vertex_stride;
   }
 }
 
 void RendererSoft::ProcessPrimitiveAssembly() {
   switch (primitive_type_) {
-    case Primitive_POINT: {
-      primitives_.resize(vao_->indices_cnt);
-      for (int idx = 0; idx < primitives_.size(); idx++) {
-        auto &point = primitives_[idx];
-        point.vertexes[0] = &vertexes_[vao_->indices[idx]];
-        point.discard = false;
-      }
+    case Primitive_POINT:
+      ProcessPointAssembly();
       break;
-    }
-    case Primitive_LINE: {
-      primitives_.resize(vao_->indices_cnt / 2);
-      for (int idx = 0; idx < primitives_.size(); idx++) {
-        auto &line = primitives_[idx];
-        line.vertexes[0] = &vertexes_[vao_->indices[idx * 2]];
-        line.vertexes[1] = &vertexes_[vao_->indices[idx * 2 + 1]];
-        line.discard = false;
-      }
+    case Primitive_LINE:
+      ProcessLineAssembly();
       break;
-    }
-    case Primitive_TRIANGLE: {
-      primitives_.resize(vao_->indices_cnt / 3);
-      for (int idx = 0; idx < primitives_.size(); idx++) {
-        auto &triangle = primitives_[idx];
-        triangle.vertexes[0] = &vertexes_[vao_->indices[idx * 3]];
-        triangle.vertexes[1] = &vertexes_[vao_->indices[idx * 3 + 1]];
-        triangle.vertexes[2] = &vertexes_[vao_->indices[idx * 3 + 2]];
-        triangle.discard = false;
-      }
+    case Primitive_TRIANGLE:
+      ProcessPolygonAssembly();
       break;
-    }
   }
 }
 
@@ -259,16 +231,16 @@ void RendererSoft::ProcessClipping() {
     }
     switch (primitive_type_) {
       case Primitive_POINT:
-        primitive.vertexes[0]->discard = false;
+        vertexes_[primitive.indices[0]].discard = false;
         break;
       case Primitive_LINE:
-        primitive.vertexes[0]->discard = false;
-        primitive.vertexes[1]->discard = false;
+        vertexes_[primitive.indices[0]].discard = false;
+        vertexes_[primitive.indices[1]].discard = false;
         break;
       case Primitive_TRIANGLE:
-        primitive.vertexes[0]->discard = false;
-        primitive.vertexes[1]->discard = false;
-        primitive.vertexes[2]->discard = false;
+        vertexes_[primitive.indices[0]].discard = false;
+        vertexes_[primitive.indices[1]].discard = false;
+        vertexes_[primitive.indices[2]].discard = false;
         break;
     }
   }
@@ -303,9 +275,9 @@ void RendererSoft::ProcessFaceCulling() {
   }
 
   for (auto &triangle : primitives_) {
-    glm::vec4 &v0 = triangle.vertexes[0]->position;
-    glm::vec4 &v1 = triangle.vertexes[1]->position;
-    glm::vec4 &v2 = triangle.vertexes[2]->position;
+    glm::vec4 &v0 = vertexes_[triangle.indices[0]].position;
+    glm::vec4 &v1 = vertexes_[triangle.indices[1]].position;
+    glm::vec4 &v2 = vertexes_[triangle.indices[2]].position;
 
     glm::vec3 n = glm::cross(glm::vec3(v1 - v0), glm::vec3(v2 - v0));
     float area = glm::dot(n, glm::vec3(0, 0, 1));
@@ -324,8 +296,8 @@ void RendererSoft::ProcessRasterization() {
         if (primitive.discard) {
           continue;
         }
-        auto &vert = primitive.vertexes;
-        RasterizationPoint(vert[0], render_state_->point_size);
+        auto *vert0 = &vertexes_[primitive.indices[0]];
+        RasterizationPoint(vert0, render_state_->point_size);
       }
       break;
     case Primitive_LINE:
@@ -333,8 +305,9 @@ void RendererSoft::ProcessRasterization() {
         if (primitive.discard) {
           continue;
         }
-        auto &vert = primitive.vertexes;
-        RasterizationLine(vert[0], vert[1], render_state_->line_width);
+        auto *vert0 = &vertexes_[primitive.indices[0]];
+        auto *vert1 = &vertexes_[primitive.indices[1]];
+        RasterizationLine(vert0, vert1, render_state_->line_width);
       }
       break;
     case Primitive_TRIANGLE:
@@ -348,7 +321,10 @@ void RendererSoft::ProcessRasterization() {
         if (primitive.discard) {
           continue;
         }
-        RasterizationPolygon(primitive);
+        auto *vert0 = &vertexes_[primitive.indices[0]];
+        auto *vert1 = &vertexes_[primitive.indices[1]];
+        auto *vert2 = &vertexes_[primitive.indices[2]];
+        RasterizationTriangle(vert0, vert1, vert2, primitive.front_facing);
       }
 
       thread_pool_.WaitTasksFinish();
@@ -416,13 +392,100 @@ void RendererSoft::ProcessColorBlending(int x, int y, glm::vec4 &color) {
   }
 }
 
+void RendererSoft::ProcessPointAssembly() {
+  primitives_.resize(vao_->indices_cnt);
+  for (int idx = 0; idx < primitives_.size(); idx++) {
+    auto &point = primitives_[idx];
+    point.indices[0] = vao_->indices[idx];
+    point.discard = false;
+  }
+}
+
+void RendererSoft::ProcessLineAssembly() {
+  primitives_.resize(vao_->indices_cnt / 2);
+  for (int idx = 0; idx < primitives_.size(); idx++) {
+    auto &line = primitives_[idx];
+    line.indices[0] = vao_->indices[idx * 2];
+    line.indices[1] = vao_->indices[idx * 2 + 1];
+    line.discard = false;
+  }
+}
+
+void RendererSoft::ProcessPolygonAssembly() {
+  size_t triangle_cnt = vao_->indices_cnt / 3;
+  switch (render_state_->polygon_mode) {
+    case PolygonMode_POINT: {
+      primitive_type_ = Primitive_POINT;
+      primitives_.clear();
+      std::set<size_t> point_hash_set;
+
+      auto add_point = [&](size_t vert_idx) -> void {
+        if (point_hash_set.find(vert_idx) == point_hash_set.end()) {
+          point_hash_set.insert(vert_idx);
+
+          PrimitiveHolder point{};
+          point.indices[0] = vao_->indices[vert_idx];
+          point.discard = false;
+          primitives_.push_back(point);
+        }
+      };
+
+      for (int idx = 0; idx < triangle_cnt; idx++) {
+        add_point(idx * 3);
+        add_point(idx * 3 + 1);
+        add_point(idx * 3 + 2);
+      }
+      break;
+    }
+    case PolygonMode_LINE: {
+      primitive_type_ = Primitive_LINE;
+      primitives_.clear();
+      std::set<std::pair<size_t, size_t>> line_hash_set;
+
+      auto add_line = [&](size_t vert_idx0, size_t vert_idx1) -> void {
+        if (vert_idx0 > vert_idx1) {
+          std::swap(vert_idx0, vert_idx1);
+        }
+        if (line_hash_set.find(std::make_pair(vert_idx0, vert_idx1)) == line_hash_set.end()) {
+          line_hash_set.insert(std::make_pair(vert_idx0, vert_idx1));
+
+          PrimitiveHolder line{};
+          line.indices[0] = vao_->indices[vert_idx0];
+          line.indices[1] = vao_->indices[vert_idx1];
+          line.discard = false;
+          primitives_.push_back(line);
+        }
+      };
+
+      for (int idx = 0; idx < triangle_cnt; idx++) {
+        add_line(idx * 3, idx * 3 + 1);
+        add_line(idx * 3 + 1, idx * 3 + 2);
+        add_line(idx * 3 + 2, idx * 3);
+      }
+      break;
+    }
+    case PolygonMode_FILL: {
+      primitive_type_ = Primitive_TRIANGLE;
+      primitives_.resize(triangle_cnt);
+      for (int idx = 0; idx < triangle_cnt; idx++) {
+        auto &triangle = primitives_[idx];
+        triangle.indices[0] = vao_->indices[idx * 3];
+        triangle.indices[1] = vao_->indices[idx * 3 + 1];
+        triangle.indices[2] = vao_->indices[idx * 3 + 2];
+        triangle.discard = false;
+      }
+      break;
+    }
+  }
+}
+
 void RendererSoft::ClippingPoint(PrimitiveHolder &point) {
-  point.discard = (point.vertexes[0]->clip_mask != 0);
+  point.discard = (vertexes_[point.indices[0]].clip_mask != 0);
 }
 
 void RendererSoft::ClippingLine(PrimitiveHolder &line) {
-  VertexHolder *v0 = line.vertexes[0];
-  VertexHolder *v1 = line.vertexes[1];
+  VertexHolder *v0 = &vertexes_[line.indices[0]];
+  VertexHolder *v1 = &vertexes_[line.indices[1]];
 
   bool full_clip = false;
   float t0 = 0.f;
@@ -454,41 +517,98 @@ void RendererSoft::ClippingLine(PrimitiveHolder &line) {
     return;
   }
 
-  const float *varyings_in[2] = {v0->varyings, v1->varyings};
-
   if (v0->clip_mask) {
-    v0->position = glm::mix(v0->position, v1->position, t0);
-    v0->clip_z = glm::mix(v0->clip_z, v1->clip_z, t0);
-    InterpolateLinear(v0->varyings, varyings_in, varyings_cnt_, t0);
+    vertexes_.emplace_back();
+    VertexHolder &vh = vertexes_.back();
+    vh.discard = false;
+    vh.index = vertexes_.size() - 1;
+    InterpolateVertex(vh, vertexes_[line.indices[0]], vertexes_[line.indices[1]], t0);
+    line.indices[0] = vh.index;
   }
 
   if (v1->clip_mask) {
-    v1->position = glm::mix(v0->position, v1->position, t1);
-    v1->clip_z = glm::mix(v0->clip_z, v1->clip_z, t1);
-    InterpolateLinear(v1->varyings, varyings_in, varyings_cnt_, t1);
+    vertexes_.emplace_back();
+    VertexHolder &vh = vertexes_.back();
+    vh.discard = false;
+    vh.index = vertexes_.size() - 1;
+    InterpolateVertex(vh, vertexes_[line.indices[0]], vertexes_[line.indices[1]], t1);
+    line.indices[1] = vh.index;
   }
 }
 
 void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
-  // TODO
-}
+  auto *v0 = &vertexes_[triangle.indices[0]];
+  auto *v1 = &vertexes_[triangle.indices[1]];
+  auto *v2 = &vertexes_[triangle.indices[2]];
 
-void RendererSoft::RasterizationPolygon(PrimitiveHolder &primitive) {
-  auto &vert = primitive.vertexes;
-  switch (render_state_->polygon_mode) {
-    case PolygonMode_POINT:
-      for (auto &v : vert) {
-        RasterizationPoint(v, render_state_->point_size);
+  int mask = v0->clip_mask | v1->clip_mask | v2->clip_mask;
+  if (mask == 0) {
+    return;
+  }
+
+  bool full_clip = false;
+  std::vector<size_t> indices_in;
+  std::vector<size_t> indices_out;
+
+  indices_in.push_back(v0->index);
+  indices_in.push_back(v1->index);
+  indices_in.push_back(v2->index);
+
+  for (int plane_idx = 0; plane_idx < 6; plane_idx++) {
+    if (mask & FrustumClipMaskArray[plane_idx]) {
+      if (indices_in.size() < 3) {
+        full_clip = true;
+        break;
       }
-      break;
-    case PolygonMode_LINE:
-      for (int i = 0; i < 3; i++) {
-        RasterizationLine(vert[i], vert[(i + 1) % 3], render_state_->line_width);
+      indices_out.clear();
+      size_t idx_pre = indices_in[0];
+      float d_pre = glm::dot(FrustumClipPlane[plane_idx], vertexes_[idx_pre].position);
+
+      indices_in.push_back(idx_pre);
+      for (int i = 1; i < indices_in.size(); i++) {
+        size_t idx = indices_in[i];
+        float d = glm::dot(FrustumClipPlane[plane_idx], vertexes_[idx].position);
+
+        if (d_pre >= 0) {
+          indices_out.push_back(idx_pre);
+        }
+
+        if (std::signbit(d_pre) != std::signbit(d)) {
+          float t = d < 0 ? d_pre / (d_pre - d) : -d_pre / (d - d_pre);
+          // create new vertex
+          vertexes_.emplace_back();
+          VertexHolder &vh = vertexes_.back();
+          vh.discard = false;
+          vh.index = vertexes_.size() - 1;
+          InterpolateVertex(vh, vertexes_[idx_pre], vertexes_[idx], t);
+          indices_out.push_back(vh.index);
+        }
+
+        idx_pre = idx;
+        d_pre = d;
       }
-      break;
-    case PolygonMode_FILL:
-      RasterizationTriangle(vert[0], vert[1], vert[2], primitive.front_facing);
-      break;
+
+      std::swap(indices_in, indices_out);
+    }
+  }
+
+  if (full_clip || indices_in.empty()) {
+    triangle.discard = true;
+    return;
+  }
+
+  triangle.indices[0] = indices_in[0];
+  triangle.indices[1] = indices_in[1];
+  triangle.indices[2] = indices_in[2];
+
+  for (int i = 3; i < indices_in.size(); i++) {
+    PrimitiveHolder ph{};
+    ph.discard = false;
+    ph.indices[0] = indices_in[0];
+    ph.indices[1] = indices_in[i - 1];
+    ph.indices[2] = indices_in[i];
+    ph.front_facing = triangle.front_facing;
+    primitives_.push_back(ph);
   }
 }
 
@@ -545,7 +665,6 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
   const float *varyings_in[2] = {v0->varyings, v1->varyings};
   auto varyings = MemoryUtils::MakeBuffer<float>(varyings_cnt_);
   VertexHolder pt{};
-  pt.position = glm::vec4(0, 0, z, w);
   pt.varyings = varyings.get();
 
   float t = 0;
@@ -652,6 +771,16 @@ void RendererSoft::SetFrameColor(int x, int y, const glm::u8vec4 &color) {
   fbo_color_->Set(x, y, color);
 }
 
+void RendererSoft::VertexShaderImpl(VertexHolder &vertex) {
+  shader_program_->BindVertexAttributes(vertex.vertex);
+  shader_program_->BindVertexShaderVaryings(vertex.varyings);
+  shader_program_->ExecVertexShader();
+
+  vertex.position = shader_program_->GetShaderBuiltin().Position;
+  vertex.clip_z = vertex.position.z;
+  vertex.clip_mask = CountFrustumClipMask(vertex.position);
+}
+
 int RendererSoft::CountFrustumClipMask(glm::vec4 &clip_pos) {
   int mask = 0;
   if (clip_pos.w < clip_pos.x) mask |= FrustumClipMask::POSITIVE_X;
@@ -753,6 +882,20 @@ void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
     pixel.position.w = glm::dot(vert[3], bc);
   }
 #endif
+}
+
+void RendererSoft::InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t) {
+  out.vertex_holder = MemoryUtils::MakeBuffer<uint8_t>(vao_->vertex_stride);
+  out.vertex = out.vertex_holder.get();
+  out.varyings_holder = MemoryUtils::MakeAlignedBuffer<float>(varyings_aligned_cnt_);
+  out.varyings = out.varyings_holder.get();
+
+  // interpolate vertex (only support float element right now)
+  const float *vertex_in[2] = {(float *) v0.vertex, (float *) v1.vertex};
+  InterpolateLinear((float *) out.vertex, vertex_in, vao_->vertex_stride / sizeof(float), t);
+
+  // vertex shader
+  VertexShaderImpl(out);
 }
 
 void RendererSoft::InterpolateLinear(float *varyings_out,

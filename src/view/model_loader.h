@@ -27,6 +27,13 @@ class ModelLoader {
 
   inline DemoScene &GetScene() { return scene_; }
 
+  inline size_t GetModelPrimitiveCnt() const {
+    if (scene_.model) {
+      return scene_.model->primitive_cnt;
+    }
+    return 0;
+  }
+
   static void LoadCubeMesh(ModelVertexes &mesh);
 
  private:

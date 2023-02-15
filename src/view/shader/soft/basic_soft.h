@@ -32,6 +32,7 @@ struct ShaderUniforms {
 };
 
 struct ShaderVaryings {
+  glm::vec3 v_color;
 };
 
 class ShaderBasic : public ShaderSoft {
@@ -58,6 +59,7 @@ class VS : public ShaderBasic {
 
   void ShaderMain() override {
     gl->Position = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0);
+    v->v_color = a->a_position;
   }
 };
 
@@ -66,7 +68,7 @@ class FS : public ShaderBasic {
   CREATE_SHADER_CLONE(FS)
 
   void ShaderMain() override {
-    gl->FragColor = u->u_baseColor;
+    gl->FragColor = glm::vec4(v->v_color, 1.f);
   }
 };
 

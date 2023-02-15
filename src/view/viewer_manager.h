@@ -64,6 +64,9 @@ class ViewerManager {
     orbit_controller_->Update();
     config_panel_->Update();
 
+    // update triangle count
+    config_->triangle_count_ = model_loader_->GetModelPrimitiveCnt();
+
     auto &viewer = viewers_[config_->renderer_type];
     if (renderer_type_ != config_->renderer_type) {
       renderer_type_ = config_->renderer_type;

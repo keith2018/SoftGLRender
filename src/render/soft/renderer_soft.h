@@ -32,17 +32,22 @@ struct Viewport {
 struct VertexHolder {
   bool discard;
   size_t index;
-  int clip_mask;
 
+  void *vertex;
   float *varyings;
+
   float clip_z;
+  int clip_mask;
   glm::vec4 position;
+
+  std::shared_ptr<uint8_t> vertex_holder;
+  std::shared_ptr<float> varyings_holder;
 };
 
 struct PrimitiveHolder {
   bool discard;
-  VertexHolder *vertexes[3];
   bool front_facing;
+  size_t indices[3];
 };
 
 struct PixelContext {
@@ -137,11 +142,18 @@ class RendererSoft : public Renderer {
   bool ProcessDepthTest(int x, int y, float depth);
   void ProcessColorBlending(int x, int y, glm::vec4 &color);
 
+  void ProcessPointAssembly();
+  void ProcessLineAssembly();
+  void ProcessPolygonAssembly();
+
   void ClippingPoint(PrimitiveHolder &point);
   void ClippingLine(PrimitiveHolder &line);
   void ClippingTriangle(PrimitiveHolder &triangle);
 
-  void RasterizationPolygon(PrimitiveHolder &primitive);
+  void InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t);
+  void InterpolateLinear(float *varyings_out, const float *varyings_in[2], size_t elem_cnt, float t);
+  void InterpolateBarycentric(float *varyings_out, const float *varyings_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
+
   void RasterizationPoint(VertexHolder *v, float point_size);
   void RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width);
   void RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing);
@@ -151,14 +163,12 @@ class RendererSoft : public Renderer {
   inline glm::u8vec4 GetFrameColor(int x, int y);
   inline void SetFrameColor(int x, int y, const glm::u8vec4 &color);
 
+  void VertexShaderImpl(VertexHolder &vertex);
   int CountFrustumClipMask(glm::vec4 &clip_pos);
   BoundingBox TriangleBoundingBox(glm::vec4 *vert, float width, float height);
 
   bool Barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
   void BarycentricCorrect(PixelQuadContext &quad);
-
-  void InterpolateLinear(float *varyings_out, const float *varyings_in[2], size_t elem_cnt, float t);
-  void InterpolateBarycentric(float *varyings_out, const float *varyings_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
 
  private:
   Viewport viewport_{};

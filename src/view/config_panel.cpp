@@ -109,8 +109,6 @@ void ConfigPanel::DrawSettings() {
   // wireframe
   ImGui::Separator();
   ImGui::Checkbox("wireframe", &config_.wireframe);
-  ImGui::SameLine();
-  ImGui::Checkbox("show clip", &config_.wireframe_show_clip);
 
   // world axis
   ImGui::Separator();
