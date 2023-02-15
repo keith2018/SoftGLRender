@@ -316,17 +316,7 @@ void RendererSoft::ProcessRasterization() {
         ctx.SetVaryingsSize(varyings_aligned_cnt_);
         ctx.shader_program = shader_program_->clone();
       }
-
-      for (auto &primitive : primitives_) {
-        if (primitive.discard) {
-          continue;
-        }
-        auto *vert0 = &vertexes_[primitive.indices[0]];
-        auto *vert1 = &vertexes_[primitive.indices[1]];
-        auto *vert2 = &vertexes_[primitive.indices[2]];
-        RasterizationTriangle(vert0, vert1, vert2, primitive.front_facing);
-      }
-
+      RasterizationPolygons(primitives_);
       thread_pool_.WaitTasksFinish();
       break;
   }
@@ -412,70 +402,13 @@ void RendererSoft::ProcessLineAssembly() {
 }
 
 void RendererSoft::ProcessPolygonAssembly() {
-  size_t triangle_cnt = vao_->indices_cnt / 3;
-  switch (render_state_->polygon_mode) {
-    case PolygonMode_POINT: {
-      primitive_type_ = Primitive_POINT;
-      primitives_.clear();
-      std::set<size_t> point_hash_set;
-
-      auto add_point = [&](size_t vert_idx) -> void {
-        if (point_hash_set.find(vert_idx) == point_hash_set.end()) {
-          point_hash_set.insert(vert_idx);
-
-          PrimitiveHolder point{};
-          point.indices[0] = vao_->indices[vert_idx];
-          point.discard = false;
-          primitives_.push_back(point);
-        }
-      };
-
-      for (int idx = 0; idx < triangle_cnt; idx++) {
-        add_point(idx * 3);
-        add_point(idx * 3 + 1);
-        add_point(idx * 3 + 2);
-      }
-      break;
-    }
-    case PolygonMode_LINE: {
-      primitive_type_ = Primitive_LINE;
-      primitives_.clear();
-      std::set<std::pair<size_t, size_t>> line_hash_set;
-
-      auto add_line = [&](size_t vert_idx0, size_t vert_idx1) -> void {
-        if (vert_idx0 > vert_idx1) {
-          std::swap(vert_idx0, vert_idx1);
-        }
-        if (line_hash_set.find(std::make_pair(vert_idx0, vert_idx1)) == line_hash_set.end()) {
-          line_hash_set.insert(std::make_pair(vert_idx0, vert_idx1));
-
-          PrimitiveHolder line{};
-          line.indices[0] = vao_->indices[vert_idx0];
-          line.indices[1] = vao_->indices[vert_idx1];
-          line.discard = false;
-          primitives_.push_back(line);
-        }
-      };
-
-      for (int idx = 0; idx < triangle_cnt; idx++) {
-        add_line(idx * 3, idx * 3 + 1);
-        add_line(idx * 3 + 1, idx * 3 + 2);
-        add_line(idx * 3 + 2, idx * 3);
-      }
-      break;
-    }
-    case PolygonMode_FILL: {
-      primitive_type_ = Primitive_TRIANGLE;
-      primitives_.resize(triangle_cnt);
-      for (int idx = 0; idx < triangle_cnt; idx++) {
-        auto &triangle = primitives_[idx];
-        triangle.indices[0] = vao_->indices[idx * 3];
-        triangle.indices[1] = vao_->indices[idx * 3 + 1];
-        triangle.indices[2] = vao_->indices[idx * 3 + 2];
-        triangle.discard = false;
-      }
-      break;
-    }
+  primitives_.resize(vao_->indices_cnt / 3);
+  for (int idx = 0; idx < primitives_.size(); idx++) {
+    auto &triangle = primitives_[idx];
+    triangle.indices[0] = vao_->indices[idx * 3];
+    triangle.indices[1] = vao_->indices[idx * 3 + 1];
+    triangle.indices[2] = vao_->indices[idx * 3 + 2];
+    triangle.discard = false;
   }
 }
 
@@ -612,6 +545,35 @@ void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
   }
 }
 
+void RendererSoft::RasterizationPolygons(std::vector<PrimitiveHolder> &primitives) {
+  for (auto &primitive : primitives) {
+    if (primitive.discard) {
+      continue;
+    }
+
+    auto *vert0 = &vertexes_[primitive.indices[0]];
+    auto *vert1 = &vertexes_[primitive.indices[1]];
+    auto *vert2 = &vertexes_[primitive.indices[2]];
+    VertexHolder *vert[3] = {vert0, vert1, vert2};
+
+    switch (render_state_->polygon_mode) {
+      case PolygonMode_POINT:
+        for (auto &v : vert) {
+          RasterizationPoint(v, render_state_->point_size);
+        }
+        break;
+      case PolygonMode_LINE:
+        for (int i = 0; i < 3; i++) {
+          RasterizationLine(vert[i], vert[(i + 1) % 3], render_state_->line_width);
+        }
+        break;
+      case PolygonMode_FILL:
+        RasterizationTriangle(vert[0], vert[1], vert[2], primitive.front_facing);
+        break;
+    }
+  }
+}
+
 void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
   float left = v->position.x - point_size / 2.f + 0.5f;
   float right = left + point_size;
@@ -644,10 +606,15 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
     std::swap(x1, y1);
     steep = true;
   }
+
+  const float *varyings_in[2] = {v0->varyings, v1->varyings};
+
   if (x0 > x1) {
     std::swap(x0, x1);
     std::swap(y0, y1);
     std::swap(z0, z1);
+    std::swap(w0, w1);
+    std::swap(varyings_in[0], varyings_in[1]);
   }
   int dx = x1 - x0;
   int dy = y1 - y0;
@@ -662,7 +629,6 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
   float dz = (x1 == x0) ? 0 : (z1 - z0) / (float) (x1 - x0);
   float dw = (x1 == x0) ? 0 : (w1 - w0) / (float) (x1 - x0);
 
-  const float *varyings_in[2] = {v0->varyings, v1->varyings};
   auto varyings = MemoryUtils::MakeBuffer<float>(varyings_cnt_);
   VertexHolder pt{};
   pt.varyings = varyings.get();

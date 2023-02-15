@@ -157,6 +157,7 @@ class RendererSoft : public Renderer {
   void RasterizationPoint(VertexHolder *v, float point_size);
   void RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width);
   void RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing);
+  void RasterizationPolygons(std::vector<PrimitiveHolder> &primitives);
   void RasterizationPixelQuad(PixelQuadContext &quad);
 
  private:
