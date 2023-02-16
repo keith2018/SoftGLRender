@@ -91,8 +91,6 @@ std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::st
 // pipeline
 void RendererSoft::SetFrameBuffer(FrameBuffer &frame_buffer) {
   fbo_ = dynamic_cast<FrameBufferSoft *>(&frame_buffer);
-  fbo_color_ = fbo_->GetColorBuffer();
-  fbo_depth_ = fbo_->GetDepthBuffer();
 }
 
 void RendererSoft::SetViewPort(int x, int y, int width, int height) {
@@ -113,6 +111,13 @@ void RendererSoft::SetViewPort(int x, int y, int width, int height) {
 }
 
 void RendererSoft::Clear(const ClearState &state) {
+  if (!fbo_) {
+    return;
+  }
+
+  fbo_color_ = fbo_->GetColorBuffer();
+  fbo_depth_ = fbo_->GetDepthBuffer();
+
   if (state.color_flag) {
     if (fbo_color_) {
       fbo_color_->SetAll(glm::u8vec4(state.clear_color.r * 255,
@@ -151,9 +156,16 @@ void RendererSoft::SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) 
 }
 
 void RendererSoft::Draw(PrimitiveType type) {
+  if (!fbo_) {
+    return;
+  }
+
+  fbo_color_ = fbo_->GetColorBuffer();
+  fbo_depth_ = fbo_->GetDepthBuffer();
   if (!fbo_color_ || !vao_ || !shader_program_) {
     return;
   }
+
   primitive_type_ = type;
 
   ProcessVertexShader();
@@ -686,7 +698,7 @@ void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, Ver
 
         for (int i = 0; i < 3; i++) {
           pixel_quad.vert_pos[i] = vert[i]->position;
-          pixel_quad.vert_clip_z[i] = vert[i]->clip_z;
+          pixel_quad.vert_bc_factor[i] = vert[i]->clip_z + vert[i]->position.w;
           pixel_quad.vert_varyings[i] = vert[i]->varyings;
         }
 
@@ -828,7 +840,7 @@ bool RendererSoft::Barycentric(glm::aligned_vec4 *vert,
 void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
   glm::aligned_vec4 *vert = quad.vert_pos_flat;
 #ifdef SOFTGL_SIMD_OPT
-  __m128 m_clip_z = _mm_load_ps(&quad.vert_clip_z.x);
+  __m128 m_bc_factor = _mm_load_ps(&quad.vert_bc_factor.x);
   __m128 m_screen_z = _mm_load_ps(&vert[2].x);
   __m128 m_screen_w = _mm_load_ps(&vert[3].x);
   for (auto &pixel : quad.pixels) {
@@ -836,7 +848,7 @@ void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
     __m128 m_bc = _mm_load_ps(&bc.x);
 
     // barycentric correction
-    m_bc = _mm_div_ps(m_bc, m_clip_z);
+    m_bc = _mm_div_ps(m_bc, m_bc_factor);
     m_bc = _mm_div_ps(m_bc, _mm_set1_ps(MM_F32(m_bc, 0) + MM_F32(m_bc, 1) + MM_F32(m_bc, 2)));
     _mm_store_ps(&bc.x, m_bc);
 
@@ -852,7 +864,7 @@ void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
     auto &bc = pixel.barycentric;
 
     // barycentric correction
-    bc /= quad.vert_clip_z;
+    bc /= quad.vert_bc_factor;
     bc /= (bc.x + bc.y + bc.z);
 
     // interpolate z, w

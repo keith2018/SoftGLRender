@@ -7,6 +7,7 @@
 #pragma once
 
 #include <thread>
+#include <atomic>
 #include "base/buffer.h"
 #include "render/texture.h"
 

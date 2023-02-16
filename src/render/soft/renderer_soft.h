@@ -75,8 +75,8 @@ class PixelQuadContext {
   glm::aligned_vec4 vert_pos[3];
   glm::aligned_vec4 vert_pos_flat[4];
 
-  // triangle vertex clip space z, clip_z = { v0.clip_z, v1.clip_z, v2.clip_z, 1.f}
-  glm::aligned_vec4 vert_clip_z{1.f};
+  // triangle barycentric correct factor
+  glm::aligned_vec4 vert_bc_factor{1.f};
 
   // triangle vertex shader varyings
   const float *vert_varyings[3];
