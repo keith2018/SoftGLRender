@@ -15,14 +15,38 @@ namespace SoftGL {
 template<typename T>
 class TextureImageSoft {
  public:
-  std::shared_ptr<Buffer<T>> buffer = nullptr;
-  std::vector<std::shared_ptr<Buffer<T>>> mipmaps;
+  std::vector<std::shared_ptr<Buffer<T>>> levels;
 
+  std::atomic<bool> has_content = {false};
   std::atomic<bool> mipmaps_ready = {false};
   std::atomic<bool> mipmaps_generating = {false};
   std::shared_ptr<std::thread> mipmaps_thread = nullptr;
 
+  std::function<void(TextureImageSoft &)> mipmaps_func;  // TODO
+
  public:
+  inline size_t GetWidth() {
+    return Empty() ? 0 : levels[0]->GetWidth();
+  }
+
+  inline size_t GetHeight() {
+    return Empty() ? 0 : levels[0]->GetHeight();
+  }
+
+  inline bool Empty() {
+    return levels.empty();
+  }
+
+  inline std::shared_ptr<Buffer<T>> &GetBuffer(int level = 0) {
+    return levels[level];
+  }
+
+  inline void GenerateMipmap() {
+    if (mipmaps_func) {
+      mipmaps_func(*this);
+    }
+  }
+
   virtual ~TextureImageSoft() {
     if (mipmaps_thread) {
       mipmaps_thread->join();
@@ -46,9 +70,13 @@ class Texture2DSoft : public Texture2D {
     width = (int) buffers[0]->GetWidth();
     height = (int) buffers[0]->GetHeight();
 
-    image_.buffer = buffers[0];
+    image_.levels.resize(1);
+    image_.levels[0] = buffers[0];
+    image_.has_content = true;
 
-    // TODO mipmap
+    if (sampler_desc_.use_mipmaps) {
+      image_.GenerateMipmap();
+    }
   }
 
   void InitImageData(int w, int h) override {
@@ -58,19 +86,18 @@ class Texture2DSoft : public Texture2D {
     width = w;
     height = h;
 
-    if (!image_.buffer) {
-      image_.buffer = BufferRGBA::MakeDefault();
-    }
-    image_.buffer->Create(w, h);
+    image_.levels.resize(1);
+    image_.levels[0] = BufferRGBA::MakeDefault();
+    image_.levels[0]->Create(w, h);
+    image_.has_content = false;
 
-    // TODO mipmap
+    if (sampler_desc_.use_mipmaps) {
+      image_.GenerateMipmap();
+    }
   }
 
   inline std::shared_ptr<BufferRGBA> GetBuffer(int level = 0) const {
-    if (image_.mipmaps_ready) {
-      return image_.mipmaps[level];
-    }
-    return image_.buffer;
+    return image_.levels[level];
   }
 
   inline Sampler2DDesc &GetSamplerDesc() {
@@ -104,10 +131,14 @@ class TextureCubeSoft : public TextureCube {
     width = (int) buffers[0]->GetWidth();
     height = (int) buffers[0]->GetHeight();
     for (int i = 0; i < 6; i++) {
-      images_[i].buffer = buffers[i];
-    }
+      images_[i].levels.resize(1);
+      images_[i].levels[0] = buffers[i];
+      images_[i].has_content = true;
 
-    // TODO mipmap
+      if (sampler_desc_.use_mipmaps) {
+        images_[i].GenerateMipmap();
+      }
+    }
   }
 
   void InitImageData(int w, int h) override {
@@ -118,21 +149,19 @@ class TextureCubeSoft : public TextureCube {
     height = h;
 
     for (auto &image : images_) {
-      if (!image.buffer) {
-        image.buffer = BufferRGBA::MakeDefault();
-      }
-      image.buffer->Create(w, h);
-    }
+      image.levels.resize(1);
+      image.levels[0] = BufferRGBA::MakeDefault();
+      image.levels[0]->Create(w, h);
+      image.has_content = false;
 
-    // TODO mipmap
+      if (sampler_desc_.use_mipmaps) {
+        image.GenerateMipmap();
+      }
+    }
   }
 
   std::shared_ptr<BufferRGBA> GetBuffer(CubeMapFace face, int level = 0) {
-    auto &image = images_[face];
-    if (image.mipmaps_ready) {
-      return image.mipmaps[level];
-    }
-    return image.buffer;
+    return images_[face].levels[level];
   }
 
   inline SamplerCubeDesc &GetSamplerDesc() {
@@ -159,7 +188,7 @@ class TextureDepthSoft : public TextureDepth {
   }
 
   std::shared_ptr<BufferDepth> GetBuffer() const {
-    return image_.buffer;
+    return image_.levels[0];
   }
 
   inline TextureImageSoft<float> &GetImage() {
@@ -173,10 +202,9 @@ class TextureDepthSoft : public TextureDepth {
     width = w;
     height = h;
 
-    if (!image_.buffer) {
-      image_.buffer = BufferDepth::MakeDefault();
-    }
-    image_.buffer->Create(w, h);
+    image_.levels.resize(1);
+    image_.levels[0] = BufferDepth::MakeDefault();
+    image_.levels[0]->Create(w, h);
   }
 
  private:

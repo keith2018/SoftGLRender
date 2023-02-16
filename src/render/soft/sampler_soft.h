@@ -41,8 +41,6 @@ class BaseSampler {
     filter_mode_ = (FilterMode) filter_mode;
   }
 
-  static void GenerateMipmaps(TextureImageSoft<glm::tvec4<T>> *tex);
-
   static int RoundupPowerOf2(int n) {
     static const int max = 1 << 30;
     n -= 1;
@@ -72,8 +70,8 @@ class BaseSampler2D : public BaseSampler<T> {
  public:
   inline void SetImage(TextureImageSoft<glm::tvec4<T>> *tex) {
     tex_ = tex;
-    BaseSampler<T>::width_ = (tex_ == nullptr || tex_->buffer->Empty()) ? 0 : tex_->buffer->GetWidth();
-    BaseSampler<T>::height_ = (tex_ == nullptr || tex_->buffer->Empty()) ? 0 : tex_->buffer->GetHeight();
+    BaseSampler<T>::width_ = (tex_ == nullptr) ? 0 : tex_->GetWidth();
+    BaseSampler<T>::height_ = (tex_ == nullptr) ? 0 : tex_->GetHeight();
     BaseSampler<T>::use_mipmaps = BaseSampler<T>::filter_mode_ > Filter_LINEAR;
   }
 
@@ -105,81 +103,37 @@ template<typename T>
 const glm::tvec4<T> BaseSampler<T>::BORDER_COLOR(0);
 
 template<typename T>
-void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<glm::tvec4<T>> *tex) {
-  if (tex->mipmaps_ready || tex->mipmaps_generating) {
-    return;
-  }
-
-  tex->mipmaps_generating = true;
-  tex->mipmaps_thread = std::make_shared<std::thread>([&]() {
-    tex->mipmaps.clear();
-
-    int origin_width = (int) tex->buffer->GetWidth();
-    int origin_height = (int) tex->buffer->GetHeight();
-
-    // level 0
-    int level_size = std::max(RoundupPowerOf2(origin_width), RoundupPowerOf2(origin_height));
-    tex->mipmaps.push_back(Buffer<glm::tvec4<T>>::MakeLayout(tex->buffer->GetLayout()));
-    Buffer<glm::tvec4<T>> *level_buffer = tex->mipmaps.back().get();
-    Buffer<glm::tvec4<T>> *level_buffer_from = tex->buffer.get();
-    level_buffer->Create(level_size, level_size);
-
-    if (level_size == level_buffer_from->GetWidth() && level_size == level_buffer_from->GetHeight()) {
-      level_buffer_from->CopyRawDataTo(level_buffer->GetRawDataPtr());
-    } else {
-      BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
-    }
-
-    // other levels
-    while (level_size >= 2) {
-      level_size /= 2;
-
-      tex->mipmaps.push_back(Buffer<glm::tvec4<T>>::MakeLayout(tex->buffer->GetLayout()));
-      level_buffer = tex->mipmaps.back().get();
-      level_buffer_from = tex->mipmaps[tex->mipmaps.size() - 2].get();
-      level_buffer->Create(level_size, level_size);
-
-      BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
-    }
-
-    tex->mipmaps_generating = false;
-    tex->mipmaps_ready = true;
-  });
-}
-
-template<typename T>
 glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<glm::tvec4<T>> *tex,
                                           glm::vec2 &uv,
                                           float lod,
                                           glm::ivec2 offset) {
-  if (tex != nullptr && !tex->buffer->Empty()) {
+  if (tex != nullptr && !tex->Empty()) {
     if (filter_mode_ == Filter_NEAREST) {
-      return SampleNearest(tex->buffer.get(), uv, wrap_mode_, offset);
+      return SampleNearest(tex->GetBuffer().get(), uv, wrap_mode_, offset);
     }
     if (filter_mode_ == Filter_LINEAR) {
-      return SampleBilinear(tex->buffer.get(), uv, wrap_mode_, offset);
+      return SampleBilinear(tex->GetBuffer().get(), uv, wrap_mode_, offset);
     }
 
     // mipmaps not ready
     if (!tex->mipmaps_ready) {
-      GenerateMipmaps(tex);
       if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-        return SampleNearest(tex->buffer.get(), uv, wrap_mode_, offset);
+        return SampleNearest(tex->GetBuffer().get(), uv, wrap_mode_, offset);
       }
       if (filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_LINEAR) {
-        return SampleBilinear(tex->buffer.get(), uv, wrap_mode_, offset);
+        return SampleBilinear(tex->GetBuffer().get(), uv, wrap_mode_, offset);
       }
     }
 
     // mipmaps ready
-    int max_level = (int) tex->mipmaps.size() - 1;
+    int max_level = (int) tex->levels.size() - 1;
 
     if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST) {
       int level = glm::clamp((int) std::round(lod), 0, max_level);
       if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST) {
-        return SampleNearest(tex->mipmaps[level].get(), uv, wrap_mode_, offset);
+        return SampleNearest(tex->levels[level].get(), uv, wrap_mode_, offset);
       } else {
-        return SampleBilinear(tex->mipmaps[level].get(), uv, wrap_mode_, offset);
+        return SampleBilinear(tex->levels[level].get(), uv, wrap_mode_, offset);
       }
     }
 
@@ -189,18 +143,18 @@ glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<glm::tvec4<T>> *tex,
 
       glm::tvec4<T> texel1, texel2;
       if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-        texel1 = SampleNearest(tex->mipmaps[level1].get(), uv, wrap_mode_, offset);
+        texel1 = SampleNearest(tex->levels[level1].get(), uv, wrap_mode_, offset);
       } else {
-        texel1 = SampleBilinear(tex->mipmaps[level1].get(), uv, wrap_mode_, offset);
+        texel1 = SampleBilinear(tex->levels[level1].get(), uv, wrap_mode_, offset);
       }
 
       if (level1 == level2) {
         return texel1;
       } else {
         if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-          texel2 = SampleNearest(tex->mipmaps[level2].get(), uv, wrap_mode_, offset);
+          texel2 = SampleNearest(tex->levels[level2].get(), uv, wrap_mode_, offset);
         } else {
-          texel2 = SampleBilinear(tex->mipmaps[level2].get(), uv, wrap_mode_, offset);
+          texel2 = SampleBilinear(tex->levels[level2].get(), uv, wrap_mode_, offset);
         }
       }
 
@@ -339,8 +293,8 @@ class BaseSamplerCube : public BaseSampler<T> {
   inline void SetImage(TextureImageSoft<glm::tvec4<T>> *tex, int idx) {
     texes_[idx] = tex;
     if (idx == 0) {
-      BaseSampler<T>::width_ = (tex == nullptr || tex->buffer->Empty()) ? 0 : tex->buffer->GetWidth();
-      BaseSampler<T>::height_ = (tex == nullptr || tex->buffer->Empty()) ? 0 : tex->buffer->GetHeight();
+      BaseSampler<T>::width_ = (tex == nullptr) ? 0 : tex->GetWidth();
+      BaseSampler<T>::height_ = (tex == nullptr) ? 0 : tex->GetHeight();
       BaseSampler<T>::use_mipmaps = BaseSampler<T>::filter_mode_ > Filter_LINEAR;
     }
   }
