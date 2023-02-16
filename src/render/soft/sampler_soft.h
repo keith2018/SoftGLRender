@@ -41,6 +41,8 @@ class BaseSampler {
     filter_mode_ = (FilterMode) filter_mode;
   }
 
+  static void GenerateMipmaps(TextureImageSoft<glm::tvec4<T>> *tex);
+
   static int RoundupPowerOf2(int n) {
     static const int max = 1 << 30;
     n -= 1;
@@ -59,6 +61,7 @@ class BaseSampler {
   size_t width_ = 0;
   size_t height_ = 0;
 
+  bool use_mipmaps = false;
   WrapMode wrap_mode_ = Wrap_REPEAT;
   FilterMode filter_mode_ = Filter_LINEAR;
   std::function<float(BaseSampler<T> &)> *lod_func_ = nullptr;
@@ -71,6 +74,7 @@ class BaseSampler2D : public BaseSampler<T> {
     tex_ = tex;
     BaseSampler<T>::width_ = (tex_ == nullptr || tex_->buffer->Empty()) ? 0 : tex_->buffer->GetWidth();
     BaseSampler<T>::height_ = (tex_ == nullptr || tex_->buffer->Empty()) ? 0 : tex_->buffer->GetHeight();
+    BaseSampler<T>::use_mipmaps = BaseSampler<T>::filter_mode_ > Filter_LINEAR;
   }
 
   inline bool Empty() override {
@@ -79,7 +83,7 @@ class BaseSampler2D : public BaseSampler<T> {
 
   glm::vec4 Texture2DImpl(glm::vec2 &uv, float bias = 0.f) {
     float lod = bias;
-    if (BaseSampler<T>::lod_func_) {
+    if (BaseSampler<T>::use_mipmaps && BaseSampler<T>::lod_func_) {
       lod += (*BaseSampler<T>::lod_func_)(*this);
     }
     return Texture2DLodImpl(uv, lod);
@@ -101,6 +105,49 @@ template<typename T>
 const glm::tvec4<T> BaseSampler<T>::BORDER_COLOR(0);
 
 template<typename T>
+void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<glm::tvec4<T>> *tex) {
+  if (tex->mipmaps_ready || tex->mipmaps_generating) {
+    return;
+  }
+
+  tex->mipmaps_generating = true;
+  tex->mipmaps_thread = std::make_shared<std::thread>([&]() {
+    tex->mipmaps.clear();
+
+    int origin_width = (int) tex->buffer->GetWidth();
+    int origin_height = (int) tex->buffer->GetHeight();
+
+    // level 0
+    int level_size = std::max(RoundupPowerOf2(origin_width), RoundupPowerOf2(origin_height));
+    tex->mipmaps.push_back(Buffer<glm::tvec4<T>>::MakeLayout(tex->buffer->GetLayout()));
+    Buffer<glm::tvec4<T>> *level_buffer = tex->mipmaps.back().get();
+    Buffer<glm::tvec4<T>> *level_buffer_from = tex->buffer.get();
+    level_buffer->Create(level_size, level_size);
+
+    if (level_size == level_buffer_from->GetWidth() && level_size == level_buffer_from->GetHeight()) {
+      level_buffer_from->CopyRawDataTo(level_buffer->GetRawDataPtr());
+    } else {
+      BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
+    }
+
+    // other levels
+    while (level_size >= 2) {
+      level_size /= 2;
+
+      tex->mipmaps.push_back(Buffer<glm::tvec4<T>>::MakeLayout(tex->buffer->GetLayout()));
+      level_buffer = tex->mipmaps.back().get();
+      level_buffer_from = tex->mipmaps[tex->mipmaps.size() - 2].get();
+      level_buffer->Create(level_size, level_size);
+
+      BaseSampler<T>::SampleBufferBilinear(level_buffer, level_buffer_from);
+    }
+
+    tex->mipmaps_generating = false;
+    tex->mipmaps_ready = true;
+  });
+}
+
+template<typename T>
 glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<glm::tvec4<T>> *tex,
                                           glm::vec2 &uv,
                                           float lod,
@@ -113,11 +160,52 @@ glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<glm::tvec4<T>> *tex,
       return SampleBilinear(tex->buffer.get(), uv, wrap_mode_, offset);
     }
 
-    if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-      return SampleNearest(tex->buffer.get(), uv, wrap_mode_, offset);
+    // mipmaps not ready
+    if (!tex->mipmaps_ready) {
+      GenerateMipmaps(tex);
+      if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
+        return SampleNearest(tex->buffer.get(), uv, wrap_mode_, offset);
+      }
+      if (filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_LINEAR) {
+        return SampleBilinear(tex->buffer.get(), uv, wrap_mode_, offset);
+      }
     }
-    if (filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_LINEAR) {
-      return SampleBilinear(tex->buffer.get(), uv, wrap_mode_, offset);
+
+    // mipmaps ready
+    int max_level = (int) tex->mipmaps.size() - 1;
+
+    if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST) {
+      int level = glm::clamp((int) std::round(lod), 0, max_level);
+      if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST) {
+        return SampleNearest(tex->mipmaps[level].get(), uv, wrap_mode_, offset);
+      } else {
+        return SampleBilinear(tex->mipmaps[level].get(), uv, wrap_mode_, offset);
+      }
+    }
+
+    if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR || filter_mode_ == Filter_LINEAR_MIPMAP_LINEAR) {
+      int level1 = glm::clamp((int) std::floor(lod), 0, max_level);
+      int level2 = glm::clamp((int) std::ceil(lod), 0, max_level);
+
+      glm::tvec4<T> texel1, texel2;
+      if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
+        texel1 = SampleNearest(tex->mipmaps[level1].get(), uv, wrap_mode_, offset);
+      } else {
+        texel1 = SampleBilinear(tex->mipmaps[level1].get(), uv, wrap_mode_, offset);
+      }
+
+      if (level1 == level2) {
+        return texel1;
+      } else {
+        if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
+          texel2 = SampleNearest(tex->mipmaps[level2].get(), uv, wrap_mode_, offset);
+        } else {
+          texel2 = SampleBilinear(tex->mipmaps[level2].get(), uv, wrap_mode_, offset);
+        }
+      }
+
+      float f = glm::fract(lod);
+      return glm::mix(texel1, texel2, f);
     }
   }
   return glm::tvec4<T>(0);
@@ -253,6 +341,7 @@ class BaseSamplerCube : public BaseSampler<T> {
     if (idx == 0) {
       BaseSampler<T>::width_ = (tex == nullptr || tex->buffer->Empty()) ? 0 : tex->buffer->GetWidth();
       BaseSampler<T>::height_ = (tex == nullptr || tex->buffer->Empty()) ? 0 : tex->buffer->GetHeight();
+      BaseSampler<T>::use_mipmaps = BaseSampler<T>::filter_mode_ > Filter_LINEAR;
     }
   }
 
@@ -262,7 +351,7 @@ class BaseSamplerCube : public BaseSampler<T> {
 
   glm::vec4 TextureCubeImpl(glm::vec3 &coord, float bias = 0.f) {
     float lod = bias;
-    if (BaseSampler<T>::lod_func_) {
+    if (BaseSampler<T>::use_mipmaps && BaseSampler<T>::lod_func_) {
       lod += (*BaseSampler<T>::lod_func_)(*this);
     }
     return TextureCubeLodImpl(coord, lod);

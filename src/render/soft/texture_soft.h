@@ -16,6 +16,18 @@ template<typename T>
 class TextureImageSoft {
  public:
   std::shared_ptr<Buffer<T>> buffer = nullptr;
+  std::vector<std::shared_ptr<Buffer<T>>> mipmaps;
+
+  std::atomic<bool> mipmaps_ready = {false};
+  std::atomic<bool> mipmaps_generating = {false};
+  std::shared_ptr<std::thread> mipmaps_thread = nullptr;
+
+ public:
+  virtual ~TextureImageSoft() {
+    if (mipmaps_thread) {
+      mipmaps_thread->join();
+    }
+  };
 };
 
 class Texture2DSoft : public Texture2D {
@@ -35,6 +47,8 @@ class Texture2DSoft : public Texture2D {
     height = (int) buffers[0]->GetHeight();
 
     image_.buffer = buffers[0];
+
+    // TODO mipmap
   }
 
   void InitImageData(int w, int h) override {
@@ -48,9 +62,14 @@ class Texture2DSoft : public Texture2D {
       image_.buffer = BufferRGBA::MakeDefault();
     }
     image_.buffer->Create(w, h);
+
+    // TODO mipmap
   }
 
-  inline std::shared_ptr<BufferRGBA> GetBuffer() const {
+  inline std::shared_ptr<BufferRGBA> GetBuffer(int level = 0) const {
+    if (image_.mipmaps_ready) {
+      return image_.mipmaps[level];
+    }
     return image_.buffer;
   }
 
@@ -87,6 +106,8 @@ class TextureCubeSoft : public TextureCube {
     for (int i = 0; i < 6; i++) {
       images_[i].buffer = buffers[i];
     }
+
+    // TODO mipmap
   }
 
   void InitImageData(int w, int h) override {
@@ -102,10 +123,16 @@ class TextureCubeSoft : public TextureCube {
       }
       image.buffer->Create(w, h);
     }
+
+    // TODO mipmap
   }
 
-  std::shared_ptr<BufferRGBA> GetBuffer(CubeMapFace face) {
-    return images_[face].buffer;
+  std::shared_ptr<BufferRGBA> GetBuffer(CubeMapFace face, int level = 0) {
+    auto &image = images_[face];
+    if (image.mipmaps_ready) {
+      return image.mipmaps[level];
+    }
+    return image.buffer;
   }
 
   inline SamplerCubeDesc &GetSamplerDesc() {

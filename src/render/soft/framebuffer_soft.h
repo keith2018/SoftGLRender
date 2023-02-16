@@ -34,11 +34,11 @@ class FrameBufferSoft : public FrameBuffer {
     switch (color_tex_type) {
       case TextureType_2D: {
         auto *color_2d = dynamic_cast<Texture2DSoft *>(color_attachment_2d.tex.get());
-        return color_2d->GetBuffer();  // TODO mipmap level
+        return color_2d->GetBuffer(color_attachment_2d.level);
       }
       case TextureType_CUBE: {
         auto *color_cube = dynamic_cast<TextureCubeSoft *>(color_attachment_cube.tex.get());
-        return color_cube->GetBuffer(color_attachment_cube.face);  // TODO mipmap level
+        return color_cube->GetBuffer(color_attachment_cube.face, color_attachment_cube.level);
       }
       default:
         break;

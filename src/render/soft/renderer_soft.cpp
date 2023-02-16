@@ -367,9 +367,10 @@ bool RendererSoft::ProcessDepthTest(int x, int y, float depth) {
   // depth clamping
   depth = glm::clamp(depth, viewport_.depth_near, viewport_.depth_far);
 
-  // depth compare
+  // depth comparison
   float *z_ptr = fbo_depth_->Get(x, y);
   if (z_ptr && DepthTest(depth, *z_ptr, render_state_->depth_func)) {
+    // depth attachment writes
     if (render_state_->depth_mask) {
       *z_ptr = depth;
     }
