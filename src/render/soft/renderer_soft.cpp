@@ -364,6 +364,10 @@ bool RendererSoft::ProcessDepthTest(int x, int y, float depth) {
     return true;
   }
 
+  // depth clamping
+  depth = glm::clamp(depth, viewport_.depth_near, viewport_.depth_far);
+
+  // depth compare
   float *z_ptr = fbo_depth_->Get(x, y);
   if (z_ptr && DepthTest(depth, *z_ptr, render_state_->depth_func)) {
     if (render_state_->depth_mask) {
@@ -559,12 +563,19 @@ void RendererSoft::RasterizationPolygons(std::vector<PrimitiveHolder> &primitive
     switch (render_state_->polygon_mode) {
       case PolygonMode_POINT:
         for (auto &v : vert) {
+          // skip clipping generated points
+          if (v->vertex_holder) {
+            continue;
+          }
           RasterizationPoint(v, render_state_->point_size);
         }
         break;
       case PolygonMode_LINE:
         for (int i = 0; i < 3; i++) {
-          RasterizationLine(vert[i], vert[(i + 1) % 3], render_state_->line_width);
+          vert0 = vert[i];
+          vert1 = vert[(i + 1) % 3];
+          // TODO skip clipping generated lines
+          RasterizationLine(vert0, vert1, render_state_->line_width);
         }
         break;
       case PolygonMode_FILL:
