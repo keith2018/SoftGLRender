@@ -16,14 +16,14 @@ class FrameBuffer {
   virtual int GetId() const = 0;
   virtual bool IsValid() = 0;
 
-  virtual void SetColorAttachment(std::shared_ptr<Texture2D> &color, int level) {
+  virtual void SetColorAttachment(std::shared_ptr<Texture2D> &color, int level = 0) {
     color_tex_type = TextureType_2D;
     color_attachment_2d.tex = color;
     color_attachment_2d.level = level;
     color_ready = true;
   };
 
-  virtual void SetColorAttachment(std::shared_ptr<TextureCube> &color, CubeMapFace face, int level) {
+  virtual void SetColorAttachment(std::shared_ptr<TextureCube> &color, CubeMapFace face, int level = 0) {
     color_tex_type = TextureType_CUBE;
     color_attachment_cube.tex = color;
     color_attachment_cube.face = face;

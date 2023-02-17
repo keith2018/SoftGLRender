@@ -18,12 +18,11 @@ class TextureImageSoft {
  public:
   std::vector<std::shared_ptr<Buffer<T>>> levels;
 
-  std::atomic<bool> has_content = {false};
   std::atomic<bool> mipmaps_ready = {false};
   std::atomic<bool> mipmaps_generating = {false};
   std::shared_ptr<std::thread> mipmaps_thread = nullptr;
 
-  std::function<void(TextureImageSoft &)> mipmaps_func;  // TODO
+  std::function<void(TextureImageSoft &, bool sample)> mipmaps_func;  // TODO
 
  public:
   inline size_t GetWidth() {
@@ -42,9 +41,9 @@ class TextureImageSoft {
     return levels[level];
   }
 
-  inline void GenerateMipmap() {
+  inline void GenerateMipmap(bool sample = true) {
     if (mipmaps_func) {
-      mipmaps_func(*this);
+      mipmaps_func(*this, sample);
     }
   }
 
@@ -73,7 +72,6 @@ class Texture2DSoft : public Texture2D {
 
     image_.levels.resize(1);
     image_.levels[0] = buffers[0];
-    image_.has_content = true;
 
     if (sampler_desc_.use_mipmaps) {
       image_.GenerateMipmap();
@@ -90,15 +88,10 @@ class Texture2DSoft : public Texture2D {
     image_.levels.resize(1);
     image_.levels[0] = BufferRGBA::MakeDefault();
     image_.levels[0]->Create(w, h);
-    image_.has_content = false;
 
     if (sampler_desc_.use_mipmaps) {
-      image_.GenerateMipmap();
+      image_.GenerateMipmap(false);
     }
-  }
-
-  inline std::shared_ptr<BufferRGBA> GetBuffer(int level = 0) const {
-    return image_.levels[level];
   }
 
   inline Sampler2DDesc &GetSamplerDesc() {
@@ -134,7 +127,6 @@ class TextureCubeSoft : public TextureCube {
     for (int i = 0; i < 6; i++) {
       images_[i].levels.resize(1);
       images_[i].levels[0] = buffers[i];
-      images_[i].has_content = true;
 
       if (sampler_desc_.use_mipmaps) {
         images_[i].GenerateMipmap();
@@ -153,16 +145,11 @@ class TextureCubeSoft : public TextureCube {
       image.levels.resize(1);
       image.levels[0] = BufferRGBA::MakeDefault();
       image.levels[0]->Create(w, h);
-      image.has_content = false;
 
       if (sampler_desc_.use_mipmaps) {
-        image.GenerateMipmap();
+        image.GenerateMipmap(false);
       }
     }
-  }
-
-  std::shared_ptr<BufferRGBA> GetBuffer(CubeMapFace face, int level = 0) {
-    return images_[face].levels[level];
   }
 
   inline SamplerCubeDesc &GetSamplerDesc() {
@@ -186,10 +173,6 @@ class TextureDepthSoft : public TextureDepth {
 
   int GetId() const override {
     return uuid_;
-  }
-
-  std::shared_ptr<BufferDepth> GetBuffer() const {
-    return image_.levels[0];
   }
 
   inline TextureImageSoft<float> &GetImage() {

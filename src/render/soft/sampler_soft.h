@@ -439,6 +439,10 @@ class Sampler2DSoft : public SamplerSoft {
     sampler_.SetWrapMode(tex_->GetSamplerDesc().wrap_s);
   }
 
+  inline Texture2DSoft *GetTexture() const {
+    return tex_;
+  }
+
   inline glm::vec4 Texture2D(glm::vec2 coord, float bias = 0.f) {
     return sampler_.Texture2D(coord, bias);
   }
@@ -469,6 +473,10 @@ class SamplerCubeSoft : public SamplerSoft {
     }
     sampler_.SetFilterMode(tex_->GetSamplerDesc().filter_min);
     sampler_.SetWrapMode(tex_->GetSamplerDesc().wrap_s);
+  }
+
+  inline TextureCubeSoft *GetTexture() const {
+    return tex_;
   }
 
   inline glm::vec4 TextureCube(glm::vec3 coord, float bias = 0.f) {

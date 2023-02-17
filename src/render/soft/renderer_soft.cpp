@@ -118,19 +118,16 @@ void RendererSoft::Clear(const ClearState &state) {
   fbo_color_ = fbo_->GetColorBuffer();
   fbo_depth_ = fbo_->GetDepthBuffer();
 
-  if (state.color_flag) {
-    if (fbo_color_) {
-      fbo_color_->SetAll(glm::u8vec4(state.clear_color.r * 255,
-                                     state.clear_color.g * 255,
-                                     state.clear_color.b * 255,
-                                     state.clear_color.a * 255));
-    }
+  if (state.color_flag && fbo_color_) {
+    fbo_color_->SetAll(glm::u8vec4(state.clear_color.r * 255,
+                                   state.clear_color.g * 255,
+                                   state.clear_color.b * 255,
+                                   state.clear_color.a * 255));
+
   }
 
-  if (state.depth_flag) {
-    if (fbo_depth_) {
-      fbo_depth_->SetAll(viewport_.depth_far);
-    }
+  if (state.depth_flag && fbo_depth_) {
+    fbo_depth_->SetAll(viewport_.depth_far);
   }
 }
 

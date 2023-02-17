@@ -36,7 +36,7 @@ void Viewer::Create(int width, int height, int outTexId) {
   color_tex_out_ = renderer_->CreateTexture2D();
   color_tex_out_->InitImageData(width, height);
   color_tex_out_->SetSamplerDesc(sampler);
-  fbo_->SetColorAttachment(color_tex_out_, 0);
+  fbo_->SetColorAttachment(color_tex_out_);
 
   if (!fbo_->IsValid()) {
     LOGE("create framebuffer failed");
@@ -70,21 +70,21 @@ void Viewer::DrawFrame(DemoScene &scene) {
       color_tex_out_->InitImageData(width_, height_);
       FXAASetup();
 
-      fbo_->SetColorAttachment(color_tex_fxaa_, 0);
+      fbo_->SetColorAttachment(color_tex_fxaa_);
       fbo_->UpdateAttachmentsSize(width_, height_);
       renderer_->SetViewPort(0, 0, width_, height_);
       break;
     }
 
     case AAType_SSAA: {
-      fbo_->SetColorAttachment(color_tex_out_, 0);
+      fbo_->SetColorAttachment(color_tex_out_);
       fbo_->UpdateAttachmentsSize(width_ * 2, height_ * 2);
       renderer_->SetViewPort(0, 0, width_ * 2, height_ * 2);
       break;
     }
 
     default: {
-      fbo_->SetColorAttachment(color_tex_out_, 0);
+      fbo_->SetColorAttachment(color_tex_out_);
       fbo_->UpdateAttachmentsSize(width_, height_);
       renderer_->SetViewPort(0, 0, width_, height_);
       break;

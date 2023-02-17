@@ -34,11 +34,11 @@ class FrameBufferSoft : public FrameBuffer {
     switch (color_tex_type) {
       case TextureType_2D: {
         auto *color_2d = dynamic_cast<Texture2DSoft *>(color_attachment_2d.tex.get());
-        return color_2d->GetBuffer(color_attachment_2d.level);
+        return color_2d->GetImage().GetBuffer(color_attachment_2d.level);
       }
       case TextureType_CUBE: {
         auto *color_cube = dynamic_cast<TextureCubeSoft *>(color_attachment_cube.tex.get());
-        return color_cube->GetBuffer(color_attachment_cube.face, color_attachment_cube.level);
+        return color_cube->GetImage(color_attachment_cube.face).GetBuffer(color_attachment_cube.level);
       }
       default:
         break;
@@ -52,7 +52,7 @@ class FrameBufferSoft : public FrameBuffer {
       return nullptr;
     }
     auto *depth_tex = dynamic_cast<TextureDepthSoft *>(depth_attachment.get());
-    return depth_tex->GetBuffer();
+    return depth_tex->GetImage().GetBuffer();
   };
 
  private:

@@ -31,7 +31,7 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
 
   // fbo
   fbo_ = renderer_->CreateFrameBuffer();
-  fbo_->SetColorAttachment(tex_out, 0);
+  fbo_->SetColorAttachment(tex_out);
 
   // vao
   quad_mesh_.vao = renderer_->CreateVertexArrayObject(quad_mesh_);
