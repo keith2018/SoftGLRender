@@ -44,12 +44,10 @@ class ViewerManager {
 
     // viewer soft
     auto viewer_soft = std::make_shared<ViewerSoft>(*config_, *camera_);
-    viewer_soft->Create(width, height, outTexId);
     viewers_[Renderer_SOFT] = std::move(viewer_soft);
 
     // viewer opengl
     auto viewer_opengl = std::make_shared<ViewerOpenGL>(*config_, *camera_);
-    viewer_opengl->Create(width, height, outTexId);
     viewers_[Renderer_OPENGL] = std::move(viewer_opengl);
 
     // model loader
