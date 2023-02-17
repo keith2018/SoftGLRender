@@ -86,8 +86,7 @@ class Texture2DSoft : public Texture2D {
     height = h;
 
     image_.levels.resize(1);
-    image_.levels[0] = BufferRGBA::MakeDefault();
-    image_.levels[0]->Create(w, h);
+    image_.levels[0] = BufferRGBA::MakeDefault(w, h);
 
     if (sampler_desc_.use_mipmaps) {
       image_.GenerateMipmap(false);
@@ -143,8 +142,7 @@ class TextureCubeSoft : public TextureCube {
 
     for (auto &image : images_) {
       image.levels.resize(1);
-      image.levels[0] = BufferRGBA::MakeDefault();
-      image.levels[0]->Create(w, h);
+      image.levels[0] = BufferRGBA::MakeDefault(w, h);
 
       if (sampler_desc_.use_mipmaps) {
         image.GenerateMipmap(false);
@@ -187,8 +185,7 @@ class TextureDepthSoft : public TextureDepth {
     height = h;
 
     image_.levels.resize(1);
-    image_.levels[0] = BufferDepth::MakeDefault();
-    image_.levels[0]->Create(w, h);
+    image_.levels[0] = BufferDepth::MakeDefault(w, h);
   }
 
  private:

@@ -52,8 +52,8 @@ struct Sampler2DDesc : SamplerDesc {
 
   Sampler2DDesc() {
     use_mipmaps = true;
-    wrap_s = Wrap_REPEAT;
-    wrap_t = Wrap_REPEAT;
+    wrap_s = Wrap_CLAMP_TO_EDGE;
+    wrap_t = Wrap_CLAMP_TO_EDGE;
     filter_min = Filter_LINEAR_MIPMAP_LINEAR;
     filter_mag = Filter_LINEAR;
   }

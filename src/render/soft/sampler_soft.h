@@ -109,19 +109,19 @@ glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<glm::tvec4<T>> *tex,
                                           glm::ivec2 offset) {
   if (tex != nullptr && !tex->Empty()) {
     if (filter_mode_ == Filter_NEAREST) {
-      return SampleNearest(tex->GetBuffer().get(), uv, wrap_mode_, offset);
+      return SampleNearest(tex->levels[0].get(), uv, wrap_mode_, offset);
     }
     if (filter_mode_ == Filter_LINEAR) {
-      return SampleBilinear(tex->GetBuffer().get(), uv, wrap_mode_, offset);
+      return SampleBilinear(tex->levels[0].get(), uv, wrap_mode_, offset);
     }
 
     // mipmaps not ready
     if (!tex->mipmaps_ready) {
       if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-        return SampleNearest(tex->GetBuffer().get(), uv, wrap_mode_, offset);
+        return SampleNearest(tex->levels[0].get(), uv, wrap_mode_, offset);
       }
       if (filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_LINEAR) {
-        return SampleBilinear(tex->GetBuffer().get(), uv, wrap_mode_, offset);
+        return SampleBilinear(tex->levels[0].get(), uv, wrap_mode_, offset);
       }
     }
 

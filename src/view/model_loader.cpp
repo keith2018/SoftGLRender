@@ -137,11 +137,13 @@ bool ModelLoader::LoadSkybox(const std::string &filepath) {
     pool.PushTask([&](int thread_id) { skybox_tex[5] = LoadTextureFile(filepath + "back.jpg"); });
     pool.WaitTasksFinish();
 
-    material.texture_data[TextureUsage_CUBE] = std::move(skybox_tex);
+    material.texture_data[TextureUsage_CUBE].data = std::move(skybox_tex);
+    material.texture_data[TextureUsage_CUBE].wrap_mode = Wrap_CLAMP_TO_EDGE;
   } else {
     skybox_tex.resize(1);
     skybox_tex[0] = LoadTextureFile(filepath);
-    material.texture_data[TextureUsage_EQUIRECTANGULAR] = std::move(skybox_tex);
+    material.texture_data[TextureUsage_EQUIRECTANGULAR].data = std::move(skybox_tex);
+    material.texture_data[TextureUsage_EQUIRECTANGULAR].wrap_mode = Wrap_CLAMP_TO_EDGE;
   }
 
   return true;
@@ -319,13 +321,16 @@ void ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
     return;
   }
   for (size_t i = 0; i < ai_material->GetTextureCount(texture_type); i++) {
-    aiString text_path;
-    aiReturn retStatus = ai_material->GetTexture(texture_type, i, &text_path);
-    if (retStatus != aiReturn_SUCCESS || text_path.length == 0) {
+    aiTextureMapMode tex_map_mode;
+    aiString tex_path;
+    aiReturn retStatus = ai_material->GetTexture(texture_type, i, &tex_path,
+                                                 nullptr, nullptr, nullptr, nullptr,
+                                                 &tex_map_mode);
+    if (retStatus != aiReturn_SUCCESS || tex_path.length == 0) {
       LOGW("load texture type=%d, index=%d failed with return value=%d", texture_type, i, retStatus);
       continue;
     }
-    std::string absolutePath = scene_.model->res_dir + "/" + text_path.C_Str();
+    std::string absolutePath = scene_.model->res_dir + "/" + tex_path.C_Str();
     TextureUsage usage = TextureUsage_NONE;
     switch (texture_type) {
       case aiTextureType_BASE_COLOR:
@@ -351,7 +356,22 @@ void ModelLoader::ProcessMaterial(const aiMaterial *ai_material,
 
     auto buffer = LoadTextureFile(absolutePath);
     if (buffer) {
-      material.texture_data[usage] = {buffer};
+      material.texture_data[usage].data = {buffer};
+      WrapMode mode;
+      switch (tex_map_mode) {
+        case aiTextureMapMode_Wrap:
+          mode = Wrap_REPEAT;
+          break;
+        case aiTextureMapMode_Clamp:
+          mode = Wrap_CLAMP_TO_EDGE;
+          break;
+        case aiTextureMapMode_Mirror:
+          mode = Wrap_MIRRORED_REPEAT;
+          break;
+        default:
+          break;
+      }
+      material.texture_data[usage].wrap_mode = mode;
     } else {
       LOGE("load texture failed: %s, path: %s", Material::TextureUsageStr(usage), absolutePath.c_str());
     }
@@ -421,8 +441,7 @@ std::shared_ptr<BufferRGBA> ModelLoader::LoadTextureFile(const std::string &path
     LOGD("load texture failed, path: %s", path.c_str());
     return nullptr;
   }
-  auto buffer = BufferRGBA::MakeDefault();
-  buffer->Create(iw, ih);
+  auto buffer = BufferRGBA::MakeDefault(iw, ih);
 
   // convert to rgba
   for (size_t y = 0; y < ih; y++) {

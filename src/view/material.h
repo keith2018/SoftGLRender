@@ -92,6 +92,11 @@ struct UniformsIBLPrefilter {
   float u_roughness;
 };
 
+struct TextureData {
+  std::vector<std::shared_ptr<BufferRGBA>> data;
+  WrapMode wrap_mode = Wrap_REPEAT;
+};
+
 class Material {
  public:
   static const char *ShadingModelStr(ShadingModel model);
@@ -140,7 +145,7 @@ class Material {
 
  public:
   ShadingModel shading;
-  std::unordered_map<int, std::vector<std::shared_ptr<BufferRGBA>>> texture_data;
+  std::unordered_map<int, TextureData> texture_data;
 
   RenderState render_state;
   std::shared_ptr<ShaderProgram> shader_program;

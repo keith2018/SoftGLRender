@@ -47,10 +47,11 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   quad_mesh_.material_textured.shader_uniforms = std::make_shared<ShaderUniforms>();
 
   // uniforms
-  const char *sampler_name = Material::SamplerName(TextureUsage_QUAD_FILTER);
+  TextureUsage usage = TextureUsage_QUAD_FILTER;
+  const char *sampler_name = Material::SamplerName(usage);
   auto uniform = renderer_->CreateUniformSampler(sampler_name, tex_in->Type());
   uniform->SetTexture(tex_in);
-  quad_mesh_.material_textured.shader_uniforms->samplers[TextureUsage_QUAD_FILTER] = uniform;
+  quad_mesh_.material_textured.shader_uniforms->samplers[usage] = uniform;
 
   auto uniforms_block = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
   UniformsQuadFilter uniforms_filter{glm::vec2(width_, height_)};

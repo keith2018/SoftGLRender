@@ -32,7 +32,7 @@ void Viewer::Create(int width, int height, int outTexId) {
   // color attachment
   Sampler2DDesc sampler;
   sampler.use_mipmaps = false;
-  sampler.filter_min = Filter_NEAREST;
+  sampler.filter_min = Filter_LINEAR;
   color_tex_out_ = renderer_->CreateTexture2D();
   color_tex_out_->InitImageData(width, height);
   color_tex_out_->SetSamplerDesc(sampler);
@@ -61,10 +61,6 @@ void Viewer::DrawFrame(DemoScene &scene) {
 
   // anti-aliasing
   auto aa_type = (AAType) config_.aa_type;
-  if (config_.wireframe) {
-    aa_type = AAType_NONE;
-  }
-
   switch (aa_type) {
     case AAType_FXAA: {
       color_tex_out_->InitImageData(width_, height_);
@@ -100,13 +96,13 @@ void Viewer::DrawFrame(DemoScene &scene) {
   UpdateUniformScene();
 
   // draw world axis
-  if (config_.world_axis && !config_.show_skybox) {
+  if (config_.world_axis) {
     glm::mat4 axis_transform(1.0f);
     DrawLines(scene_->world_axis, axis_transform);
   }
 
   // draw point light
-  if (!config_.wireframe && config_.show_light) {
+  if (config_.show_light) {
     glm::mat4 light_transform(1.0f);
     DrawPoints(scene_->point_light, light_transform);
   }
@@ -144,7 +140,7 @@ void Viewer::FXAASetup() {
   if (!color_tex_fxaa_) {
     Sampler2DDesc sampler;
     sampler.use_mipmaps = false;
-    sampler.filter_min = Filter_NEAREST;
+    sampler.filter_min = Filter_LINEAR;
 
     color_tex_fxaa_ = renderer_->CreateTexture2D();
     color_tex_fxaa_->InitImageData(width_, height_);
@@ -326,9 +322,6 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
 }
 
 void Viewer::SetupTextures(Material &material) {
-  SamplerCubeDesc sampler_cube;
-  Sampler2DDesc sampler_2d;
-
   for (auto &kv : material.texture_data) {
     std::shared_ptr<Texture> texture = nullptr;
     switch (kv.first) {
@@ -339,18 +332,27 @@ void Viewer::SetupTextures(Material &material) {
       }
       case TextureUsage_CUBE: {
         texture = renderer_->CreateTextureCube();
+
+        SamplerCubeDesc sampler_cube;
+        sampler_cube.wrap_s = kv.second.wrap_mode;
+        sampler_cube.wrap_t = kv.second.wrap_mode;
+        sampler_cube.wrap_r = kv.second.wrap_mode;
         texture->SetSamplerDesc(sampler_cube);
         break;
       }
       default: {
         texture = renderer_->CreateTexture2D();
+
+        Sampler2DDesc sampler_2d;
+        sampler_2d.wrap_s = kv.second.wrap_mode;
+        sampler_2d.wrap_t = kv.second.wrap_mode;
         texture->SetSamplerDesc(sampler_2d);
         break;
       }
     }
 
     // upload image data
-    texture->SetImageData(kv.second);
+    texture->SetImageData(kv.second.data);
     material.textures[kv.first] = texture;
   }
 
