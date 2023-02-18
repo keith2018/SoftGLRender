@@ -94,7 +94,12 @@ class ShaderProgramSoft : public ShaderProgram {
     vertex_shader_->ShaderMain();
   }
 
+  inline void PrepareFragmentShader() {
+    fragment_shader_->PrepareExecMain();
+  }
+
   inline void ExecFragmentShader() {
+    fragment_shader_->SetupSamplerDerivative();
     fragment_shader_->ShaderMain();
   }
 

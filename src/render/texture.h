@@ -51,10 +51,10 @@ struct Sampler2DDesc : SamplerDesc {
   FilterMode filter_mag;
 
   Sampler2DDesc() {
-    use_mipmaps = true;
+    use_mipmaps = false;
     wrap_s = Wrap_CLAMP_TO_EDGE;
     wrap_t = Wrap_CLAMP_TO_EDGE;
-    filter_min = Filter_LINEAR_MIPMAP_LINEAR;
+    filter_min = Filter_LINEAR;
     filter_mag = Filter_LINEAR;
   }
 };
@@ -63,11 +63,11 @@ struct SamplerCubeDesc : Sampler2DDesc {
   WrapMode wrap_r;
 
   SamplerCubeDesc() {
-    use_mipmaps = true;
+    use_mipmaps = false;
     wrap_s = Wrap_CLAMP_TO_EDGE;
     wrap_t = Wrap_CLAMP_TO_EDGE;
     wrap_r = Wrap_CLAMP_TO_EDGE;
-    filter_min = Filter_LINEAR_MIPMAP_LINEAR;
+    filter_min = Filter_LINEAR;
     filter_mag = Filter_LINEAR;
   }
 };

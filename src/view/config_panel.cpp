@@ -65,7 +65,13 @@ void ConfigPanel::DrawSettings() {
   };
   ImGui::Separator();
   ImGui::Text("renderer");
-  ImGui::Combo("##renderer", &config_.renderer_type, rendererItems, IM_ARRAYSIZE(rendererItems));
+  for (int i = 0; i < 2; i++) {
+    if (ImGui::RadioButton(rendererItems[i], config_.renderer_type == i)) {
+      config_.renderer_type = i;
+    }
+    ImGui::SameLine();
+  }
+  ImGui::Separator();
 
   // reset camera
   ImGui::Separator();

@@ -16,13 +16,7 @@ namespace SoftGL {
 template<typename T>
 class TextureImageSoft {
  public:
-  std::vector<std::shared_ptr<Buffer<T>>> levels;
-
-  std::atomic<bool> mipmaps_ready = {false};
-  std::atomic<bool> mipmaps_generating = {false};
-  std::shared_ptr<std::thread> mipmaps_thread = nullptr;
-
-  std::function<void(TextureImageSoft &, bool sample)> mipmaps_func;  // TODO
+  std::vector<std::shared_ptr<Buffer<glm::tvec4<T>>>> levels;
 
  public:
   inline size_t GetWidth() {
@@ -37,21 +31,11 @@ class TextureImageSoft {
     return levels.empty();
   }
 
-  inline std::shared_ptr<Buffer<T>> &GetBuffer(int level = 0) {
+  inline std::shared_ptr<Buffer<glm::tvec4<T>>> &GetBuffer(int level = 0) {
     return levels[level];
   }
 
-  inline void GenerateMipmap(bool sample = true) {
-    if (mipmaps_func) {
-      mipmaps_func(*this, sample);
-    }
-  }
-
-  virtual ~TextureImageSoft() {
-    if (mipmaps_thread) {
-      mipmaps_thread->join();
-    }
-  };
+  void GenerateMipmap(bool sample = true);
 };
 
 class Texture2DSoft : public Texture2D {
@@ -97,7 +81,7 @@ class Texture2DSoft : public Texture2D {
     return sampler_desc_;
   }
 
-  inline TextureImageSoft<glm::tvec4<uint8_t>> &GetImage() {
+  inline TextureImageSoft<uint8_t> &GetImage() {
     return image_;
   }
 
@@ -105,7 +89,7 @@ class Texture2DSoft : public Texture2D {
   int uuid_ = -1;
   static int uuid_counter_;
   Sampler2DDesc sampler_desc_;
-  TextureImageSoft<glm::tvec4<uint8_t>> image_;
+  TextureImageSoft<uint8_t> image_;
 };
 
 class TextureCubeSoft : public TextureCube {
@@ -154,7 +138,7 @@ class TextureCubeSoft : public TextureCube {
     return sampler_desc_;
   }
 
-  inline TextureImageSoft<glm::tvec4<uint8_t>> &GetImage(CubeMapFace face) {
+  inline TextureImageSoft<uint8_t> &GetImage(CubeMapFace face) {
     return images_[face];
   }
 
@@ -162,7 +146,7 @@ class TextureCubeSoft : public TextureCube {
   int uuid_ = -1;
   static int uuid_counter_;
   SamplerCubeDesc sampler_desc_;
-  TextureImageSoft<glm::tvec4<uint8_t>> images_[6];
+  TextureImageSoft<uint8_t> images_[6];
 };
 
 class TextureDepthSoft : public TextureDepth {
@@ -173,7 +157,7 @@ class TextureDepthSoft : public TextureDepth {
     return uuid_;
   }
 
-  inline TextureImageSoft<float> &GetImage() {
+  inline std::shared_ptr<BufferDepth> &GetBuffer() {
     return image_;
   }
 
@@ -184,14 +168,13 @@ class TextureDepthSoft : public TextureDepth {
     width = w;
     height = h;
 
-    image_.levels.resize(1);
-    image_.levels[0] = BufferDepth::MakeDefault(w, h);
+    image_ = BufferDepth::MakeDefault(w, h);
   }
 
  private:
   int uuid_ = -1;
   static int uuid_counter_;
-  TextureImageSoft<float> image_;
+  std::shared_ptr<BufferDepth> image_;
 };
 
 }

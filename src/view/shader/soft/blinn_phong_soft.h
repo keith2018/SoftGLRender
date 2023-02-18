@@ -118,6 +118,25 @@ class FS : public ShaderBlinnPhong {
  public:
   CREATE_SHADER_CLONE(FS)
 
+  size_t GetSamplerDerivativeOffset() const override {
+    return offsetof(ShaderVaryings, v_texCoord);
+  }
+
+  void SetupSamplerDerivative() override {
+    if (def->ALBEDO_MAP) {
+      u->u_albedoMap->SetLodFunc(&tex_lod_func);
+    }
+    if (def->NORMAL_MAP) {
+      u->u_normalMap->SetLodFunc(&tex_lod_func);
+    }
+    if (def->EMISSIVE_MAP) {
+      u->u_emissiveMap->SetLodFunc(&tex_lod_func);
+    }
+    if (def->AO_MAP) {
+      u->u_aoMap->SetLodFunc(&tex_lod_func);
+    }
+  }
+
   glm::vec3 GetNormalFromMap() {
     if (def->NORMAL_MAP) {
       glm::vec3 normalVector = texture(u->u_normalMap, v->v_texCoord);

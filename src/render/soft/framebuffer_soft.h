@@ -52,7 +52,7 @@ class FrameBufferSoft : public FrameBuffer {
       return nullptr;
     }
     auto *depth_tex = dynamic_cast<TextureDepthSoft *>(depth_attachment.get());
-    return depth_tex->GetImage().GetBuffer();
+    return depth_tex->GetBuffer();
   };
 
  private:
