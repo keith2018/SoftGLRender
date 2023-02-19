@@ -25,10 +25,10 @@ class UniformDesc {
 };
 
 struct DerivativeContext {
-  float *xa = nullptr;
-  float *xb = nullptr;
-  float *ya = nullptr;
-  float *yb = nullptr;
+  float *p0 = nullptr;
+  float *p1 = nullptr;
+  float *p2 = nullptr;
+  float *p3 = nullptr;
 };
 
 struct ShaderBuiltin {
@@ -95,14 +95,16 @@ class ShaderSoft {
     auto &df_ctx = gl->df_ctx;
     size_t df_offset = GetSamplerDerivativeOffset();
 
-    auto *coord_xa = (glm::vec2 *) (df_ctx.xa + df_offset);
-    auto *coord_xb = (glm::vec2 *) (df_ctx.xb + df_offset);
-    auto *coord_ya = (glm::vec2 *) (df_ctx.ya + df_offset);
-    auto *coord_yb = (glm::vec2 *) (df_ctx.yb + df_offset);
+    auto *coord_0 = (glm::vec2 *) (df_ctx.p0 + df_offset);
+    auto *coord_1 = (glm::vec2 *) (df_ctx.p1 + df_offset);
+    auto *coord_2 = (glm::vec2 *) (df_ctx.p2 + df_offset);
+    auto *coord_3 = (glm::vec2 *) (df_ctx.p3 + df_offset);
 
     glm::vec2 tex_size = glm::vec2(sampler->Width(), sampler->Height());
-    glm::vec2 dx = glm::vec2(*coord_xa - *coord_xb) * tex_size;
-    glm::vec2 dy = glm::vec2(*coord_ya - *coord_yb) * tex_size;
+    glm::vec2 dx = glm::vec2(*coord_1 - *coord_0);
+    glm::vec2 dy = glm::vec2(*coord_2 - *coord_0);
+    dx *= tex_size;
+    dy *= tex_size;
     float d = glm::max(glm::dot(dx, dx), glm::dot(dy, dy));
     return glm::max(0.5f * glm::log2(d), 0.0f);
   }

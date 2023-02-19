@@ -151,12 +151,11 @@ void RendererSoft::ProcessVertexShader() {
   varyings_cnt_ = shader_program_->GetShaderVaryingsSize() / sizeof(float);
   varyings_aligned_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
   varyings_aligned_cnt_ = varyings_aligned_size_ / sizeof(float);
-  varyings_.Resize(vao_->vertex_cnt * varyings_aligned_cnt_);
 
-  auto &builtin = shader_program_->GetShaderBuiltin();
+  varyings_ = MemoryUtils::MakeAlignedBuffer<float>(vao_->vertex_cnt * varyings_aligned_cnt_);
+  float *varying_buffer = varyings_.get();
+
   uint8_t *vertex_ptr = vao_->vertexes.data();
-  float *varying_buffer = varyings_.GetBuffer().get();
-
   vertexes_.resize(vao_->vertex_cnt);
   for (int idx = 0; idx < vao_->vertex_cnt; idx++) {
     VertexHolder &holder = vertexes_[idx];
@@ -183,7 +182,9 @@ void RendererSoft::ProcessPrimitiveAssembly() {
 }
 
 void RendererSoft::ProcessClipping() {
-  for (auto &primitive : primitives_) {
+  size_t primitive_cnt = primitives_.size();
+  for (int i = 0; i < primitive_cnt; i++) {
+    auto &primitive = primitives_[i];
     if (primitive.discard) {
       continue;
     }
@@ -256,6 +257,10 @@ void RendererSoft::ProcessFaceCulling() {
   }
 
   for (auto &triangle : primitives_) {
+    if (triangle.discard) {
+      continue;
+    }
+
     glm::vec4 &v0 = vertexes_[triangle.indices[0]].position;
     glm::vec4 &v1 = vertexes_[triangle.indices[1]].position;
     glm::vec4 &v2 = vertexes_[triangle.indices[2]].position;
@@ -296,14 +301,14 @@ void RendererSoft::ProcessRasterization() {
       for (auto &ctx : thread_quad_ctx_) {
         ctx.SetVaryingsSize(varyings_aligned_cnt_);
         ctx.shader_program = shader_program_->clone();
-
-        // derivative
-        DerivativeContext &df_ctx = ctx.shader_program->GetShaderBuiltin().df_ctx;
-        df_ctx.xa = ctx.pixels[1].varyings_frag;
-        df_ctx.xb = ctx.pixels[0].varyings_frag;
-        df_ctx.ya = ctx.pixels[2].varyings_frag;
-        df_ctx.yb = ctx.pixels[0].varyings_frag;
         ctx.shader_program->PrepareFragmentShader();
+
+        // setup derivative
+        DerivativeContext &df_ctx = ctx.shader_program->GetShaderBuiltin().df_ctx;
+        df_ctx.p0 = ctx.pixels[0].varyings_frag;
+        df_ctx.p1 = ctx.pixels[1].varyings_frag;
+        df_ctx.p2 = ctx.pixels[2].varyings_frag;
+        df_ctx.p3 = ctx.pixels[3].varyings_frag;
       }
       RasterizationPolygons(primitives_);
       thread_pool_.WaitTasksFinish();
@@ -529,13 +534,13 @@ void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
   triangle.indices[2] = indices_in[2];
 
   for (int i = 3; i < indices_in.size(); i++) {
-    PrimitiveHolder ph{};
+    primitives_.emplace_back();
+    PrimitiveHolder &ph = primitives_.back();
     ph.discard = false;
     ph.indices[0] = indices_in[0];
     ph.indices[1] = indices_in[i - 1];
     ph.indices[2] = indices_in[i];
     ph.front_facing = triangle.front_facing;
-    primitives_.push_back(ph);
   }
 }
 

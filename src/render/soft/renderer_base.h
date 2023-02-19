@@ -25,31 +25,31 @@ struct Viewport {
 };
 
 struct VertexHolder {
-  bool discard;
-  size_t index;
+  bool discard = false;
+  size_t index = 0;
 
-  void *vertex;
-  float *varyings;
+  void *vertex = nullptr;
+  float *varyings = nullptr;
 
-  float clip_z;
-  int clip_mask;
-  glm::vec4 position;
+  float clip_z = 0.f;
+  int clip_mask = 0;
+  glm::vec4 position = glm::vec4(0.f);
 
-  std::shared_ptr<uint8_t> vertex_holder;
-  std::shared_ptr<float> varyings_holder;
+  std::shared_ptr<uint8_t> vertex_holder = nullptr;
+  std::shared_ptr<float> varyings_holder = nullptr;
 };
 
 struct PrimitiveHolder {
-  bool discard;
-  bool front_facing;
-  size_t indices[3];
+  bool discard = false;
+  bool front_facing = true;
+  size_t indices[3] = {0, 0, 0};
 };
 
 struct PixelContext {
   bool inside = false;
-  float *varyings_frag;
-  glm::aligned_vec4 position;
-  glm::aligned_vec4 barycentric;
+  float *varyings_frag = nullptr;
+  glm::aligned_vec4 position = glm::aligned_vec4(0.f);
+  glm::aligned_vec4 barycentric = glm::aligned_vec4(0.f);
 };
 
 class PixelQuadContext {
@@ -95,10 +95,10 @@ class PixelQuadContext {
   glm::aligned_vec4 vert_pos_flat[4];
 
   // triangle barycentric correct factor
-  glm::aligned_vec4 vert_bc_factor{1.f};
+  glm::aligned_vec4 vert_bc_factor = glm::aligned_vec4(0.f, 0.f, 0.f, 1.f);
 
   // triangle vertex shader varyings
-  const float *vert_varyings[3];
+  const float *vert_varyings[3] = {nullptr, nullptr, nullptr};
 
   // triangle Facing
   bool front_facing = true;
@@ -108,7 +108,7 @@ class PixelQuadContext {
 
  private:
   size_t varyings_aligned_cnt_ = 0;
-  std::shared_ptr<float> varyings_pool_;
+  std::shared_ptr<float> varyings_pool_ = nullptr;
 };
 
 }

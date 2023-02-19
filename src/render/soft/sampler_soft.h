@@ -54,7 +54,7 @@ class BaseSampler {
   size_t height_ = 0;
 
   bool use_mipmaps = false;
-  WrapMode wrap_mode_ = Wrap_REPEAT;
+  WrapMode wrap_mode_ = Wrap_CLAMP_TO_EDGE;
   FilterMode filter_mode_ = Filter_LINEAR;
   std::function<float(BaseSampler<T> *)> *lod_func_ = nullptr;
 };
@@ -82,9 +82,6 @@ class BaseSampler2D : public BaseSampler<T> {
   }
 
   glm::vec4 Texture2DLodImpl(glm::vec2 &uv, float lod = 0.f, glm::ivec2 offset = glm::ivec2(0)) {
-    if (tex_ == nullptr) {
-      return {0, 0, 0, 0};
-    }
     glm::tvec4<T> color = BaseSampler<T>::TextureImpl(tex_, uv, lod, offset);
     return {color[0], color[1], color[2], color[3]};
   }
@@ -329,9 +326,6 @@ class BaseSamplerCube : public BaseSampler<T> {
     glm::vec2 uv;
     ConvertXYZ2UV(coord.x, coord.y, coord.z, &index, &uv.x, &uv.y);
     TextureImageSoft<T> *tex = texes_[index];
-    if (tex == nullptr) {
-      return {0, 0, 0, 0};
-    }
     glm::tvec4<T> color = BaseSampler<T>::TextureImpl(tex, uv, lod);
     return {color[0], color[1], color[2], color[3]};
   }
@@ -407,32 +401,6 @@ void BaseSamplerCube<T>::ConvertXYZ2UV(float x, float y, float z, int *index, fl
   *v = 0.5f * (vc / maxAxis + 1.0f);
 }
 
-class Sampler2DImpl : public BaseSampler2D<uint8_t> {
- public:
-  inline glm::vec4 Texture2D(glm::vec2 uv, float bias = 0.f) {
-    return BaseSampler2D::Texture2DImpl(uv, bias) / 255.f;
-  }
-
-  inline glm::vec4 Texture2DLod(glm::vec2 uv, float lod = 0.f) {
-    return BaseSampler2D::Texture2DLodImpl(uv, lod) / 255.f;
-  }
-
-  inline glm::vec4 Texture2DLodOffset(glm::vec2 uv, float lod, glm::ivec2 offset) {
-    return BaseSampler2D::Texture2DLodImpl(uv, lod, offset) / 255.f;
-  }
-};
-
-class SamplerCubeImpl : public BaseSamplerCube<uint8_t> {
- public:
-  inline glm::vec4 TextureCube(glm::vec3 coord, float bias = 0.f) {
-    return BaseSamplerCube::TextureCubeImpl(coord, bias) / 255.f;
-  }
-
-  inline glm::vec4 TextureCubeLod(glm::vec3 coord, float lod = 0.f) {
-    return BaseSamplerCube::TextureCubeLodImpl(coord, lod) / 255.f;
-  }
-};
-
 class SamplerSoft {
  public:
   virtual TextureType Type() = 0;
@@ -461,19 +429,19 @@ class Sampler2DSoft : public SamplerSoft {
   }
 
   inline glm::vec4 Texture2D(glm::vec2 coord, float bias = 0.f) {
-    return sampler_.Texture2D(coord, bias);
+    return sampler_.Texture2DImpl(coord, bias) / 255.f;
   }
 
   inline glm::vec4 Texture2DLod(glm::vec2 coord, float lod = 0.f) {
-    return sampler_.Texture2DLod(coord, lod);
+    return sampler_.Texture2DLodImpl(coord, lod) / 255.f;
   }
 
   inline glm::vec4 Texture2DLodOffset(glm::vec2 coord, float lod, glm::ivec2 offset) {
-    return sampler_.Texture2DLodOffset(coord, lod, offset);
+    return sampler_.Texture2DLodImpl(coord, lod, offset) / 255.f;
   }
 
  private:
-  Sampler2DImpl sampler_;
+  BaseSampler2D<uint8_t> sampler_;
   Texture2DSoft *tex_ = nullptr;
 };
 
@@ -497,15 +465,15 @@ class SamplerCubeSoft : public SamplerSoft {
   }
 
   inline glm::vec4 TextureCube(glm::vec3 coord, float bias = 0.f) {
-    return sampler_.TextureCube(coord, bias);
+    return sampler_.TextureCubeImpl(coord, bias) / 255.f;
   }
 
   inline glm::vec4 TextureCubeLod(glm::vec3 coord, float lod = 0.f) {
-    return sampler_.TextureCubeLod(coord, lod);
+    return sampler_.TextureCubeLodImpl(coord, lod) / 255.f;
   }
 
  private:
-  SamplerCubeImpl sampler_;
+  BaseSamplerCube<uint8_t> sampler_;
   TextureCubeSoft *tex_ = nullptr;
 };
 

@@ -21,9 +21,9 @@ constexpr int kPrefilterMapSize = 128;
 
 struct CubeRenderContext {
   std::shared_ptr<Renderer> renderer;
+  std::shared_ptr<FrameBuffer> fbo;
   Camera camera;
   ModelSkybox model_skybox;
-  std::shared_ptr<FrameBuffer> fbo;
   std::shared_ptr<UniformBlock> uniforms_block_mvp;
 };
 

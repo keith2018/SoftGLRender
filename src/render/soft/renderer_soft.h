@@ -108,7 +108,7 @@ class RendererSoft : public Renderer {
   std::vector<VertexHolder> vertexes_;
   std::vector<PrimitiveHolder> primitives_;
 
-  AlignedBuffer<float> varyings_;
+  std::shared_ptr<float> varyings_ = nullptr;
   size_t varyings_cnt_ = 0;
   size_t varyings_aligned_cnt_ = 0;
   size_t varyings_aligned_size_ = 0;

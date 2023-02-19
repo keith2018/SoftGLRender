@@ -70,25 +70,4 @@ class MemoryUtils {
   }
 };
 
-template<typename T>
-class AlignedBuffer {
- public:
-  void Resize(size_t size) {
-    if (size_ > size) {
-      return;
-    }
-
-    buffer_ = MemoryUtils::MakeAlignedBuffer<T>(size * sizeof(T));
-    size_ = size;
-  }
-
-  inline const std::shared_ptr<T> &GetBuffer() const {
-    return buffer_;
-  }
-
- private:
-  std::shared_ptr<T> buffer_ = nullptr;
-  size_t size_ = 0;
-};
-
 }

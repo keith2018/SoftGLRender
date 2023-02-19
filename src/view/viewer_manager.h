@@ -58,8 +58,8 @@ class ViewerManager {
   }
 
   void DrawFrame() {
-    camera_->Update();
     orbit_controller_->Update();
+    camera_->Update();
     config_panel_->Update();
 
     // update triangle count
