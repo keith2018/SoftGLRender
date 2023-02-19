@@ -7,28 +7,55 @@
 #pragma once
 
 #include "camera.h"
-#include "render/soft/sampler.h"
-#include "render/soft/renderer_soft.h"
+#include "model.h"
+#include "render/texture.h"
+#include "render/renderer.h"
+#include "render/framebuffer.h"
 
 namespace SoftGL {
 namespace View {
 
+constexpr int kIrradianceMapSize = 32;
+constexpr int kPrefilterMaxMipLevels = 5;
+constexpr int kPrefilterMapSize = 128;
+
+struct CubeRenderContext {
+  std::shared_ptr<Renderer> renderer;
+  std::shared_ptr<FrameBuffer> fbo;
+  Camera camera;
+  ModelSkybox model_skybox;
+  std::shared_ptr<UniformBlock> uniforms_block_mvp;
+};
+
 class Environment {
  public:
-  static void ConvertEquirectangular(Texture &tex_in, Texture *tex_out, int width = 0, int height = 0);
+  static bool ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
+                                     const std::function<bool(ShaderProgram &program)> &shader_func,
+                                     const std::shared_ptr<Texture2D> &tex_in,
+                                     std::shared_ptr<TextureCube> &tex_out);
 
-  static void GenerateIrradianceMap(Texture *tex_in, Texture *tex_out);
+  static bool GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
+                                    const std::function<bool(ShaderProgram &program)> &shader_func,
+                                    const std::shared_ptr<TextureCube> &tex_in,
+                                    std::shared_ptr<TextureCube> &tex_out);
 
-  static void GeneratePrefilterMap(Texture *tex_in, Texture *tex_out);
+  static bool GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
+                                   const std::function<bool(ShaderProgram &program)> &shader_func,
+                                   const std::shared_ptr<TextureCube> &tex_in,
+                                   std::shared_ptr<TextureCube> &tex_out);
 
  private:
-  static void GeneratePrefilterMapLod(Texture *tex_in, Texture *tex_out, int width, int height, int mip);
+  static bool CreateCubeRenderContext(CubeRenderContext &context,
+                                      const std::function<bool(ShaderProgram &program)> &shader_func,
+                                      const std::shared_ptr<Texture> &tex_in,
+                                      TextureUsage tex_usage);
 
-  static std::shared_ptr<RendererSoft> CreateCubeRender(Camera &camera, int width, int height);
-
-  static void CubeRenderDraw(RendererSoft &renderer,
-                             Camera &camera,
-                             const std::function<void(int face, Buffer<glm::u8vec4> &buff)> &face_cb);
+  static void DrawCubeFaces(CubeRenderContext &context,
+                            int width,
+                            int height,
+                            std::shared_ptr<TextureCube> &tex_out,
+                            int tex_out_level = 0,
+                            const std::function<void()> &before_draw = nullptr);
 };
 
 }

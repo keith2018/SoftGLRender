@@ -6,10 +6,10 @@
 
 #include "shader_utils.h"
 #include <vector>
-#include "utils/file_utils.h"
+#include "base/file_utils.h"
+#include "render/opengl/opengl_utils.h"
 
 namespace SoftGL {
-
 
 void ShaderGLSL::SetHeader(const std::string &header) {
   header_ = header;
@@ -24,16 +24,16 @@ bool ShaderGLSL::LoadSource(const std::string &source) {
   std::string shader_str = header_ + defines_ + source;
   const char *shader_str_ptr = shader_str.c_str();
   GLint length = shader_str.length();
-  glShaderSource(id_, 1, &shader_str_ptr, &length);
-  glCompileShader(id_);
+  GL_CHECK(glShaderSource(id_, 1, &shader_str_ptr, &length));
+  GL_CHECK(glCompileShader(id_));
 
   GLint isCompiled = 0;
-  glGetShaderiv(id_, GL_COMPILE_STATUS, &isCompiled);
+  GL_CHECK(glGetShaderiv(id_, GL_COMPILE_STATUS, &isCompiled));
   if (isCompiled == GL_FALSE) {
     GLint maxLength = 0;
-    glGetShaderiv(id_, GL_INFO_LOG_LENGTH, &maxLength);
+    GL_CHECK(glGetShaderiv(id_, GL_INFO_LOG_LENGTH, &maxLength));
     std::vector<GLchar> infoLog(maxLength);
-    glGetShaderInfoLog(id_, maxLength, &maxLength, &infoLog[0]);
+    GL_CHECK(glGetShaderInfoLog(id_, maxLength, &maxLength, &infoLog[0]));
     LOGE("compile shader failed: %s", &infoLog[0]);
 
     Destroy();
@@ -54,28 +54,34 @@ bool ShaderGLSL::LoadFile(const std::string &path) {
 }
 
 void ShaderGLSL::Destroy() {
-  glDeleteShader(id_);
+  if (id_) {
+    GL_CHECK(glDeleteShader(id_));
+    id_ = 0;
+  }
 }
 
 void ProgramGLSL::AddDefine(const std::string &def) {
+  if (def.empty()) {
+    return;
+  }
   defines_ += ("#define " + def + " \n");
 }
 
 bool ProgramGLSL::LoadShader(ShaderGLSL &vs, ShaderGLSL &fs) {
   id_ = glCreateProgram();
-  glAttachShader(id_, vs.GetId());
-  glAttachShader(id_, fs.GetId());
-  glLinkProgram(id_);
-  glValidateProgram(id_);
+  GL_CHECK(glAttachShader(id_, vs.GetId()));
+  GL_CHECK(glAttachShader(id_, fs.GetId()));
+  GL_CHECK(glLinkProgram(id_));
+  GL_CHECK(glValidateProgram(id_));
 
   GLint isLinked = 0;
-  glGetProgramiv(id_, GL_LINK_STATUS, (int *) &isLinked);
+  GL_CHECK(glGetProgramiv(id_, GL_LINK_STATUS, (int *) &isLinked));
   if (isLinked == GL_FALSE) {
     GLint maxLength = 0;
-    glGetProgramiv(id_, GL_INFO_LOG_LENGTH, &maxLength);
+    GL_CHECK(glGetProgramiv(id_, GL_INFO_LOG_LENGTH, &maxLength));
 
     std::vector<GLchar> infoLog(maxLength);
-    glGetProgramInfoLog(id_, maxLength, &maxLength, &infoLog[0]);
+    GL_CHECK(glGetProgramInfoLog(id_, maxLength, &maxLength, &infoLog[0]));
     LOGE("link program failed: %s", &infoLog[0]);
 
     Destroy();
@@ -127,14 +133,17 @@ bool ProgramGLSL::LoadFile(const std::string &vsPath, const std::string &fsPath)
 
 void ProgramGLSL::Use() {
   if (id_) {
-    glUseProgram(id_);
+    GL_CHECK(glUseProgram(id_));
   } else {
     LOGE("failed to use program, not ready");
   }
 }
 
 void ProgramGLSL::Destroy() {
-  glDeleteProgram(id_);
+  if (id_) {
+    GL_CHECK(glDeleteProgram(id_));
+    id_ = 0;
+  }
 }
 
 }

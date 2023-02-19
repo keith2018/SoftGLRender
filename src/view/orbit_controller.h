@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <memory>
 #include "camera.h"
 
 namespace SoftGL {
@@ -73,6 +74,10 @@ class SmoothOrbitController {
     }
 
     orbitController->Update();
+  }
+
+  inline void Reset() {
+    orbitController->Reset();
   }
 
   double zoomX = 0;

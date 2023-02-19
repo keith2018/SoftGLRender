@@ -6,32 +6,29 @@
 
 #pragma once
 
-#include "base/model.h"
-#include "render/soft/renderer_soft.h"
+#include "render/renderer.h"
+#include "model.h"
 
 namespace SoftGL {
 namespace View {
 
 class QuadFilter {
  public:
-  QuadFilter(int width, int height);
+  QuadFilter(const std::shared_ptr<Renderer> &renderer,
+             const std::function<bool(ShaderProgram &program)> &shader_func,
+             std::shared_ptr<Texture2D> &tex_in,
+             std::shared_ptr<Texture2D> &tex_out);
 
-  void Clear(float r, float g, float b, float a);
   void Draw();
 
-  inline std::shared_ptr<Buffer<glm::u8vec4>> &GetFrameColor() {
-    return renderer_->GetFrameColor();
-  };
-
-  inline ShaderContext &GetShaderContext() {
-    return renderer_->GetShaderContext();
-  }
-
  private:
-  int width_;
-  int height_;
+  int width_ = 0;
+  int height_ = 0;
+  bool init_ready_ = false;
+
   ModelMesh quad_mesh_;
-  std::shared_ptr<RendererSoft> renderer_;
+  std::shared_ptr<Renderer> renderer_;
+  std::shared_ptr<FrameBuffer> fbo_;
 };
 
 }

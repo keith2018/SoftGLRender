@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdarg>
+#include <mutex>
 
 namespace SoftGL {
 
@@ -40,6 +41,7 @@ class Logger {
   static LogLevel minLevel_;
 
   static char buf_[MAX_LOG_LENGTH];
+  static std::mutex mutex_;
 };
 
 }

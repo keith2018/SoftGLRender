@@ -7,43 +7,56 @@
 #pragma once
 
 #include "viewer.h"
+#include "render/opengl/opengl_utils.h"
 #include "render/soft/renderer_soft.h"
-#include "quad_filter.h"
+#include "render/soft/texture_soft.h"
+#include "shader/soft/shader_soft.h"
 
 namespace SoftGL {
 namespace View {
 
+#define CASE_CREATE_SHADER_SOFT(shading, source) case shading: \
+  return program_soft->SetShaders(std::make_shared<source::VS>(), std::make_shared<source::FS>())
+
 class ViewerSoft : public Viewer {
  public:
-  bool Create(void *window, int width, int height, int outTexId) override;
-  void DrawFrame() override;
+  ViewerSoft(Config &config, Camera &camera) : Viewer(config, camera) {}
 
- private:
-  void DrawFrameInternal();
-  bool CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
-  void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
-  void DrawSkybox(ModelMesh &mesh, glm::mat4 &transform);
-  void DrawWorldAxis(ModelLines &lines, glm::mat4 &transform);
-  void DrawLights(ModelPoints &points, glm::mat4 &transform);
-  void FXAAPostProcess();
+  void SwapBuffer() override {
+    auto *tex_out = dynamic_cast<Texture2DSoft *>(color_tex_out_.get());
+    auto buffer = tex_out->GetImage().GetBuffer();
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
+                          0,
+                          GL_RGBA,
+                          (int) buffer->GetWidth(),
+                          (int) buffer->GetHeight(),
+                          0,
+                          GL_RGBA,
+                          GL_UNSIGNED_BYTE,
+                          buffer->GetRawDataPtr()));
+  }
 
-  void InitShaderBase(ShaderContext &shader_context, glm::mat4 &model_matrix);
-  void InitShaderTextured(ShaderContext &shader_context, ModelMesh &mesh, glm::mat4 &model_matrix);
-  void InitShaderSkybox(ShaderContext &shader_context, glm::mat4 &model_matrix);
-  void InitShaderFXAA(ShaderContext &shader_context);
+  std::shared_ptr<Renderer> CreateRenderer() override {
+    return std::make_shared<RendererSoft>();
+  }
 
-  void BindShaderUniforms(ShaderContext &shader_context, glm::mat4 &model_matrix, float alpha_cutoff = 0.5f);
-  void BindShaderTextures(ModelMesh &mesh, std::shared_ptr<BaseShaderUniforms> &uniforms);
-  static Texture *GetMeshTexture(ModelMesh &mesh, TextureType type);
+  bool LoadShaders(ShaderProgram &program, ShadingModel shading) override {
+    auto *program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
+    switch (shading) {
+      CASE_CREATE_SHADER_SOFT(Shading_BaseColor, ShaderBasic);
+      CASE_CREATE_SHADER_SOFT(Shading_BlinnPhong, ShaderBlinnPhong);
+      CASE_CREATE_SHADER_SOFT(Shading_PBR, ShaderPbrIBL);
+      CASE_CREATE_SHADER_SOFT(Shading_Skybox, ShaderSkybox);
+      CASE_CREATE_SHADER_SOFT(Shading_FXAA, ShaderFXAA);
+      CASE_CREATE_SHADER_SOFT(Shading_IBL_Irradiance, ShaderIBLIrradiance);
+      CASE_CREATE_SHADER_SOFT(Shading_IBL_Prefilter, ShaderIBLPrefilter);
+      default:
+        break;
+    }
 
- private:
-  std::shared_ptr<RendererSoft> renderer_ = nullptr;
-
-  Buffer<glm::u8vec4> *out_color_ = nullptr;
-
-  // FXAA
-  std::shared_ptr<QuadFilter> fxaa_filter_ = nullptr;
-  Texture fxaa_tex_;
+    return false;
+  }
 };
 
 }

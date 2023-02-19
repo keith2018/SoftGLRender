@@ -6,32 +6,47 @@
 
 #pragma once
 
-#include "base/common.h"
-#include "base/model.h"
+#include "base/buffer.h"
+#include "framebuffer.h"
+#include "texture.h"
+#include "render_state.h"
+#include "vertex.h"
+#include "shader_program.h"
 
 namespace SoftGL {
 
 class Renderer {
  public:
-  virtual void Create(int width, int height, float near, float far) {
-    width_ = width;
-    height_ = height;
-    near_ = near;
-    far_ = far;
-  };
+  // config
+  virtual bool ReverseZ() const = 0;
 
-  virtual void Clear(float r, float g, float b, float a) {};
+  // framebuffer
+  virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
 
-  virtual void DrawMeshTextured(ModelMesh &mesh) {};
-  virtual void DrawMeshWireframe(ModelMesh &mesh) {};
-  virtual void DrawLines(ModelLines &lines) {};
-  virtual void DrawPoints(ModelPoints &points) {};
+  // texture
+  virtual std::shared_ptr<Texture2D> CreateTexture2D() = 0;
+  virtual std::shared_ptr<TextureCube> CreateTextureCube() = 0;
+  virtual std::shared_ptr<TextureDepth> CreateTextureDepth() = 0;
 
- protected:
-  int width_ = 0;
-  int height_ = 0;
-  float near_ = 0;
-  float far_ = 0;
+  // vertex
+  virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) = 0;
+
+  // shader program
+  virtual std::shared_ptr<ShaderProgram> CreateShaderProgram() = 0;
+
+  // uniform
+  virtual std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) = 0;
+  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) = 0;
+
+  // pipeline
+  virtual void SetFrameBuffer(FrameBuffer &frame_buffer) = 0;
+  virtual void SetViewPort(int x, int y, int width, int height) = 0;
+  virtual void Clear(const ClearState &state) = 0;
+  virtual void SetRenderState(const RenderState &state) = 0;
+  virtual void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
+  virtual void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
+  virtual void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
+  virtual void Draw(PrimitiveType type) = 0;
 };
 
 }

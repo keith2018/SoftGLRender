@@ -15,28 +15,32 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 
 #### Code structure:
 
-- [renderer](src/renderer): the main software renderer implementation, first preparing input data (Vertexes, Indices), then binding custom shaders, and setup rendering pipeline, after the pipeline finished, graphics will draw to the result framebuffer.
-- [shader](src/shader): the programmable render pipeline simulation, vertex shader and fragment shader are supported, and it is easy to port real GLSL code to this project, several basic shaders are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
+- [render](src/render): 
+  - [soft](src/render/soft) software renderer implementation
+  - [opengl](src/render/opengl) opengl renderer implementation
 - [view](src/view): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel, and render pass management.
+  - [shader/soft](src/view/shader/soft): simulate vertex shader & fragment shader using c++, several basic shaders are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
+  - [shader/opengl](src/view/shader/opengl): GLSL shader code
 
 #### Renderer Pipeline Features
 
-- Wireframe
-- View Frustum culling
-- Back-Front culling
-- Orbit Camera Controller
-- Perspective Correct Interpolation
-- Tangent Space Normal Mapping
-- Basic Lighting
-- Blinn-Phong shading
-- PBR & IBL shading
-- Skybox CubeMap & Equirectangular
-- Texture mipmaps
-- Texture tiling and swizzling (linear, tiled, morton)
-- Texture filtering and wrapping
-- Shader varying partial derivative `dFdx` `dFdy`
-- Alpha mask & blend
-- Reversed Z, Early Z
+- [x] Wireframe
+- [x] View Frustum culling
+- [x] Back-Front culling
+- [x] Orbit Camera Controller
+- [x] Perspective Correct Interpolation
+- [x] Tangent Space Normal Mapping
+- [x] Basic Lighting
+- [x] Blinn-Phong shading
+- [x] PBR & IBL shading
+- [x] Skybox CubeMap & Equirectangular
+- [x] Texture mipmaps
+- [x] Texture tiling and swizzling (linear, tiled, morton)
+- [x] Texture filtering and wrapping
+- [x] Shader derivative `dFdx` `dFdy`
+- [x] Alpha mask & blend
+- [ ] Reversed Z
+- [ ] Early Z
 
 #### Texture
 
@@ -115,7 +119,7 @@ The storage of texture supports three modes:
 
 ### Render Wireframe
 
-Check "show clip" to show the triangles created by frustum clip
+wireframe mode will draw triangles created by frustum clip
 
 ![](screenshot/clip.png)
 

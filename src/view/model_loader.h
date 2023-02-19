@@ -7,127 +7,59 @@
 #pragma once
 
 #include <unordered_map>
+#include <mutex>
 #include <assimp/scene.h>
 
-#include "base/model.h"
-#include "base/texture.h"
+#include "base/buffer.h"
+#include "model.h"
+#include "config.h"
+#include "config_panel.h"
 
 namespace SoftGL {
 namespace View {
 
-struct SkyboxTextureIBL : public SkyboxTexture {
-  Texture irradiance[6];
-  Texture prefilter[6];
-
-  bool cube_ready = false;
-  bool equirectangular_ready = false;
-  bool irradiance_ready = false;
-  bool prefilter_ready = false;
-  bool ibl_running = false;
-
-  void InitIBL();
-};
-
-struct ModelContainer {
-  std::string model_file_dir;
-  size_t mesh_count = 0;
-  size_t face_count = 0;
-  size_t vertex_count = 0;
-  ModelNode root_node;
-  BoundingBox root_bounding_box;
-};
-
 class ModelLoader {
  public:
-  ModelLoader();
-
-  static std::shared_ptr<ModelMesh> CreateCubeMesh();
+  explicit ModelLoader(Config &config, ConfigPanel &panel);
 
   bool LoadModel(const std::string &filepath);
+  bool LoadSkybox(const std::string &filepath);
 
-  void LoadSkyBoxTex(const std::string &filepath);
+  inline DemoScene &GetScene() { return scene_; }
 
-  inline ModelNode *GetRootNode() {
-    return curr_model_ ? &curr_model_->root_node : nullptr;
+  inline size_t GetModelPrimitiveCnt() const {
+    if (scene_.model) {
+      return scene_.model->primitive_cnt;
+    }
+    return 0;
   }
 
-  inline BoundingBox *GetRootBoundingBox() {
-    return curr_model_ ? &curr_model_->root_bounding_box : nullptr;
-  }
-
-  inline size_t GetMeshCount() const {
-    return curr_model_ ? curr_model_->mesh_count : 0;;
-  }
-
-  inline size_t GetFaceCount() const {
-    return curr_model_ ? curr_model_->face_count : 0;
-  }
-
-  inline size_t GetVertexCount() const {
-    return curr_model_ ? curr_model_->vertex_count : 0;
-  }
-
-  inline static std::shared_ptr<ModelMesh> GetSkyBoxMesh() {
-    return skybox_mash_;
-  }
-
-  inline SkyboxTextureIBL *GetSkyBoxTexture() {
-    return curr_skybox_tex_;
-  }
-
-  inline ModelLines &GetWorldAxisLines() {
-    return world_axis_;
-  }
-
-  inline ModelPoints &GetLights() {
-    return lights_;
-  }
-
-  void SetPointLight(const glm::vec3 &pos, const glm::vec3 &color) {
-    point_light_position_ = pos;
-    point_light_color_ = color;
-
-    // reload
-    LoadLights();
-  }
+  static void LoadCubeMesh(ModelVertexes &mesh);
 
  private:
+  void LoadWorldAxis();
+  void LoadLights();
+
   bool ProcessNode(const aiNode *ai_node, const aiScene *ai_scene, ModelNode &out_node, glm::mat4 &transform);
   bool ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &out_mesh);
-  bool ProcessMaterial(const aiMaterial *ai_material,
-                       aiTextureType texture_type,
-                       std::unordered_map<TextureType, Texture, EnumClassHash> &textures);
+  void ProcessMaterial(const aiMaterial *ai_material, aiTextureType texture_type, TexturedMaterial &material);
+
   static glm::mat4 ConvertMatrix(const aiMatrix4x4 &m);
   static BoundingBox ConvertBoundingBox(const aiAABB &aabb);
 
-  void LoadWorldAxis();
-  void LoadLights();
-  static void ReloadSkyboxMesh();
-
-  static void PreloadSceneTextureFiles(const aiScene *scene, const std::string &res_dir);
-  static bool LoadTextureFile(Texture &tex, const char *path);
+  void PreloadTextureFiles(const aiScene *scene, const std::string &res_dir);
+  std::shared_ptr<BufferRGBA> LoadTextureFile(const std::string &path);
 
  private:
-  // model
-  ModelContainer *curr_model_ = nullptr;
-  std::unordered_map<std::string, ModelContainer> model_cache_;
+  Config &config_;
+  ConfigPanel &config_panel_;
 
-  // skybox
-  static std::shared_ptr<ModelMesh> skybox_mash_;
-  static SkyboxTextureIBL *curr_skybox_tex_;
-  std::unordered_map<std::string, SkyboxTextureIBL> skybox_tex_cache_;
+  DemoScene scene_;
+  std::unordered_map<std::string, std::shared_ptr<Model>> model_cache_;
+  std::unordered_map<std::string, std::shared_ptr<BufferRGBA>> texture_cache_;
 
-  // world axis
-  ModelLines world_axis_;
-
-  // light
-  ModelPoints lights_;
-  glm::vec3 point_light_position_;
-  glm::vec3 point_light_color_;
-
- private:
-  std::mutex model_load_mutex_;
-  static std::unordered_map<std::string, std::shared_ptr<Buffer<glm::u8vec4>>> texture_cache_;
+  std::mutex load_mutex_;
+  std::mutex tex_cache_mutex_;
 };
 
 }

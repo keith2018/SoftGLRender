@@ -6,14 +6,15 @@
 
 #pragma once
 
-#include "base/common.h"
-#include "base/geometry.h"
+#include "render/geometry.h"
 
 namespace SoftGL {
 namespace View {
 
 class Camera {
  public:
+  void Update();
+
   void SetPerspective(float fov, float aspect, float near, float far);
 
   void LookAt(const glm::vec3 &eye, const glm::vec3 &center, const glm::vec3 &up);
@@ -23,7 +24,6 @@ class Camera {
 
   glm::vec3 GetWorldPositionFromView(glm::vec3 pos) const;
 
-  void Update();
   inline const Frustum &GetFrustum() const { return frustum_; }
 
   inline const float &Fov() const { return fov_; }

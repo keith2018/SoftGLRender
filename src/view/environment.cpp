@@ -6,26 +6,10 @@
 
 #include "environment.h"
 #include "model_loader.h"
-#include "camera.h"
-#include "render/soft/shader/skybox_shader.h"
-#include "render/soft/shader/irradiance_shader.h"
-#include "render/soft/shader/prefilter_shader.h"
+#include "base/logger.h"
 
 namespace SoftGL {
 namespace View {
-
-#define CREATE_SHADER(PREFIX)                                                   \
-  shader_context.vertex_shader = std::make_shared<PREFIX##VertexShader>();      \
-  shader_context.fragment_shader = std::make_shared<PREFIX##FragmentShader>();  \
-  shader_context.uniforms = std::make_shared<PREFIX##ShaderUniforms>();         \
-  shader_context.varyings_size = sizeof(PREFIX##ShaderVaryings);                \
-  shader_context.vertex_shader->uniforms = shader_context.uniforms.get();       \
-  shader_context.fragment_shader->uniforms = shader_context.uniforms.get();     \
-
-
-#define IrradianceMapSize 32
-#define PrefilterMaxMipLevels 5
-#define PrefilterMapSize 128
 
 struct LookAtParam {
   glm::vec3 eye;
@@ -33,118 +17,130 @@ struct LookAtParam {
   glm::vec3 up;
 };
 
-void Environment::ConvertEquirectangular(Texture &tex_in, Texture *tex_out, int width, int height) {
-  int default_size = std::min(tex_in.buffer->GetWidth(), tex_in.buffer->GetHeight());
-  if (width <= 0) width = default_size;
-  if (height <= 0) height = default_size;
-
-  Camera camera;
-  auto renderer = CreateCubeRender(camera, width, height);
-
-  // init shader
-  auto &shader_context = renderer->GetShaderContext();
-  CREATE_SHADER(Skybox);
-
-  auto *skybox_uniforms_ptr = (SkyboxShaderUniforms *) shader_context.uniforms.get();
-  skybox_uniforms_ptr->u_equirectangularMap.SetTexture(&tex_in);
-  skybox_uniforms_ptr->u_equirectangularMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-  skybox_uniforms_ptr->u_equirectangularMap.SetFilterMode(Filter_LINEAR);
-
-  // draw
-  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::u8vec4> &buff) {
-    tex_out[face].buffer = Texture::CreateBuffer(buff.GetLayout());
-    tex_out[face].buffer->Create(buff.GetWidth(), buff.GetHeight());
-    buff.CopyRawDataTo(tex_out[face].buffer->GetRawDataPtr(), true);
-  });
-}
-
-void Environment::GenerateIrradianceMap(Texture *tex_in, Texture *tex_out) {
-  Camera camera;
-  auto renderer = CreateCubeRender(camera, IrradianceMapSize, IrradianceMapSize);
-
-  // init shader
-  auto &shader_context = renderer->GetShaderContext();
-  CREATE_SHADER(Irradiance);
-
-  auto *skybox_uniforms_ptr = (IrradianceShaderUniforms *) shader_context.uniforms.get();
-  for (int i = 0; i < 6; i++) {
-    skybox_uniforms_ptr->u_cubeMap.SetTexture(&tex_in[i], i);
-  }
-  skybox_uniforms_ptr->u_cubeMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-  skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
-
-  // draw
-  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::u8vec4> &buff) {
-    tex_out[face].buffer = Texture::CreateBuffer(buff.GetLayout());
-    tex_out[face].buffer->Create(buff.GetWidth(), buff.GetHeight());
-    buff.CopyRawDataTo(tex_out[face].buffer->GetRawDataPtr(), true);
-  });
-}
-
-void Environment::GeneratePrefilterMap(Texture *tex_in, Texture *tex_out) {
-  for (int i = 0; i < 6; i++) {
-    tex_out[i].buffer = Texture::CreateBuffer(tex_in->buffer->GetLayout());
-    tex_out[i].buffer->Create(tex_in->buffer->GetWidth(), tex_in->buffer->GetHeight());
-    tex_in->buffer->CopyRawDataTo(tex_out[i].buffer->GetRawDataPtr());
-
-    tex_out[i].mipmaps.resize(PrefilterMaxMipLevels);
-    tex_out[i].mipmaps_ready = true;
+bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
+                                         const std::function<bool(ShaderProgram &program)> &shader_func,
+                                         const std::shared_ptr<Texture2D> &tex_in,
+                                         std::shared_ptr<TextureCube> &tex_out) {
+  CubeRenderContext context;
+  context.renderer = renderer;
+  bool success = CreateCubeRenderContext(context,
+                                         shader_func,
+                                         std::dynamic_pointer_cast<Texture>(tex_in),
+                                         TextureUsage_EQUIRECTANGULAR);
+  if (!success) {
+    LOGE("create render context failed");
+    return false;
   }
 
-  for (int mip = 0; mip < PrefilterMaxMipLevels; mip++) {
-    int mip_width = PrefilterMapSize * glm::pow(0.5f, mip);
-    int mip_height = PrefilterMapSize * glm::pow(0.5f, mip);
-    GeneratePrefilterMapLod(tex_in, tex_out, mip_width, mip_height, mip);
+  DrawCubeFaces(context, tex_out->width, tex_out->height, tex_out);
+  return true;
+}
+
+bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
+                                        const std::function<bool(ShaderProgram &program)> &shader_func,
+                                        const std::shared_ptr<TextureCube> &tex_in,
+                                        std::shared_ptr<TextureCube> &tex_out) {
+  CubeRenderContext context;
+  context.renderer = renderer;
+  bool success = CreateCubeRenderContext(context,
+                                         shader_func,
+                                         std::dynamic_pointer_cast<Texture>(tex_in),
+                                         TextureUsage_CUBE);
+  if (!success) {
+    LOGE("create render context failed");
+    return false;
   }
+
+  DrawCubeFaces(context, tex_out->width, tex_out->height, tex_out);
+  return true;
 }
 
-void Environment::GeneratePrefilterMapLod(Texture *tex_in,
-                                          Texture *tex_out,
-                                          int width,
-                                          int height,
-                                          int mip) {
-  Camera camera;
-  auto renderer = CreateCubeRender(camera, width, height);
-
-  // init shader
-  auto &shader_context = renderer->GetShaderContext();
-  CREATE_SHADER(Prefilter);
-
-  auto *skybox_uniforms_ptr = (PrefilterShaderUniforms *) shader_context.uniforms.get();
-  skybox_uniforms_ptr->u_srcResolution = tex_in[0].buffer->GetWidth();
-  skybox_uniforms_ptr->u_roughness = (float) mip / (float) (PrefilterMaxMipLevels - 1);
-  for (int i = 0; i < 6; i++) {
-    skybox_uniforms_ptr->u_cubeMap.SetTexture(&tex_in[i], i);
+bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
+                                       const std::function<bool(ShaderProgram &program)> &shader_func,
+                                       const std::shared_ptr<TextureCube> &tex_in,
+                                       std::shared_ptr<TextureCube> &tex_out) {
+  CubeRenderContext context;
+  context.renderer = renderer;
+  bool success = CreateCubeRenderContext(context,
+                                         shader_func,
+                                         std::dynamic_pointer_cast<Texture>(tex_in),
+                                         TextureUsage_CUBE);
+  if (!success) {
+    LOGE("create render context failed");
+    return false;
   }
-  skybox_uniforms_ptr->u_cubeMap.SetWrapMode(Wrap_CLAMP_TO_EDGE);
-  skybox_uniforms_ptr->u_cubeMap.SetFilterMode(Filter_LINEAR);
 
-  // draw
-  CubeRenderDraw(*renderer, camera, [&](int face, Buffer<glm::u8vec4> &buff) {
-    tex_out[face].mipmaps[mip] = Texture::CreateBuffer(buff.GetLayout());
-    auto &dst_buff = tex_out[face].mipmaps[mip];
+  auto uniforms_block_prefilter =
+      context.renderer->CreateUniformBlock("UniformsPrefilter", sizeof(UniformsIBLPrefilter));
+  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_IBLPrefilter] = uniforms_block_prefilter;
 
-    dst_buff->Create(buff.GetWidth(), buff.GetHeight());
-    buff.CopyRawDataTo(dst_buff->GetRawDataPtr(), true);
-  });
+  UniformsIBLPrefilter uniforms_prefilter{};
+
+  for (int mip = 0; mip < kPrefilterMaxMipLevels; mip++) {
+    int mip_width = (int) (tex_out->width * glm::pow(0.5f, mip));
+    int mip_height = (int) (tex_out->height * glm::pow(0.5f, mip));
+
+    DrawCubeFaces(context, mip_width, mip_height, tex_out, mip, [&]() -> void {
+      uniforms_prefilter.u_srcResolution = (float) tex_in->width;
+      uniforms_prefilter.u_roughness = (float) mip / (float) (kPrefilterMaxMipLevels - 1);
+      uniforms_block_prefilter->SetData(&uniforms_prefilter, sizeof(UniformsIBLPrefilter));
+    });
+  }
+  return true;
 }
 
-std::shared_ptr<RendererSoft> Environment::CreateCubeRender(Camera &camera, int width, int height) {
-  float cam_near = 0.1f;
-  float cam_far = 10.f;
-  camera.SetPerspective(glm::radians(90.f), 1.f, cam_near, cam_far);
-  auto renderer = std::make_shared<RendererSoft>();
-  renderer->Create(width, height, cam_near, cam_far);
-  renderer->early_z = false;
-  renderer->depth_test = false;
-  renderer->cull_face_back = false;
-  return renderer;
+bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
+                                          const std::function<bool(ShaderProgram &program)> &shader_func,
+                                          const std::shared_ptr<Texture> &tex_in,
+                                          TextureUsage tex_usage) {
+  // camera
+  context.camera.SetPerspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
+
+  // model
+  const std::string tex_name = "Environment";
+  ModelLoader::LoadCubeMesh(context.model_skybox);
+  context.model_skybox.material_cache[tex_name] = {};
+  context.model_skybox.material = &context.model_skybox.material_cache[tex_name];
+  context.model_skybox.material->Reset();
+  context.model_skybox.material->shading = Shading_Skybox;
+
+  // fbo
+  context.fbo = context.renderer->CreateFrameBuffer();
+
+  // vao
+  context.model_skybox.vao = context.renderer->CreateVertexArrayObject(context.model_skybox);
+
+  // shader program
+  std::set<std::string> shader_defines = {Material::SamplerDefine(tex_usage)};
+  auto program = context.renderer->CreateShaderProgram();
+  program->AddDefines(shader_defines);
+  bool success = shader_func(*program);
+  if (!success) {
+    LOGE("create shader program failed");
+    return false;
+  }
+  context.model_skybox.material->shader_program = program;
+  context.model_skybox.material->shader_uniforms = std::make_shared<ShaderUniforms>();
+
+  // uniforms
+  const char *sampler_name = Material::SamplerName(tex_usage);
+  auto uniform = context.renderer->CreateUniformSampler(sampler_name, tex_in->Type());
+  uniform->SetTexture(tex_in);
+  context.model_skybox.material->shader_uniforms->samplers[tex_usage] = uniform;
+
+  context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
+  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_MVP] = context.uniforms_block_mvp;
+
+  return true;
 }
 
-void Environment::CubeRenderDraw(RendererSoft &renderer,
-                                 Camera &camera,
-                                 const std::function<void(int face, Buffer<glm::u8vec4> &buff)> &face_cb) {
-  LookAtParam captureViews[] = {
+void Environment::DrawCubeFaces(CubeRenderContext &context,
+                                int width,
+                                int height,
+                                std::shared_ptr<TextureCube> &tex_out,
+                                int tex_out_level,
+                                const std::function<void()> &before_draw) {
+  static LookAtParam capture_views[] = {
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)},
@@ -153,21 +149,34 @@ void Environment::CubeRenderDraw(RendererSoft &renderer,
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)}
   };
 
-  auto &shader_context = renderer.GetShaderContext();
-  auto *uniforms_ptr = (BaseShaderUniforms *) shader_context.uniforms.get();
-  auto skybox_mesh = ModelLoader::GetSkyBoxMesh();
+  UniformsMVP uniforms_mvp{};
   glm::mat4 model_matrix(1.f);
 
-  // draw cube 6 faces
-  for (int i = 0; i < 6; i++) {
-    auto &param = captureViews[i];
-    camera.LookAt(param.eye, param.center, param.up);
-    uniforms_ptr->u_modelViewProjectionMatrix = camera.ProjectionMatrix() * camera.ViewMatrix() * model_matrix;
-    renderer.Clear(0.f, 0.f, 0.f, 0.f);
-    renderer.DrawMeshTextured(*skybox_mesh);
+  // draw
+  context.renderer->SetFrameBuffer(*context.fbo);
+  context.renderer->SetViewPort(0, 0, width, height);
 
-    auto &buff = renderer.GetFrameColor();
-    face_cb(i, *buff);
+  for (int i = 0; i < 6; i++) {
+    auto &param = capture_views[i];
+    context.camera.LookAt(param.eye, param.center, param.up);
+
+    // update mvp
+    glm::mat4 view_matrix = glm::mat3(context.camera.ViewMatrix());  // only rotation
+    uniforms_mvp.u_modelViewProjectionMatrix = context.camera.ProjectionMatrix() * view_matrix * model_matrix;
+    context.uniforms_block_mvp->SetData(&uniforms_mvp, sizeof(UniformsMVP));
+
+    if (before_draw) {
+      before_draw();
+    }
+
+    // draw
+    context.fbo->SetColorAttachment(tex_out, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), tex_out_level);
+    context.renderer->Clear({});
+    context.renderer->SetVertexArrayObject(context.model_skybox.vao);
+    context.renderer->SetRenderState(context.model_skybox.material->render_state);
+    context.renderer->SetShaderProgram(context.model_skybox.material->shader_program);
+    context.renderer->SetShaderUniforms(context.model_skybox.material->shader_uniforms);
+    context.renderer->Draw(context.model_skybox.primitive_type);
   }
 }
 

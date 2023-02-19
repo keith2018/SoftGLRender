@@ -9,28 +9,72 @@
 namespace SoftGL {
 namespace View {
 
-QuadFilter::QuadFilter(int width, int height) : width_(width), height_(height) {
+QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
+                       const std::function<bool(ShaderProgram &program)> &shader_func,
+                       std::shared_ptr<Texture2D> &tex_in,
+                       std::shared_ptr<Texture2D> &tex_out) {
+  width_ = tex_out->width;
+  height_ = tex_out->height;
+
+  // quad mesh
+  quad_mesh_.primitive_type = Primitive_TRIANGLE;
   quad_mesh_.primitive_cnt = 2;
   quad_mesh_.vertexes.push_back({{1.f, -1.f, 0.f}, {1.f, 0.f}});
   quad_mesh_.vertexes.push_back({{-1.f, -1.f, 0.f}, {0.f, 0.f}});
   quad_mesh_.vertexes.push_back({{1.f, 1.f, 0.f}, {1.f, 1.f}});
   quad_mesh_.vertexes.push_back({{-1.f, 1.f, 0.f}, {0.f, 1.f}});
   quad_mesh_.indices = {0, 1, 2, 1, 2, 3};
+  quad_mesh_.InitVertexes();
 
-  renderer_ = std::make_shared<RendererSoft>();
-  renderer_->Create(width_, height_, 0.f, 1.f);
-  renderer_->depth_test = false;
-  renderer_->frustum_clip = false;
-  renderer_->cull_face_back = false;
-}
+  // renderer
+  renderer_ = renderer;
 
-void QuadFilter::Clear(float r, float g, float b, float a) {
-  renderer_->Clear(r, g, b, a);
+  // fbo
+  fbo_ = renderer_->CreateFrameBuffer();
+  fbo_->SetColorAttachment(tex_out);
+
+  // vao
+  quad_mesh_.vao = renderer_->CreateVertexArrayObject(quad_mesh_);
+
+  // program
+  auto program = renderer_->CreateShaderProgram();
+  bool success = shader_func(*program);
+  if (!success) {
+    LOGE("create shader program failed");
+    return;
+  }
+  quad_mesh_.material_textured.shader_program = program;
+  quad_mesh_.material_textured.shader_uniforms = std::make_shared<ShaderUniforms>();
+
+  // uniforms
+  TextureUsage usage = TextureUsage_QUAD_FILTER;
+  const char *sampler_name = Material::SamplerName(usage);
+  auto uniform = renderer_->CreateUniformSampler(sampler_name, tex_in->Type());
+  uniform->SetTexture(tex_in);
+  quad_mesh_.material_textured.shader_uniforms->samplers[usage] = uniform;
+
+  auto uniforms_block = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
+  UniformsQuadFilter uniforms_filter{glm::vec2(width_, height_)};
+  uniforms_block->SetData(&uniforms_filter, sizeof(UniformsQuadFilter));
+  quad_mesh_.material_textured.shader_uniforms->blocks[UniformBlock_QuadFilter] = std::move(uniforms_block);
+
+  init_ready_ = true;
 }
 
 void QuadFilter::Draw() {
-  glm::mat4 transform(1.0f);
-  renderer_->DrawMeshTextured(quad_mesh_);
+  if (!init_ready_) {
+    return;
+  }
+
+  renderer_->SetFrameBuffer(*fbo_);
+  renderer_->SetViewPort(0, 0, width_, height_);
+
+  renderer_->Clear({});
+  renderer_->SetVertexArrayObject(quad_mesh_.vao);
+  renderer_->SetRenderState(quad_mesh_.material_textured.render_state);
+  renderer_->SetShaderProgram(quad_mesh_.material_textured.shader_program);
+  renderer_->SetShaderUniforms(quad_mesh_.material_textured.shader_uniforms);
+  renderer_->Draw(quad_mesh_.primitive_type);
 }
 
 }

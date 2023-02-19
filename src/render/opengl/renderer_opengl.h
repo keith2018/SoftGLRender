@@ -6,59 +6,50 @@
 
 #pragma once
 
-#include "../renderer.h"
-#include "glad/glad.h"
-#include "material.h"
+#include "render/renderer.h"
+#include "render/opengl/vertex_opengl.h"
+#include "render/opengl/shader_program_opengl.h"
 
 namespace SoftGL {
 
-class VertexGLSL {
- public:
-  void Create(std::vector<Vertex> &vertexes, std::vector<int> &indices);
-  void UpdateVertexData(std::vector<Vertex> &vertexes);
-  bool Empty() const;
-  void BindVAO();
-  virtual ~VertexGLSL();
-
- private:
-  GLuint vao_ = 0;
-  GLuint vbo_ = 0;
-  GLuint ebo_ = 0;
-};
-
-class OpenGLRenderHandler : public RenderHandler {
- public:
-  std::shared_ptr<VertexGLSL> vertex_handler;
-  std::shared_ptr<BaseMaterial> material_handler;
-  TextureMap texture_handler;
-};
-
 class RendererOpenGL : public Renderer {
  public:
-  void Create(int width, int height, float near, float far) override;
-  void Clear(float r, float g, float b, float a) override;
-
-  void DrawMeshTextured(ModelMesh &mesh) override;
-  void DrawMeshWireframe(ModelMesh &mesh) override;
-  void DrawLines(ModelLines &lines) override;
-  void DrawPoints(ModelPoints &points) override;
-
-  RendererUniforms &GetRendererUniforms() {
-    return uniforms_;
+  // config
+  bool ReverseZ() const override {
+    return false;
   }
 
- private:
-  void InitVertex(ModelBase &model, bool needUpdate = false);
-  void InitTextures(ModelMesh &mesh);
-  void InitMaterial(ModelBase &model);
-  void InitMaterialWithType(ModelBase &model, MaterialType material_type);
-  void DrawImpl(ModelBase &model, GLenum mode);
+  // framebuffer
+  std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
 
-  MaterialType GetMaterialType(ModelBase &model);
-  std::shared_ptr<BaseMaterial> CreateMeshMaterial(ModelMesh &mesh, MaterialType type);
+  // texture
+  std::shared_ptr<Texture2D> CreateTexture2D() override;
+  std::shared_ptr<TextureCube> CreateTextureCube() override;
+  std::shared_ptr<TextureDepth> CreateTextureDepth() override;
+
+  // vertex
+  std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) override;
+
+  // shader program
+  std::shared_ptr<ShaderProgram> CreateShaderProgram() override;
+
+  // uniform
+  std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) override;
+  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) override;
+
+  // pipeline
+  void SetFrameBuffer(FrameBuffer &frame_buffer) override;
+  void SetViewPort(int x, int y, int width, int height) override;
+  void Clear(const ClearState &state) override;
+  void SetRenderState(const RenderState &state) override;
+  void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
+  void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
+  void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
+  void Draw(PrimitiveType type) override;
 
  private:
-  RendererUniforms uniforms_;
+  VertexArrayObjectOpenGL *vao_ = nullptr;
+  ShaderProgramOpenGL *shader_program_ = nullptr;
 };
 
 }
