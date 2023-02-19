@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "render/vertex.h"
 #include "render/bounding_box.h"
@@ -68,7 +69,8 @@ struct ModelMesh : ModelVertexes {
 };
 
 struct ModelSkybox : ModelVertexes {
-  SkyboxMaterial material;
+  std::unordered_map<std::string, SkyboxMaterial> material_cache;
+  SkyboxMaterial *material = nullptr;
 };
 
 struct ModelNode {

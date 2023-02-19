@@ -140,7 +140,9 @@ class ViewerManager {
     scene.point_light.material.ResetRuntimeStates();
 
     scene.skybox.vao = nullptr;
-    scene.skybox.material.ResetRuntimeStates();
+    for (auto &kv : scene.skybox.material_cache) {
+      kv.second.ResetRuntimeStates();
+    }
   }
 
  private:

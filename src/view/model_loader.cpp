@@ -119,8 +119,14 @@ bool ModelLoader::LoadSkybox(const std::string &filepath) {
     LoadCubeMesh(scene_.skybox);
   }
 
+  auto it = scene_.skybox.material_cache.find(filepath);
+  if (it != scene_.skybox.material_cache.end()) {
+    scene_.skybox.material = &it->second;
+    return true;
+  }
+
   LOGD("load skybox, path: %s", filepath.c_str());
-  auto &material = scene_.skybox.material;
+  SkyboxMaterial material;
   material.Reset();
   material.shading = Shading_Skybox;
 
@@ -146,6 +152,8 @@ bool ModelLoader::LoadSkybox(const std::string &filepath) {
     material.texture_data[TextureUsage_EQUIRECTANGULAR].wrap_mode = Wrap_CLAMP_TO_EDGE;
   }
 
+  scene_.skybox.material_cache[filepath] = std::move(material);
+  scene_.skybox.material = &scene_.skybox.material_cache[filepath];
   return true;
 }
 

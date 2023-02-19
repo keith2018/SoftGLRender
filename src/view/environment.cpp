@@ -72,7 +72,7 @@ bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer
 
   auto uniforms_block_prefilter =
       context.renderer->CreateUniformBlock("UniformsPrefilter", sizeof(UniformsIBLPrefilter));
-  context.model_skybox.material.shader_uniforms->blocks[UniformBlock_IBLPrefilter] = uniforms_block_prefilter;
+  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_IBLPrefilter] = uniforms_block_prefilter;
 
   UniformsIBLPrefilter uniforms_prefilter{};
 
@@ -97,9 +97,12 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   context.camera.SetPerspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
 
   // model
+  const std::string tex_name = "Environment";
   ModelLoader::LoadCubeMesh(context.model_skybox);
-  context.model_skybox.material.Reset();
-  context.model_skybox.material.shading = Shading_Skybox;
+  context.model_skybox.material_cache[tex_name] = {};
+  context.model_skybox.material = &context.model_skybox.material_cache[tex_name];
+  context.model_skybox.material->Reset();
+  context.model_skybox.material->shading = Shading_Skybox;
 
   // fbo
   context.fbo = context.renderer->CreateFrameBuffer();
@@ -116,17 +119,17 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
     LOGE("create shader program failed");
     return false;
   }
-  context.model_skybox.material.shader_program = program;
-  context.model_skybox.material.shader_uniforms = std::make_shared<ShaderUniforms>();
+  context.model_skybox.material->shader_program = program;
+  context.model_skybox.material->shader_uniforms = std::make_shared<ShaderUniforms>();
 
   // uniforms
   const char *sampler_name = Material::SamplerName(tex_usage);
   auto uniform = context.renderer->CreateUniformSampler(sampler_name, tex_in->Type());
   uniform->SetTexture(tex_in);
-  context.model_skybox.material.shader_uniforms->samplers[tex_usage] = uniform;
+  context.model_skybox.material->shader_uniforms->samplers[tex_usage] = uniform;
 
   context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  context.model_skybox.material.shader_uniforms->blocks[UniformBlock_MVP] = context.uniforms_block_mvp;
+  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_MVP] = context.uniforms_block_mvp;
 
   return true;
 }
@@ -170,9 +173,9 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
     context.fbo->SetColorAttachment(tex_out, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), tex_out_level);
     context.renderer->Clear({});
     context.renderer->SetVertexArrayObject(context.model_skybox.vao);
-    context.renderer->SetRenderState(context.model_skybox.material.render_state);
-    context.renderer->SetShaderProgram(context.model_skybox.material.shader_program);
-    context.renderer->SetShaderUniforms(context.model_skybox.material.shader_uniforms);
+    context.renderer->SetRenderState(context.model_skybox.material->render_state);
+    context.renderer->SetShaderProgram(context.model_skybox.material->shader_program);
+    context.renderer->SetShaderUniforms(context.model_skybox.material->shader_uniforms);
     context.renderer->Draw(context.model_skybox.primitive_type);
   }
 }
