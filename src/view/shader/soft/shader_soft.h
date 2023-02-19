@@ -12,3 +12,4 @@
 #include "skybox_soft.h"
 #include "fxaa_soft.h"
 #include "ibl_irradiance_soft.h"
+#include "ibl_prefilter_soft.h"

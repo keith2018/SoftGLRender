@@ -49,7 +49,8 @@ class ViewerSoft : public Viewer {
       CASE_CREATE_SHADER_SOFT(Shading_PBR, ShaderPbrIBL);
       CASE_CREATE_SHADER_SOFT(Shading_Skybox, ShaderSkybox);
       CASE_CREATE_SHADER_SOFT(Shading_FXAA, ShaderFXAA);
-//      CASE_CREATE_SHADER_SOFT(Shading_IBL_Irradiance, ShaderIBLIrradiance);
+      CASE_CREATE_SHADER_SOFT(Shading_IBL_Irradiance, ShaderIBLIrradiance);
+      CASE_CREATE_SHADER_SOFT(Shading_IBL_Prefilter, ShaderIBLPrefilter);
       default:
         break;
     }

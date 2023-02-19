@@ -147,9 +147,9 @@ void ConfigPanel::DrawSettings() {
   ImGui::Separator();
   ImGui::Checkbox("depth test", &config_.depth_test);
 
-  // early z
-  ImGui::Separator();
-  ImGui::Checkbox("early z", &config_.early_z);
+//  // early z
+//  ImGui::Separator();
+//  ImGui::Checkbox("early z", &config_.early_z);
 
   // Anti aliasing
   const char *aaItems[] = {

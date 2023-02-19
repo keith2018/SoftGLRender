@@ -495,6 +495,7 @@ bool Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
   }
 
   // generate irradiance map
+  LOGD("generate ibl irradiance map ...");
   auto texture_irradiance = CreateTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize);
   if (Environment::GenerateIrradianceMap(CreateRenderer(),
                                          [&](ShaderProgram &program) -> bool {
@@ -508,8 +509,10 @@ bool Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
     skybox.material.ibl_error = true;
     return false;
   }
+  LOGD("generate ibl irradiance map done.");
 
   // generate prefilter map
+  LOGD("generate ibl prefilter map ...");
   auto texture_prefilter = CreateTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, true);
   if (Environment::GeneratePrefilterMap(CreateRenderer(),
                                         [&](ShaderProgram &program) -> bool {
@@ -523,6 +526,7 @@ bool Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
     skybox.material.ibl_error = true;
     return false;
   }
+  LOGD("generate ibl prefilter map done.");
 
   skybox.material.ibl_ready = true;
   return true;
