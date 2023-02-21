@@ -31,9 +31,9 @@ struct VertexHolder {
   void *vertex = nullptr;
   float *varyings = nullptr;
 
-  float clip_z = 0.f;
   int clip_mask = 0;
-  glm::vec4 position = glm::vec4(0.f);
+  glm::vec4 clip_pos = glm::vec4(0.f);  // clip space position
+  glm::vec4 src_pos = glm::vec4(0.f);   // screen space position
 
   std::shared_ptr<uint8_t> vertex_holder = nullptr;
   std::shared_ptr<float> varyings_holder = nullptr;
