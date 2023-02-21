@@ -16,8 +16,8 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 #### Code structure:
 
 - [render](src/render): 
-  - [soft](src/render/soft) software renderer implementation
-  - [opengl](src/render/opengl) opengl renderer implementation
+  - [soft](src/render/soft): software renderer implementation
+  - [opengl](src/render/opengl): opengl renderer implementation
 - [view](src/view): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel, and render pass management.
   - [shader/soft](src/view/shader/soft): simulate vertex shader & fragment shader using c++, several basic shaders are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
   - [shader/opengl](src/view/shader/opengl): GLSL shader code
@@ -115,13 +115,6 @@ The storage of texture supports three modes:
 
 - Cube
   ![](screenshot/cube.png)
-
-
-### Render Wireframe
-
-wireframe mode will draw triangles created by frustum clip
-
-![](screenshot/clip.png)
 
 
 ## Dependencies

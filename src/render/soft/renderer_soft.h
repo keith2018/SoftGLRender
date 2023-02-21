@@ -70,7 +70,7 @@ class RendererSoft : public Renderer {
   void ProcessPolygonAssembly();
 
   void ClippingPoint(PrimitiveHolder &point);
-  void ClippingLine(PrimitiveHolder &line);
+  void ClippingLine(PrimitiveHolder &line, bool post_vertex_process = false);
   void ClippingTriangle(PrimitiveHolder &triangle);
 
   void InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t);
@@ -81,13 +81,19 @@ class RendererSoft : public Renderer {
   void RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width);
   void RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing);
   void RasterizationPolygons(std::vector<PrimitiveHolder> &primitives);
+  void RasterizationPolygonsPoint(std::vector<PrimitiveHolder> &primitives);
+  void RasterizationPolygonsLine(std::vector<PrimitiveHolder> &primitives);
+  void RasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives);
   void RasterizationPixelQuad(PixelQuadContext &quad);
 
  private:
   inline glm::u8vec4 GetFrameColor(int x, int y);
   inline void SetFrameColor(int x, int y, const glm::u8vec4 &color);
 
+  VertexHolder &ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process = false);
   void VertexShaderImpl(VertexHolder &vertex);
+  void PerspectiveDivideImpl(VertexHolder &vertex);
+  void ViewportTransformImpl(VertexHolder &vertex);
   int CountFrustumClipMask(glm::vec4 &clip_pos);
   BoundingBox TriangleBoundingBox(glm::vec4 *vert, float width, float height);
 
