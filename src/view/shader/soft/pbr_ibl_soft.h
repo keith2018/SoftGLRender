@@ -127,7 +127,7 @@ class FS : public ShaderPbrIBL {
  public:
   CREATE_SHADER_CLONE(FS)
 
-  size_t GetSamplerDerivativeOffset() const override {
+  size_t GetSamplerDerivativeOffset(BaseSampler<uint8_t> *sampler) const override {
     return offsetof(ShaderVaryings, v_texCoord);
   }
 

@@ -91,9 +91,9 @@ class ShaderSoft {
   ShaderBuiltin *gl = nullptr;
   std::function<float(BaseSampler<uint8_t> *)> tex_lod_func;
 
-  float GetTexture2DLod(BaseSampler<uint8_t> *sampler) const {
+  float GetSampler2DLod(BaseSampler<uint8_t> *sampler) const {
     auto &df_ctx = gl->df_ctx;
-    size_t df_offset = GetSamplerDerivativeOffset();
+    size_t df_offset = GetSamplerDerivativeOffset(sampler);
 
     auto *coord_0 = (glm::vec2 *) (df_ctx.p0 + df_offset);
     auto *coord_1 = (glm::vec2 *) (df_ctx.p1 + df_offset);
@@ -110,10 +110,10 @@ class ShaderSoft {
   }
 
   virtual void PrepareExecMain() {
-    tex_lod_func = std::bind(&ShaderSoft::GetTexture2DLod, this, std::placeholders::_1);
+    tex_lod_func = std::bind(&ShaderSoft::GetSampler2DLod, this, std::placeholders::_1);
   }
 
-  virtual size_t GetSamplerDerivativeOffset() const {
+  virtual size_t GetSamplerDerivativeOffset(BaseSampler<uint8_t> *sampler) const {
     return 0;
   }
 
