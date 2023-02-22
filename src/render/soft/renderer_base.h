@@ -19,6 +19,9 @@ struct Viewport {
   float depth_near;
   float depth_far;
 
+  float depth_min;
+  float depth_max;
+
   // ref: https://registry.khronos.org/vulkan/specs/1.0/html/chap24.html#vertexpostproc-viewport
   glm::vec4 inner_o;
   glm::vec4 inner_p;

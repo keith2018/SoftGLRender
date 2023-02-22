@@ -95,6 +95,42 @@ struct DemoScene {
   ModelLines world_axis;
   ModelPoints point_light;
   ModelSkybox skybox;
+
+  void ResetModelTextures() {
+    std::function<void(ModelNode &node)> reset_node_func = [&](ModelNode &node) -> void {
+      for (auto &mesh : node.meshes) {
+        mesh.material_textured.ResetRuntimeStates();
+      }
+      for (auto &child_node : node.children) {
+        reset_node_func(child_node);
+      }
+    };
+    reset_node_func(model->root_node);
+  }
+
+  void ResetAllStates() {
+    std::function<void(ModelNode &node)> reset_node_func = [&](ModelNode &node) -> void {
+      for (auto &mesh : node.meshes) {
+        mesh.vao = nullptr;
+        mesh.material_wireframe.ResetRuntimeStates();
+        mesh.material_textured.ResetRuntimeStates();
+      }
+      for (auto &child_node : node.children) {
+        reset_node_func(child_node);
+      }
+    };
+    reset_node_func(model->root_node);
+    world_axis.vao = nullptr;
+    world_axis.material.ResetRuntimeStates();
+
+    point_light.vao = nullptr;
+    point_light.material.ResetRuntimeStates();
+
+    skybox.vao = nullptr;
+    for (auto &kv : skybox.material_cache) {
+      kv.second.ResetRuntimeStates();
+    }
+  }
 };
 
 }

@@ -53,6 +53,8 @@ void Viewer::Create(int width, int height, int outTexId) {
   program_cache_.clear();
 }
 
+void Viewer::ConfigRenderer() {}
+
 void Viewer::DrawFrame(DemoScene &scene) {
   scene_ = &scene;
 
@@ -108,7 +110,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
   }
 
   // init skybox ibl
-  if (config_.show_skybox) {
+  if (config_.show_skybox && config_.pbr_ibl) {
     InitSkyboxIBL(scene_->skybox);
   }
 
@@ -205,7 +207,7 @@ void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
                 },
                 false,
                 [&](RenderState &rs) -> void {
-                  rs.depth_func = renderer_->ReverseZ() ? DepthFunc_GREATER : DepthFunc_LEQUAL;
+                  rs.depth_func = config_.reverse_z ? DepthFunc_GEQUAL : DepthFunc_LEQUAL;
                   rs.depth_mask = false;
                 });
   PipelineDraw(skybox, *skybox.material);
@@ -308,7 +310,7 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
 
   rs.depth_test = config_.depth_test;
   rs.depth_mask = !blend;  // disable depth write
-  rs.depth_func = renderer_->ReverseZ() ? DepthFunc_GEQUAL : DepthFunc_LESS;
+  rs.depth_func = config_.reverse_z ? DepthFunc_GEQUAL : DepthFunc_LESS;
 
   rs.cull_face = config_.cull_face;
   rs.polygon_mode = PolygonMode_FILL;
@@ -346,6 +348,10 @@ void Viewer::SetupTextures(Material &material) {
         Sampler2DDesc sampler_2d;
         sampler_2d.wrap_s = kv.second.wrap_mode;
         sampler_2d.wrap_t = kv.second.wrap_mode;
+        if (config_.mipmaps) {
+          sampler_2d.use_mipmaps = true;
+          sampler_2d.filter_min = Filter_LINEAR_MIPMAP_LINEAR;
+        }
         texture->SetSamplerDesc(sampler_2d);
         break;
       }
@@ -533,7 +539,7 @@ bool Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
 }
 
 bool Viewer::IBLEnabled() {
-  return config_.show_skybox && scene_->skybox.material->ibl_ready;
+  return config_.show_skybox && config_.pbr_ibl && scene_->skybox.material->ibl_ready;
 }
 
 void Viewer::UpdateIBLTextures(Material &material) {

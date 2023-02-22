@@ -35,8 +35,13 @@ class Config {
   bool wireframe = false;
   bool world_axis = true;
   bool show_skybox = false;
+
+  bool pbr_ibl = false;
+  bool mipmaps = false;
+
   bool cull_face = true;
   bool depth_test = true;
+  bool reverse_z = true;
   bool early_z = false;
 
   glm::vec4 clear_color = {0.f, 0.f, 0.f, 0.f};

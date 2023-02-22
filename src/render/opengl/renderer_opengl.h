@@ -15,9 +15,8 @@ namespace SoftGL {
 class RendererOpenGL : public Renderer {
  public:
   // config
-  bool ReverseZ() const override {
-    return false;
-  }
+  void SetReverseZ(bool enable) override {}
+  void SetEarlyZ(bool enable) override {}
 
   // framebuffer
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;

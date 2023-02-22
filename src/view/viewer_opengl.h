@@ -25,6 +25,12 @@ class ViewerOpenGL : public Viewer {
     GL_CHECK(glGenFramebuffers(1, &fbo_));
   }
 
+  void ConfigRenderer() override {
+    // disabled
+    config_.reverse_z = false;
+    config_.early_z = false;
+  }
+
   void SwapBuffer() override {
     int width = color_tex_out_->width;
     int height = color_tex_out_->height;

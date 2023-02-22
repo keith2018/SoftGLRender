@@ -18,11 +18,6 @@
 
 namespace SoftGL {
 
-RendererSoft::RendererSoft() {
-  viewport_.depth_near = 0.f;
-  viewport_.depth_far = 1.f;
-}
-
 // framebuffer
 std::shared_ptr<FrameBuffer> RendererSoft::CreateFrameBuffer() {
   return std::make_shared<FrameBufferSoft>();
@@ -70,6 +65,16 @@ void RendererSoft::SetViewPort(int x, int y, int width, int height) {
   viewport_.y = (float) y;
   viewport_.width = (float) width;
   viewport_.height = (float) height;
+
+  viewport_.depth_near = 0.f;
+  viewport_.depth_far = 1.f;
+
+  if (reverse_z) {
+    std::swap(viewport_.depth_near, viewport_.depth_far);
+  }
+
+  viewport_.depth_min = std::min(viewport_.depth_near, viewport_.depth_far);
+  viewport_.depth_max = std::max(viewport_.depth_near, viewport_.depth_far);
 
   viewport_.inner_o.x = viewport_.x + viewport_.width / 2.f;
   viewport_.inner_o.y = viewport_.y + viewport_.height / 2.f;
@@ -359,7 +364,7 @@ bool RendererSoft::ProcessDepthTest(int x, int y, float depth) {
   }
 
   // depth clamping
-  depth = glm::clamp(depth, viewport_.depth_near, viewport_.depth_far);
+  depth = glm::clamp(depth, viewport_.depth_min, viewport_.depth_max);
 
   // depth comparison
   float *z_ptr = fbo_depth_->Get(x, y);

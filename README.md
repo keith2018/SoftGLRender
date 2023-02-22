@@ -39,7 +39,7 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 - [x] Texture filtering and wrapping
 - [x] Shader derivative `dFdx` `dFdy`
 - [x] Alpha mask & blend
-- [ ] Reversed Z
+- [x] Reversed Z
 - [ ] Early Z
 
 #### Texture

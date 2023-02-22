@@ -22,6 +22,8 @@ class Viewer {
 
   virtual void Create(int width, int height, int outTexId);
 
+  virtual void ConfigRenderer();
+
   virtual void DrawFrame(DemoScene &scene);
 
   virtual void SwapBuffer() = 0;
