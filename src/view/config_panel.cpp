@@ -105,6 +105,10 @@ void ConfigPanel::DrawSettings() {
         ReloadSkybox(kv.first);
       }
     }
+
+    // pbr ibl
+    ImGui::Separator();
+    ImGui::Checkbox("enable IBL", &config_.pbr_ibl);
   }
 
   // clear Color
@@ -132,11 +136,19 @@ void ConfigPanel::DrawSettings() {
   ImGui::Separator();
   ImGui::Checkbox("point light", &config_.show_light);
   if (config_.show_light) {
-    ImGui::Text("color");
+    ImGui::Text("light color");
     ImGui::ColorEdit3("light color", (float *) &config_.point_light_color, ImGuiColorEditFlags_NoLabel);
 
-    ImGui::Text("position");
+    ImGui::Text("light position");
     ImGui::SliderAngle("##light position", &light_position_angle_, 0, 360.f);
+  }
+
+  // mipmaps
+  ImGui::Separator();
+  if (ImGui::Checkbox("mipmaps", &config_.mipmaps)) {
+    if (reset_mipmaps_func_) {
+      reset_mipmaps_func_();
+    }
   }
 
   // face cull
@@ -147,9 +159,13 @@ void ConfigPanel::DrawSettings() {
   ImGui::Separator();
   ImGui::Checkbox("depth test", &config_.depth_test);
 
-//  // early z
-//  ImGui::Separator();
-//  ImGui::Checkbox("early z", &config_.early_z);
+  // reverse z
+  ImGui::Separator();
+  ImGui::Checkbox("reverse z", &config_.reverse_z);
+
+  // early z
+  ImGui::Separator();
+  ImGui::Checkbox("early z", &config_.early_z);
 
   // Anti aliasing
   const char *aaItems[] = {

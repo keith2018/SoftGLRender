@@ -41,6 +41,9 @@ class ViewerManager {
     config_panel_->SetResetCameraFunc([&]() -> void {
       orbit_controller_->Reset();
     });
+    config_panel_->SetResetMipmapsFunc([&]() -> void {
+      model_loader_->GetScene().ResetModelTextures();
+    });
 
     // viewer soft
     auto viewer_soft = std::make_shared<ViewerSoft>(*config_, *camera_);
@@ -68,9 +71,10 @@ class ViewerManager {
     auto &viewer = viewers_[config_->renderer_type];
     if (renderer_type_ != config_->renderer_type) {
       renderer_type_ = config_->renderer_type;
-      ResetSceneStates(model_loader_->GetScene());
+      model_loader_->GetScene().ResetAllStates();
       viewer->Create(width_, height_, outTexId_);
     }
+    viewer->ConfigRenderer();
     viewer->DrawFrame(model_loader_->GetScene());
     viewer->SwapBuffer();
   }
@@ -118,31 +122,6 @@ class ViewerManager {
 
   inline bool WantCaptureMouse() {
     return config_panel_->WantCaptureMouse();
-  }
-
- private:
-  void ResetSceneStates(DemoScene &scene) {
-    std::function<void(ModelNode &node)> reset_node_func = [&](ModelNode &node) -> void {
-      for (auto &mesh : node.meshes) {
-        mesh.vao = nullptr;
-        mesh.material_wireframe.ResetRuntimeStates();
-        mesh.material_textured.ResetRuntimeStates();
-      }
-      for (auto &child_node : node.children) {
-        reset_node_func(child_node);
-      }
-    };
-    reset_node_func(scene.model->root_node);
-    scene.world_axis.vao = nullptr;
-    scene.world_axis.material.ResetRuntimeStates();
-
-    scene.point_light.vao = nullptr;
-    scene.point_light.material.ResetRuntimeStates();
-
-    scene.skybox.vao = nullptr;
-    for (auto &kv : scene.skybox.material_cache) {
-      kv.second.ResetRuntimeStates();
-    }
   }
 
  private:

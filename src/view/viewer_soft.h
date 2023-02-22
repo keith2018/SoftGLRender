@@ -22,6 +22,11 @@ class ViewerSoft : public Viewer {
  public:
   ViewerSoft(Config &config, Camera &camera) : Viewer(config, camera) {}
 
+  void ConfigRenderer() override {
+    renderer_->SetReverseZ(config_.reverse_z);
+    renderer_->SetEarlyZ(config_.early_z);
+  }
+
   void SwapBuffer() override {
     auto *tex_out = dynamic_cast<Texture2DSoft *>(color_tex_out_.get());
     auto buffer = tex_out->GetImage().GetBuffer();

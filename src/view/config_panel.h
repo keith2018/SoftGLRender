@@ -41,6 +41,9 @@ class ConfigPanel {
   inline void SetResetCameraFunc(const std::function<void(void)> &func) {
     reset_camera_func_ = func;
   }
+  inline void SetResetMipmapsFunc(const std::function<void(void)> &func) {
+    reset_mipmaps_func_ = func;
+  }
 
  private:
   bool LoadConfig();
@@ -67,6 +70,7 @@ class ConfigPanel {
   std::function<bool(const std::string &path)> reload_skybox_func_;
   std::function<void(glm::vec3 &position, glm::vec3 &color)> update_light_func_;
   std::function<void(void)> reset_camera_func_;
+  std::function<void(void)> reset_mipmaps_func_;
 };
 
 }

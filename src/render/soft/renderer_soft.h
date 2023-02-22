@@ -17,11 +17,13 @@ namespace SoftGL {
 
 class RendererSoft : public Renderer {
  public:
-  RendererSoft();
-
   // config
-  bool ReverseZ() const override {
-    return false;
+  void SetReverseZ(bool enable) override {
+    reverse_z = enable;
+  }
+
+  void SetEarlyZ(bool enable) override {
+    // TODO
   }
 
   // framebuffer
@@ -119,7 +121,9 @@ class RendererSoft : public Renderer {
   size_t varyings_aligned_cnt_ = 0;
   size_t varyings_aligned_size_ = 0;
 
+  bool reverse_z = true;
   int raster_block_size_ = 32;
+
   ThreadPool thread_pool_;
   std::vector<PixelQuadContext> thread_quad_ctx_;
 };
