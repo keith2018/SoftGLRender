@@ -40,7 +40,9 @@ class TextureImageSoft {
 
 class Texture2DSoft : public Texture2D {
  public:
-  Texture2DSoft() : uuid_(uuid_counter_++) {}
+  explicit Texture2DSoft(bool multi_sample = false) : uuid_(uuid_counter_++) {
+    Texture::multi_sample = multi_sample;
+  }
 
   int GetId() const override {
     return uuid_;
@@ -151,7 +153,9 @@ class TextureCubeSoft : public TextureCube {
 
 class TextureDepthSoft : public TextureDepth {
  public:
-  TextureDepthSoft() : uuid_(uuid_counter_++) {}
+  explicit TextureDepthSoft(bool multi_sample = false) : uuid_(uuid_counter_++) {
+    Texture::multi_sample = multi_sample;
+  }
 
   int GetId() const override {
     return uuid_;

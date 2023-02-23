@@ -170,7 +170,7 @@ void ConfigPanel::DrawSettings() {
   // Anti aliasing
   const char *aaItems[] = {
       "NONE",
-      "SSAA",
+      "MSAA",
       "FXAA",
   };
   ImGui::Separator();

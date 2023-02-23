@@ -30,9 +30,9 @@ class RendererSoft : public Renderer {
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
 
   // texture
-  std::shared_ptr<Texture2D> CreateTexture2D() override;
+  std::shared_ptr<Texture2D> CreateTexture2D(bool multi_sample) override;
   std::shared_ptr<TextureCube> CreateTextureCube() override;
-  std::shared_ptr<TextureDepth> CreateTextureDepth() override;
+  std::shared_ptr<TextureDepth> CreateTextureDepth(bool multi_sample) override;
 
   // vertex
   std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) override;

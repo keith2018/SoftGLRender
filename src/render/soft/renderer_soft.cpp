@@ -24,16 +24,16 @@ std::shared_ptr<FrameBuffer> RendererSoft::CreateFrameBuffer() {
 }
 
 // texture
-std::shared_ptr<Texture2D> RendererSoft::CreateTexture2D() {
-  return std::make_shared<Texture2DSoft>();
+std::shared_ptr<Texture2D> RendererSoft::CreateTexture2D(bool multi_sample) {
+  return std::make_shared<Texture2DSoft>(multi_sample);
 }
 
 std::shared_ptr<TextureCube> RendererSoft::CreateTextureCube() {
   return std::make_shared<TextureCubeSoft>();
 }
 
-std::shared_ptr<TextureDepth> RendererSoft::CreateTextureDepth() {
-  return std::make_shared<TextureDepthSoft>();
+std::shared_ptr<TextureDepth> RendererSoft::CreateTextureDepth(bool multi_sample) {
+  return std::make_shared<TextureDepthSoft>(multi_sample);
 }
 
 // vertex

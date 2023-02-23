@@ -25,15 +25,15 @@ void Viewer::Create(int width, int height, int outTexId) {
   fbo_ = renderer_->CreateFrameBuffer();
 
   // depth attachment
-  auto depth_attachment = renderer_->CreateTextureDepth();
-  depth_attachment->InitImageData(width, height);
-  fbo_->SetDepthAttachment(depth_attachment);
+  depth_tex_out_ = renderer_->CreateTextureDepth(false);
+  depth_tex_out_->InitImageData(width, height);
+  fbo_->SetDepthAttachment(depth_tex_out_);
 
   // color attachment
   Sampler2DDesc sampler;
   sampler.use_mipmaps = false;
   sampler.filter_min = Filter_LINEAR;
-  color_tex_out_ = renderer_->CreateTexture2D();
+  color_tex_out_ = renderer_->CreateTexture2D(false);
   color_tex_out_->InitImageData(width, height);
   color_tex_out_->SetSamplerDesc(sampler);
   fbo_->SetColorAttachment(color_tex_out_);
@@ -58,36 +58,19 @@ void Viewer::ConfigRenderer() {}
 void Viewer::DrawFrame(DemoScene &scene) {
   scene_ = &scene;
 
+  // init frame buffer
+  SetupFrameBuffer();
+
+  // FXAA
+  if (config_.aa_type == AAType_FXAA) {
+    FXAASetup();
+  }
+
   // set framebuffer
   renderer_->SetFrameBuffer(*fbo_);
 
-  // anti-aliasing
-  auto aa_type = (AAType) config_.aa_type;
-  switch (aa_type) {
-    case AAType_FXAA: {
-      color_tex_out_->InitImageData(width_, height_);
-      FXAASetup();
-
-      fbo_->SetColorAttachment(color_tex_fxaa_);
-      fbo_->UpdateAttachmentsSize(width_, height_);
-      renderer_->SetViewPort(0, 0, width_, height_);
-      break;
-    }
-
-    case AAType_SSAA: {
-      fbo_->SetColorAttachment(color_tex_out_);
-      fbo_->UpdateAttachmentsSize(width_ * 2, height_ * 2);
-      renderer_->SetViewPort(0, 0, width_ * 2, height_ * 2);
-      break;
-    }
-
-    default: {
-      fbo_->SetColorAttachment(color_tex_out_);
-      fbo_->UpdateAttachmentsSize(width_, height_);
-      renderer_->SetViewPort(0, 0, width_, height_);
-      break;
-    }
-  }
+  // set view port
+  renderer_->SetViewPort(0, 0, width_, height_);
 
   // clear
   ClearState clear_state;
@@ -131,7 +114,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
   DrawModelNodes(model_node, model_transform, Alpha_Blend, config_.wireframe);
 
   // FXAA
-  if (aa_type == AAType_FXAA) {
+  if (config_.aa_type == AAType_FXAA) {
     FXAADraw();
   }
 }
@@ -144,7 +127,7 @@ void Viewer::FXAASetup() {
     sampler.use_mipmaps = false;
     sampler.filter_min = Filter_LINEAR;
 
-    color_tex_fxaa_ = renderer_->CreateTexture2D();
+    color_tex_fxaa_ = renderer_->CreateTexture2D(false);
     color_tex_fxaa_->InitImageData(width_, height_);
     color_tex_fxaa_->SetSamplerDesc(sampler);
   }
@@ -153,10 +136,11 @@ void Viewer::FXAASetup() {
     fxaa_filter_ = std::make_shared<QuadFilter>(CreateRenderer(),
                                                 [&](ShaderProgram &program) -> bool {
                                                   return LoadShaders(program, Shading_FXAA);
-                                                },
-                                                color_tex_fxaa_,
-                                                color_tex_out_);
+                                                });
   }
+
+  fbo_->SetColorAttachment(color_tex_fxaa_);
+  fxaa_filter_->SetTextures(color_tex_fxaa_, color_tex_out_);
 }
 
 void Viewer::FXAADraw() {
@@ -298,6 +282,38 @@ void Viewer::PipelineDraw(ModelVertexes &vertexes, Material &material) {
   renderer_->Draw(vertexes.primitive_type);
 }
 
+void Viewer::SetupFrameBuffer() {
+  if (config_.aa_type == AAType_MSAA) {
+    SetupColorBuffer(true);
+    SetupDepthBuffer(true);
+  } else {
+    SetupColorBuffer(false);
+    SetupDepthBuffer(false);
+  }
+
+  fbo_->SetColorAttachment(color_tex_out_);
+  fbo_->SetDepthAttachment(depth_tex_out_);
+  fbo_->UpdateAttachmentsSize(width_, height_);
+}
+
+void Viewer::SetupColorBuffer(bool multi_sample) {
+  if (color_tex_out_->multi_sample != multi_sample) {
+    Sampler2DDesc sampler;
+    sampler.use_mipmaps = false;
+    sampler.filter_min = Filter_LINEAR;
+    color_tex_out_ = renderer_->CreateTexture2D(multi_sample);
+    color_tex_out_->InitImageData(width_, height_);
+    color_tex_out_->SetSamplerDesc(sampler);
+  }
+}
+
+void Viewer::SetupDepthBuffer(bool multi_sample) {
+  if (depth_tex_out_->multi_sample != multi_sample) {
+    depth_tex_out_ = renderer_->CreateTextureDepth(multi_sample);
+    depth_tex_out_->InitImageData(width_, height_);
+  }
+}
+
 void Viewer::SetupVertexArray(ModelVertexes &vertexes) {
   if (!vertexes.vao) {
     vertexes.vao = renderer_->CreateVertexArrayObject(vertexes);
@@ -343,7 +359,7 @@ void Viewer::SetupTextures(Material &material) {
         break;
       }
       default: {
-        texture = renderer_->CreateTexture2D();
+        texture = renderer_->CreateTexture2D(false);
 
         Sampler2DDesc sampler_2d;
         sampler_2d.wrap_s = kv.second.wrap_mode;

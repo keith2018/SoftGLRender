@@ -89,6 +89,7 @@ class Texture {
  public:
   int width = 0;
   int height = 0;
+  bool multi_sample = false;
 };
 
 class Texture2D : public Texture {

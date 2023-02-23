@@ -10,12 +10,7 @@ namespace SoftGL {
 namespace View {
 
 QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
-                       const std::function<bool(ShaderProgram &program)> &shader_func,
-                       std::shared_ptr<Texture2D> &tex_in,
-                       std::shared_ptr<Texture2D> &tex_out) {
-  width_ = tex_out->width;
-  height_ = tex_out->height;
-
+                       const std::function<bool(ShaderProgram &program)> &shader_func) {
   // quad mesh
   quad_mesh_.primitive_type = Primitive_TRIANGLE;
   quad_mesh_.primitive_cnt = 2;
@@ -31,7 +26,6 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
 
   // fbo
   fbo_ = renderer_->CreateFrameBuffer();
-  fbo_->SetColorAttachment(tex_out);
 
   // vao
   quad_mesh_.vao = renderer_->CreateVertexArrayObject(quad_mesh_);
@@ -49,16 +43,25 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   // uniforms
   TextureUsage usage = TextureUsage_QUAD_FILTER;
   const char *sampler_name = Material::SamplerName(usage);
-  auto uniform = renderer_->CreateUniformSampler(sampler_name, tex_in->Type());
-  uniform->SetTexture(tex_in);
-  quad_mesh_.material_textured.shader_uniforms->samplers[usage] = uniform;
+  uniform_tex_in_ = renderer_->CreateUniformSampler(sampler_name, TextureType_2D);
+  quad_mesh_.material_textured.shader_uniforms->samplers[usage] = uniform_tex_in_;
 
-  auto uniforms_block = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
-  UniformsQuadFilter uniforms_filter{glm::vec2(width_, height_)};
-  uniforms_block->SetData(&uniforms_filter, sizeof(UniformsQuadFilter));
-  quad_mesh_.material_textured.shader_uniforms->blocks[UniformBlock_QuadFilter] = std::move(uniforms_block);
+  uniform_block_filter_ = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
+  uniform_block_filter_->SetData(&uniform_filter_, sizeof(UniformsQuadFilter));
+  quad_mesh_.material_textured.shader_uniforms->blocks[UniformBlock_QuadFilter] = uniform_block_filter_;
 
   init_ready_ = true;
+}
+
+void QuadFilter::SetTextures(std::shared_ptr<Texture2D> &tex_in,
+                             std::shared_ptr<Texture2D> &tex_out) {
+  width_ = tex_out->width;
+  height_ = tex_out->height;
+  uniform_filter_.u_screenSize = glm::vec2(width_, height_);
+  uniform_block_filter_->SetData(&uniform_filter_, sizeof(UniformsQuadFilter));
+
+  uniform_tex_in_->SetTexture(tex_in);
+  fbo_->SetColorAttachment(tex_out);
 }
 
 void QuadFilter::Draw() {

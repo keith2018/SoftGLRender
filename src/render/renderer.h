@@ -25,9 +25,9 @@ class Renderer {
   virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
 
   // texture
-  virtual std::shared_ptr<Texture2D> CreateTexture2D() = 0;
+  virtual std::shared_ptr<Texture2D> CreateTexture2D(bool multi_sample) = 0;
   virtual std::shared_ptr<TextureCube> CreateTextureCube() = 0;
-  virtual std::shared_ptr<TextureDepth> CreateTextureDepth() = 0;
+  virtual std::shared_ptr<TextureDepth> CreateTextureDepth(bool multi_sample) = 0;
 
   // vertex
   virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) = 0;

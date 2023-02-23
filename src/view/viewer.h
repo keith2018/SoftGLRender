@@ -52,6 +52,10 @@ class Viewer {
                      const std::function<void(RenderState &rs)> &extra_states);
   void PipelineDraw(ModelVertexes &vertexes, Material &material);
 
+  void SetupFrameBuffer();
+  void SetupColorBuffer(bool multi_sample);
+  void SetupDepthBuffer(bool multi_sample);
+
   void SetupVertexArray(ModelVertexes &vertexes);
   void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
   bool SetupShaderProgram(Material &material);
@@ -92,6 +96,7 @@ class Viewer {
 
   std::shared_ptr<FrameBuffer> fbo_ = nullptr;
   std::shared_ptr<Texture2D> color_tex_out_ = nullptr;
+  std::shared_ptr<TextureDepth> depth_tex_out_ = nullptr;
   std::shared_ptr<Texture2D> color_tex_fxaa_ = nullptr;
   std::shared_ptr<TextureCube> ibl_placeholder_ = nullptr;
 

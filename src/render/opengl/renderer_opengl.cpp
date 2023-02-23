@@ -22,16 +22,16 @@ std::shared_ptr<FrameBuffer> RendererOpenGL::CreateFrameBuffer() {
 }
 
 // texture
-std::shared_ptr<Texture2D> RendererOpenGL::CreateTexture2D() {
-  return std::make_shared<Texture2DOpenGL>();
+std::shared_ptr<Texture2D> RendererOpenGL::CreateTexture2D(bool multi_sample) {
+  return std::make_shared<Texture2DOpenGL>(multi_sample);
 }
 
 std::shared_ptr<TextureCube> RendererOpenGL::CreateTextureCube() {
   return std::make_shared<TextureCubeOpenGL>();
 }
 
-std::shared_ptr<TextureDepth> RendererOpenGL::CreateTextureDepth() {
-  return std::make_shared<TextureDepthOpenGL>();
+std::shared_ptr<TextureDepth> RendererOpenGL::CreateTextureDepth(bool multi_sample) {
+  return std::make_shared<TextureDepthOpenGL>(multi_sample);
 }
 
 // vertex
