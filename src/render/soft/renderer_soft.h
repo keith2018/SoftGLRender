@@ -88,6 +88,7 @@ class RendererSoft : public Renderer {
   void RasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives);
   void RasterizationPixelQuad(PixelQuadContext &quad);
 
+  void MultiSampleResolve();
  private:
   inline glm::u8vec4 GetFrameColor(int x, int y);
   inline void SetFrameColor(int x, int y, const glm::u8vec4 &color);
@@ -110,8 +111,8 @@ class RendererSoft : public Renderer {
   VertexArrayObjectSoft *vao_ = nullptr;
   ShaderProgramSoft *shader_program_ = nullptr;
 
-  std::shared_ptr<BufferRGBA> fbo_color_ = nullptr;
-  std::shared_ptr<BufferDepth> fbo_depth_ = nullptr;
+  std::shared_ptr<ImageBufferColor> fbo_color_ = nullptr;
+  std::shared_ptr<ImageBufferDepth> fbo_depth_ = nullptr;
 
   std::vector<VertexHolder> vertexes_;
   std::vector<PrimitiveHolder> primitives_;
@@ -122,6 +123,7 @@ class RendererSoft : public Renderer {
   size_t varyings_aligned_size_ = 0;
 
   bool reverse_z = true;
+  int raster_samples = 1;
   int raster_block_size_ = 32;
 
   ThreadPool thread_pool_;

@@ -96,11 +96,16 @@ void RendererSoft::Clear(const ClearState &state) {
   fbo_depth_ = fbo_->GetDepthBuffer();
 
   if (state.color_flag && fbo_color_) {
-    fbo_color_->SetAll(glm::u8vec4(state.clear_color.r * 255,
-                                   state.clear_color.g * 255,
-                                   state.clear_color.b * 255,
-                                   state.clear_color.a * 255));
-
+    RGBA color = glm::u8vec4(state.clear_color.r * 255,
+                             state.clear_color.g * 255,
+                             state.clear_color.b * 255,
+                             state.clear_color.a * 255);
+    if (fbo_color_->multi_sample) {
+      ColorSample cs{color, 0};
+      fbo_color_->buffer_ms->SetAll(cs);
+    } else {
+      fbo_color_->buffer->SetAll(color);
+    }
   }
 
   if (state.depth_flag && fbo_depth_) {
@@ -149,6 +154,10 @@ void RendererSoft::Draw(PrimitiveType type) {
   ProcessViewportTransform();
   ProcessFaceCulling();
   ProcessRasterization();
+
+  if (fbo_color_->multi_sample) {
+    MultiSampleResolve();
+  }
 }
 
 void RendererSoft::ProcessVertexShader() {
@@ -772,12 +781,35 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
   }
 }
 
+void RendererSoft::MultiSampleResolve() {
+  if (!fbo_color_->buffer) {
+    fbo_color_->buffer = Buffer<RGBA>::MakeDefault(fbo_color_->width, fbo_color_->height);
+    fbo_color_->buffer->SetAll(RGBA{0});
+  }
+
+  ColorSample *src_ptr = fbo_color_->buffer_ms->GetRawDataPtr();
+  RGBA *dst_ptr = fbo_color_->buffer->GetRawDataPtr();
+  for (size_t idx = 0; idx < fbo_color_->buffer_ms->GetRawDataSize(); idx++) {
+    *dst_ptr = glm::vec4(src_ptr->color) * ((float) glm::bitCount(src_ptr->coverage) / (float) fbo_color_->sample_cnt);
+    src_ptr++;
+    dst_ptr++;
+  }
+}
+
 glm::u8vec4 RendererSoft::GetFrameColor(int x, int y) {
-  return *fbo_color_->Get(x, y);
+  if (fbo_color_->multi_sample) {
+    return fbo_color_->buffer_ms->Get(x, y)->color;
+  } else {
+    return *fbo_color_->buffer->Get(x, y);
+  }
 }
 
 void RendererSoft::SetFrameColor(int x, int y, const glm::u8vec4 &color) {
-  fbo_color_->Set(x, y, color);
+  if (fbo_color_->multi_sample) {
+    fbo_color_->buffer_ms->Set(x, y, {color, 0});  // TODO
+  } else {
+    fbo_color_->buffer->Set(x, y, color);
+  }
 }
 
 VertexHolder &RendererSoft::ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process) {

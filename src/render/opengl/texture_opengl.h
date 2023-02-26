@@ -42,7 +42,7 @@ class Texture2DOpenGL : public Texture2D {
     use_mipmaps = sampler_2d.use_mipmaps;
   }
 
-  void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
+  void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
     width = (int) buffers[0]->GetWidth();
     height = (int) buffers[0]->GetHeight();
     GL_CHECK(glBindTexture(target_, texId_));
@@ -117,7 +117,7 @@ class TextureCubeOpenGL : public TextureCube {
     use_mipmaps = sampler_cube.use_mipmaps;
   }
 
-  void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) override {
+  void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
     width = (int) buffers[0]->GetWidth();
     height = (int) buffers[0]->GetHeight();
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));

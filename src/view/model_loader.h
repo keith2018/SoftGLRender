@@ -48,7 +48,7 @@ class ModelLoader {
   static BoundingBox ConvertBoundingBox(const aiAABB &aabb);
 
   void PreloadTextureFiles(const aiScene *scene, const std::string &res_dir);
-  std::shared_ptr<BufferRGBA> LoadTextureFile(const std::string &path);
+  std::shared_ptr<Buffer<RGBA>> LoadTextureFile(const std::string &path);
 
  private:
   Config &config_;
@@ -56,7 +56,7 @@ class ModelLoader {
 
   DemoScene scene_;
   std::unordered_map<std::string, std::shared_ptr<Model>> model_cache_;
-  std::unordered_map<std::string, std::shared_ptr<BufferRGBA>> texture_cache_;
+  std::unordered_map<std::string, std::shared_ptr<Buffer<RGBA>>> texture_cache_;
 
   std::mutex load_mutex_;
   std::mutex tex_cache_mutex_;

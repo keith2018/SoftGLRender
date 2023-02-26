@@ -21,7 +21,7 @@ class BaseSampler {
   inline size_t Width() const { return width_; }
   inline size_t Height() const { return height_; }
 
-  glm::tvec4<T> TextureImpl(TextureImageSoft<T> *tex,
+  glm::tvec4<T> TextureImpl(TextureImageSoft *tex,
                             glm::vec2 &uv,
                             float lod = 0.f,
                             glm::ivec2 offset = glm::ivec2(0));
@@ -44,7 +44,7 @@ class BaseSampler {
     lod_func_ = func;
   }
 
-  static void GenerateMipmaps(TextureImageSoft<T> *tex, bool sample);
+  static void GenerateMipmaps(TextureImageSoft *tex, bool sample);
 
  public:
   static const glm::tvec4<T> BORDER_COLOR;
@@ -62,7 +62,7 @@ class BaseSampler {
 template<typename T>
 class BaseSampler2D : public BaseSampler<T> {
  public:
-  inline void SetImage(TextureImageSoft<T> *tex) {
+  inline void SetImage(TextureImageSoft *tex) {
     tex_ = tex;
     BaseSampler<T>::width_ = (tex_ == nullptr) ? 0 : tex_->GetWidth();
     BaseSampler<T>::height_ = (tex_ == nullptr) ? 0 : tex_->GetHeight();
@@ -87,14 +87,14 @@ class BaseSampler2D : public BaseSampler<T> {
   }
 
  private:
-  TextureImageSoft<T> *tex_ = nullptr;
+  TextureImageSoft *tex_ = nullptr;
 };
 
 template<typename T>
 const glm::tvec4<T> BaseSampler<T>::BORDER_COLOR(0);
 
 template<typename T>
-void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<T> *tex, bool sample) {
+void BaseSampler<T>::GenerateMipmaps(TextureImageSoft *tex, bool sample) {
   int width = tex->GetWidth();
   int height = tex->GetHeight();
 
@@ -105,7 +105,7 @@ void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<T> *tex, bool sample) {
   while (width > 2 && height > 2) {
     width = glm::max((int) glm::floor((float) width / 2.f), 1);
     height = glm::max((int) glm::floor((float) height / 2.f), 1);
-    tex->levels.push_back(Buffer<glm::tvec4<T>>::MakeDefault(width, height));
+    tex->levels.push_back(std::make_shared<ImageBufferColor>(width, height));
   }
 
   if (!sample) {
@@ -113,26 +113,21 @@ void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<T> *tex, bool sample) {
   }
 
   for (int i = 1; i < tex->levels.size(); i++) {
-    BaseSampler<T>::SampleBufferBilinear(tex->levels[i].get(), tex->levels[i - 1].get());
+    BaseSampler<T>::SampleBufferBilinear(tex->levels[i]->buffer.get(), tex->levels[i - 1]->buffer.get());
   }
 }
 
 template<typename T>
-void TextureImageSoft<T>::GenerateMipmap(bool sample) {
-  BaseSampler<T>::GenerateMipmaps(this, sample);
-}
-
-template<typename T>
-glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<T> *tex,
+glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft *tex,
                                           glm::vec2 &uv,
                                           float lod,
                                           glm::ivec2 offset) {
   if (tex != nullptr && !tex->Empty()) {
     if (filter_mode_ == Filter_NEAREST) {
-      return SampleNearest(tex->levels[0].get(), uv, wrap_mode_, offset);
+      return SampleNearest(tex->levels[0]->buffer.get(), uv, wrap_mode_, offset);
     }
     if (filter_mode_ == Filter_LINEAR) {
-      return SampleBilinear(tex->levels[0].get(), uv, wrap_mode_, offset);
+      return SampleBilinear(tex->levels[0]->buffer.get(), uv, wrap_mode_, offset);
     }
 
     // mipmaps
@@ -141,9 +136,9 @@ glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<T> *tex,
     if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST) {
       int level = glm::clamp((int) glm::ceil(lod + 0.5f) - 1, 0, max_level);
       if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST) {
-        return SampleNearest(tex->levels[level].get(), uv, wrap_mode_, offset);
+        return SampleNearest(tex->levels[level]->buffer.get(), uv, wrap_mode_, offset);
       } else {
-        return SampleBilinear(tex->levels[level].get(), uv, wrap_mode_, offset);
+        return SampleBilinear(tex->levels[level]->buffer.get(), uv, wrap_mode_, offset);
       }
     }
 
@@ -153,18 +148,18 @@ glm::tvec4<T> BaseSampler<T>::TextureImpl(TextureImageSoft<T> *tex,
 
       glm::tvec4<T> texel_hi, texel_lo;
       if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-        texel_hi = SampleNearest(tex->levels[level_hi].get(), uv, wrap_mode_, offset);
+        texel_hi = SampleNearest(tex->levels[level_hi]->buffer.get(), uv, wrap_mode_, offset);
       } else {
-        texel_hi = SampleBilinear(tex->levels[level_hi].get(), uv, wrap_mode_, offset);
+        texel_hi = SampleBilinear(tex->levels[level_hi]->buffer.get(), uv, wrap_mode_, offset);
       }
 
       if (level_hi == level_lo) {
         return texel_hi;
       } else {
         if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-          texel_lo = SampleNearest(tex->levels[level_lo].get(), uv, wrap_mode_, offset);
+          texel_lo = SampleNearest(tex->levels[level_lo]->buffer.get(), uv, wrap_mode_, offset);
         } else {
-          texel_lo = SampleBilinear(tex->levels[level_lo].get(), uv, wrap_mode_, offset);
+          texel_lo = SampleBilinear(tex->levels[level_lo]->buffer.get(), uv, wrap_mode_, offset);
         }
       }
 
@@ -301,7 +296,7 @@ class BaseSamplerCube : public BaseSampler<T> {
     BaseSampler<T>::filter_mode_ = Filter_LINEAR;
   }
 
-  inline void SetImage(TextureImageSoft<T> *tex, int idx) {
+  inline void SetImage(TextureImageSoft *tex, int idx) {
     texes_[idx] = tex;
     if (idx == 0) {
       BaseSampler<T>::width_ = (tex == nullptr) ? 0 : tex->GetWidth();
@@ -325,7 +320,7 @@ class BaseSamplerCube : public BaseSampler<T> {
     int index;
     glm::vec2 uv;
     ConvertXYZ2UV(coord.x, coord.y, coord.z, &index, &uv.x, &uv.y);
-    TextureImageSoft<T> *tex = texes_[index];
+    TextureImageSoft *tex = texes_[index];
     glm::tvec4<T> color = BaseSampler<T>::TextureImpl(tex, uv, lod);
     return {color[0], color[1], color[2], color[3]};
   }
@@ -334,7 +329,7 @@ class BaseSamplerCube : public BaseSampler<T> {
 
  private:
   // +x, -x, +y, -y, +z, -z
-  TextureImageSoft<T> *texes_[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+  TextureImageSoft *texes_[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 };
 
 template<typename T>

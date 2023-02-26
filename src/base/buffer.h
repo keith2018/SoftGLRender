@@ -246,6 +246,4 @@ std::shared_ptr<Buffer<T>> Buffer<T>::MakeLayout(size_t w, size_t h, BufferLayou
   return ret;
 }
 
-using BufferRGBA = Buffer<glm::u8vec4>;
-
 }
