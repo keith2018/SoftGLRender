@@ -78,9 +78,8 @@ The storage of texture supports three modes:
 
 #### Anti Aliasing
 
-- [x] SSAA
-- [x] FXAA
 - [x] MSAA
+- [x] FXAA
 
 #### Shading
 
