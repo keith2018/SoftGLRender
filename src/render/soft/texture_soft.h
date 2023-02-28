@@ -15,11 +15,6 @@ namespace SoftGL {
 
 #define SOFT_MULTI_SAMPLE_CNT 4
 
-struct ColorSample {
-  RGBA color;
-  int coverage;
-};
-
 class ImageBufferColor {
  public:
   ImageBufferColor() = default;
@@ -30,10 +25,12 @@ class ImageBufferColor {
     multi_sample = samples > 1;
     sample_cnt = samples;
 
-    if (multi_sample) {
-      buffer_ms = Buffer<ColorSample>::MakeDefault(w, h);
-    } else {
+    if (samples == 1) {
       buffer = Buffer<RGBA>::MakeDefault(w, h);
+    } else if (samples == 4) {
+      buffer_ms4x = Buffer<glm::tvec4<RGBA>>::MakeDefault(w, h);
+    } else {
+      LOGE("create color buffer failed: samplers not support");
     }
   }
 
@@ -47,7 +44,7 @@ class ImageBufferColor {
 
  public:
   std::shared_ptr<Buffer<RGBA>> buffer;
-  std::shared_ptr<Buffer<ColorSample>> buffer_ms;
+  std::shared_ptr<Buffer<glm::tvec4<RGBA>>> buffer_ms4x;
 
   int width = 0;
   int height = 0;
@@ -68,36 +65,15 @@ class ImageBufferDepth {
     if (samples == 1) {
       buffer = Buffer<float>::MakeDefault(w, h);
     } else if (samples == 4) {
-      buffer_ms4x = Buffer<glm::fvec4>::MakeDefault(w, h);
+      buffer_ms4x = Buffer<glm::tvec4<float>>::MakeDefault(w, h);
     } else {
       LOGE("create depth buffer failed: samplers not support");
     }
   }
 
-  inline void SetAll(float val) const {
-    if (buffer) {
-      buffer->SetAll(val);
-    } else if (buffer_ms4x) {
-      buffer_ms4x->SetAll(glm::fvec4(val));
-    }
-  }
-
-  inline float *Get(size_t x, size_t y, int sample = 0) const {
-    if (buffer) {
-      return buffer->Get(x, y);
-    } else if (buffer_ms4x) {
-      auto *ptr = (float *) buffer_ms4x->Get(x, y);
-      if (ptr) {
-        return ptr + sample;
-      }
-    }
-
-    return nullptr;
-  }
-
  public:
   std::shared_ptr<Buffer<float>> buffer;
-  std::shared_ptr<Buffer<glm::fvec4>> buffer_ms4x;
+  std::shared_ptr<Buffer<glm::tvec4<float>>> buffer_ms4x;
 
   int width = 0;
   int height = 0;

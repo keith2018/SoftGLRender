@@ -36,7 +36,7 @@ void Viewer::Create(int width, int height, int outTexId) {
   color_tex_out_ = renderer_->CreateTexture2D(false);
   color_tex_out_->InitImageData(width, height);
   color_tex_out_->SetSamplerDesc(sampler);
-  fbo_->SetColorAttachment(color_tex_out_);
+  fbo_->SetColorAttachment(color_tex_out_, 0);
 
   if (!fbo_->IsValid()) {
     LOGE("create framebuffer failed");
@@ -139,7 +139,7 @@ void Viewer::FXAASetup() {
                                                 });
   }
 
-  fbo_->SetColorAttachment(color_tex_fxaa_);
+  fbo_->SetColorAttachment(color_tex_fxaa_, 0);
   fxaa_filter_->SetTextures(color_tex_fxaa_, color_tex_out_);
 }
 
@@ -291,9 +291,8 @@ void Viewer::SetupFrameBuffer() {
     SetupDepthBuffer(false);
   }
 
-  fbo_->SetColorAttachment(color_tex_out_);
+  fbo_->SetColorAttachment(color_tex_out_, 0);
   fbo_->SetDepthAttachment(depth_tex_out_);
-  fbo_->UpdateAttachmentsSize(width_, height_);
 }
 
 void Viewer::SetupColorBuffer(bool multi_sample) {

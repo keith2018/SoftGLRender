@@ -63,8 +63,8 @@ class RendererSoft : public Renderer {
   void ProcessFaceCulling();
   void ProcessRasterization();
   void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings, ShaderProgramSoft *shader);
-  void ProcessPerSampleOperations(int x, int y, ShaderBuiltin &builtin);
-  bool ProcessDepthTest(int x, int y, float depth);
+  void ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample = 0);
+  bool ProcessDepthTest(int x, int y, float depth, int sample = 0);
   void ProcessColorBlending(int x, int y, glm::vec4 &color);
 
   void ProcessPointAssembly();
@@ -90,8 +90,8 @@ class RendererSoft : public Renderer {
 
   void MultiSampleResolve();
  private:
-  inline glm::u8vec4 GetFrameColor(int x, int y);
-  inline void SetFrameColor(int x, int y, const glm::u8vec4 &color);
+  inline RGBA *GetFrameColor(int x, int y, int sample = 0);
+  inline void SetFrameColor(int x, int y, const RGBA &color, int sample = 0);
 
   VertexHolder &ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process = false);
   void VertexShaderImpl(VertexHolder &vertex);

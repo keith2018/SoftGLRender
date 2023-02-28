@@ -61,7 +61,7 @@ void QuadFilter::SetTextures(std::shared_ptr<Texture2D> &tex_in,
   uniform_block_filter_->SetData(&uniform_filter_, sizeof(UniformsQuadFilter));
 
   uniform_tex_in_->SetTexture(tex_in);
-  fbo_->SetColorAttachment(tex_out);
+  fbo_->SetColorAttachment(tex_out, 0);
 }
 
 void QuadFilter::Draw() {

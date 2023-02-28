@@ -40,7 +40,6 @@ struct ShaderBuiltin {
   bool FrontFacing;
 
   // fragment shader output
-  float FragDepth;
   glm::vec4 FragColor;
   bool discard = false;
 
