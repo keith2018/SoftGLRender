@@ -23,7 +23,7 @@ class RendererSoft : public Renderer {
   }
 
   void SetEarlyZ(bool enable) override {
-    // TODO
+    early_z = enable;
   }
 
   // framebuffer
@@ -88,6 +88,7 @@ class RendererSoft : public Renderer {
   void RasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives);
   void RasterizationPixelQuad(PixelQuadContext &quad);
 
+  bool EarlyZTest(PixelQuadContext &quad);
   void MultiSampleResolve();
  private:
   inline RGBA *GetFrameColor(int x, int y, int sample = 0);
@@ -123,6 +124,7 @@ class RendererSoft : public Renderer {
   size_t varyings_aligned_size_ = 0;
 
   bool reverse_z = true;
+  bool early_z = false;
   int raster_samples = 1;
   int raster_block_size_ = 32;
 

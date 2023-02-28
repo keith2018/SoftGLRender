@@ -791,11 +791,19 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
   // barycentric correction
   BarycentricCorrect(quad);
 
+  // early z
+  if (early_z && render_state_->depth_test) {
+    if (!EarlyZTest(quad)) {
+      return;
+    }
+  }
+
   // varying interpolate
   // note: all quad pixels should perform varying interpolate to enable varying partial derivative
   for (auto &pixel : quad.pixels) {
     InterpolateBarycentric((float *) pixel.varyings_frag,
-                           quad.vert_varyings, varyings_cnt_,
+                           quad.vert_varyings,
+                           varyings_cnt_,
                            pixel.sample_shading->barycentric);
   }
 
@@ -821,20 +829,40 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
         if (!sample.inside) {
           continue;
         }
-        ProcessPerSampleOperations(sample.fbo_coord.x,
-                                   sample.fbo_coord.y,
-                                   sample.position.z,
-                                   builtIn.FragColor,
-                                   idx);
+        ProcessPerSampleOperations(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, builtIn.FragColor, idx);
       }
     } else {
       auto &sample = *pixel.sample_shading;
-      ProcessPerSampleOperations(sample.fbo_coord.x,
-                                 sample.fbo_coord.y,
-                                 sample.position.z,
-                                 builtIn.FragColor);
+      ProcessPerSampleOperations(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, builtIn.FragColor);
     }
   }
+}
+
+bool RendererSoft::EarlyZTest(PixelQuadContext &quad) {
+  for (auto &pixel : quad.pixels) {
+    if (!pixel.inside) {
+      continue;
+    }
+    if (pixel.sample_count > 1) {
+      bool inside = false;
+      for (int idx = 0; idx < pixel.sample_count; idx++) {
+        auto &sample = pixel.samples[idx];
+        if (!sample.inside) {
+          continue;
+        }
+        sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, idx);
+        if (sample.inside) {
+          inside = true;
+        }
+      }
+      pixel.inside = inside;
+    } else {
+      auto &sample = *pixel.sample_shading;
+      sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z);
+      pixel.inside = sample.inside;
+    }
+  }
+  return quad.CheckInside();
 }
 
 void RendererSoft::MultiSampleResolve() {
