@@ -22,44 +22,84 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
   - [shader/soft](src/view/shader/soft): simulate vertex shader & fragment shader using c++, several basic shaders are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
   - [shader/opengl](src/view/shader/opengl): GLSL shader code
 
-#### Renderer Pipeline Features
+#### Renderer abstraction
+```cpp
+class Renderer {
+ public:
+  // config
+  virtual void SetReverseZ(bool enable) = 0;
+  virtual void SetEarlyZ(bool enable) = 0;
 
-- [x] Wireframe
-- [x] View Frustum culling
-- [x] Back-Front culling
-- [x] Orbit Camera Controller
-- [x] Perspective Correct Interpolation
-- [x] Tangent Space Normal Mapping
-- [x] Basic Lighting
-- [x] Blinn-Phong shading
-- [x] PBR & IBL shading
-- [x] Skybox CubeMap & Equirectangular
-- [x] Texture mipmaps
-- [x] Texture tiling and swizzling (linear, tiled, morton)
-- [x] Texture filtering and wrapping
-- [x] Shader derivative `dFdx` `dFdy`
-- [x] Alpha mask & blend
-- [x] Reversed Z
-- [x] Early Z
+  // framebuffer
+  virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
 
-#### Texture
+  // texture
+  virtual std::shared_ptr<Texture2D> CreateTexture2D(bool multi_sample) = 0;
+  virtual std::shared_ptr<TextureCube> CreateTextureCube() = 0;
+  virtual std::shared_ptr<TextureDepth> CreateTextureDepth(bool multi_sample) = 0;
+
+  // vertex
+  virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) = 0;
+
+  // shader program
+  virtual std::shared_ptr<ShaderProgram> CreateShaderProgram() = 0;
+
+  // uniform
+  virtual std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) = 0;
+  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) = 0;
+
+  // pipeline
+  virtual void SetFrameBuffer(FrameBuffer &frame_buffer) = 0;
+  virtual void SetViewPort(int x, int y, int width, int height) = 0;
+  virtual void Clear(const ClearState &state) = 0;
+  virtual void SetRenderState(const RenderState &state) = 0;
+  virtual void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
+  virtual void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
+  virtual void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
+  virtual void Draw(PrimitiveType type) = 0;
+};
+```
+
+#### Software Renderer Features
+
+Pipeline
+
+  - [x] Wireframe
+  - [x] View Frustum culling
+  - [x] Back-Front culling
+  - [x] Orbit Camera Controller
+  - [x] Perspective Correct Interpolation
+  - [x] Tangent Space Normal Mapping
+  - [x] Basic Lighting
+  - [x] Blinn-Phong shading
+  - [x] PBR & IBL shading
+  - [x] Skybox CubeMap & Equirectangular
+  - [x] Texture mipmaps
+  - [x] Texture tiling and swizzling (linear, tiled, morton)
+  - [x] Texture filtering and wrapping
+  - [x] Shader derivative `dFdx` `dFdy`
+  - [x] Alpha mask & blend
+  - [x] Reversed Z
+  - [x] Early Z
 
 Texture Filtering
-  - NEAREST
-  - LINEAR
-  - NEAREST_MIPMAP_NEAREST
-  - LINEAR_MIPMAP_NEAREST
-  - NEAREST_MIPMAP_LINEAR
-  - LINEAR_MIPMAP_LINEAR
+
+  - [x] NEAREST
+  - [x] LINEAR
+  - [x] NEAREST_MIPMAP_NEAREST
+  - [x] LINEAR_MIPMAP_NEAREST
+  - [x] NEAREST_MIPMAP_LINEAR
+  - [x] LINEAR_MIPMAP_LINEAR
 
 Texture Wrapping
-  - REPEAT
-  - MIRRORED_REPEAT
-  - CLAMP_TO_EDGE
-  - CLAMP_TO_BORDER
-  - CLAMP_TO_ZERO
 
-Several commonly used texture fetch parameter are Supported, such as `Lod`, `Bias`, `Offset`, to support texture mipmaps, the renderer pipeline has implement shader varying partial derivative function `dFdx` `dFdy`, rasterization operates on 4 pixels as a Quad, `dFdx` `dFdy` is the difference between adjacent pixel shader variables:
+  - [x] REPEAT
+  - [x] MIRRORED_REPEAT
+  - [x] CLAMP_TO_EDGE
+  - [x] CLAMP_TO_BORDER
+  - [x] CLAMP_TO_ZERO
+
+Several texture fetch parameter are supported, such as `Lod`, `Bias`, `Offset`, to support texture mipmaps, the renderer pipeline has implement shader varying partial derivative function `dFdx` `dFdy`, rasterization operates on 4 pixels as a Quad, `dFdx` `dFdy` is the difference between adjacent pixel shader variables:
 
 ```cpp
 /**
