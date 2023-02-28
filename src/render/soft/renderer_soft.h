@@ -65,7 +65,7 @@ class RendererSoft : public Renderer {
   void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings, ShaderProgramSoft *shader);
   void ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample = 0);
   bool ProcessDepthTest(int x, int y, float depth, int sample = 0);
-  void ProcessColorBlending(int x, int y, glm::vec4 &color);
+  void ProcessColorBlending(int x, int y, glm::vec4 &color, int sample = 0);
 
   void ProcessPointAssembly();
   void ProcessLineAssembly();

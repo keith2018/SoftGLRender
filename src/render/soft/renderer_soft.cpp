@@ -358,7 +358,7 @@ void RendererSoft::ProcessPerSampleOperations(int x, int y, float depth, const g
   glm::vec4 color_clamp = glm::clamp(color, 0.f, 1.f);
 
   // color blending
-  ProcessColorBlending(x, y, color_clamp);
+  ProcessColorBlending(x, y, color_clamp, sample);
 
   // write final color to fbo
   SetFrameColor(x, y, color_clamp * 255.f, sample);
@@ -393,11 +393,11 @@ bool RendererSoft::ProcessDepthTest(int x, int y, float depth, int sample) {
   return false;
 }
 
-void RendererSoft::ProcessColorBlending(int x, int y, glm::vec4 &color) {
+void RendererSoft::ProcessColorBlending(int x, int y, glm::vec4 &color, int sample) {
   if (render_state_->blend) {
     glm::vec4 &src_color = color;
     glm::vec4 dst_color = glm::vec4(0.f);
-    auto *ptr = GetFrameColor(x, y);
+    auto *ptr = GetFrameColor(x, y, sample);
     if (ptr) {
       dst_color = glm::vec4(*ptr) / 255.f;
     }
@@ -816,9 +816,11 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
 
     // per-sample operations
     if (pixel.sample_count > 1) {
-      builtIn.FragColor.a /= (float) pixel.coverage;
       for (int idx = 0; idx < pixel.sample_count; idx++) {
         auto &sample = pixel.samples[idx];
+        if (!sample.inside) {
+          continue;
+        }
         ProcessPerSampleOperations(sample.fbo_coord.x,
                                    sample.fbo_coord.y,
                                    sample.position.z,
@@ -838,23 +840,32 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
 void RendererSoft::MultiSampleResolve() {
   if (!fbo_color_->buffer) {
     fbo_color_->buffer = Buffer<RGBA>::MakeDefault(fbo_color_->width, fbo_color_->height);
-    fbo_color_->buffer->SetAll(RGBA{0});
   }
 
   auto *src_ptr = fbo_color_->buffer_ms4x->GetRawDataPtr();
-  RGBA *dst_ptr = fbo_color_->buffer->GetRawDataPtr();
-  for (size_t idx = 0; idx < fbo_color_->buffer_ms4x->GetRawDataSize(); idx++) {
-    glm::vec4 color(0.f);
-    color += src_ptr->x;
-    color += src_ptr->y;
-    color += src_ptr->z;
-    color += src_ptr->w;
-    color /= 4.f;
-    *dst_ptr = color;
+  auto *dst_ptr = fbo_color_->buffer->GetRawDataPtr();
 
-    src_ptr++;
-    dst_ptr++;
+  for (size_t row = 0; row < fbo_color_->height; row++) {
+    auto *row_src = src_ptr + row * fbo_color_->width;
+    auto *row_dst = dst_ptr + row * fbo_color_->width;
+#ifdef RASTER_MULTI_THREAD
+    thread_pool_.PushTask([&, row_src, row_dst](int thread_id) {
+#endif
+      auto *src = row_src;
+      auto *dst = row_dst;
+      for (size_t idx = 0; idx < fbo_color_->width; idx++) {
+        glm::vec4 color = (glm::vec4) src->x + (glm::vec4) src->y + (glm::vec4) src->z + (glm::vec4) src->w;
+        color /= 4.f;
+        *dst = color;
+        src++;
+        dst++;
+      }
+#ifdef RASTER_MULTI_THREAD
+    });
+#endif
   }
+
+  thread_pool_.WaitTasksFinish();
 }
 
 RGBA *RendererSoft::GetFrameColor(int x, int y, int sample) {
