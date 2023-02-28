@@ -23,16 +23,16 @@ class RendererSoft : public Renderer {
   }
 
   void SetEarlyZ(bool enable) override {
-    // TODO
+    early_z = enable;
   }
 
   // framebuffer
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
 
   // texture
-  std::shared_ptr<Texture2D> CreateTexture2D() override;
+  std::shared_ptr<Texture2D> CreateTexture2D(bool multi_sample) override;
   std::shared_ptr<TextureCube> CreateTextureCube() override;
-  std::shared_ptr<TextureDepth> CreateTextureDepth() override;
+  std::shared_ptr<TextureDepth> CreateTextureDepth(bool multi_sample) override;
 
   // vertex
   std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) override;
@@ -63,9 +63,9 @@ class RendererSoft : public Renderer {
   void ProcessFaceCulling();
   void ProcessRasterization();
   void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings, ShaderProgramSoft *shader);
-  void ProcessPerSampleOperations(int x, int y, ShaderBuiltin &builtin);
-  bool ProcessDepthTest(int x, int y, float depth);
-  void ProcessColorBlending(int x, int y, glm::vec4 &color);
+  void ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample = 0);
+  bool ProcessDepthTest(int x, int y, float depth, int sample = 0);
+  void ProcessColorBlending(int x, int y, glm::vec4 &color, int sample = 0);
 
   void ProcessPointAssembly();
   void ProcessLineAssembly();
@@ -88,9 +88,11 @@ class RendererSoft : public Renderer {
   void RasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives);
   void RasterizationPixelQuad(PixelQuadContext &quad);
 
+  bool EarlyZTest(PixelQuadContext &quad);
+  void MultiSampleResolve();
  private:
-  inline glm::u8vec4 GetFrameColor(int x, int y);
-  inline void SetFrameColor(int x, int y, const glm::u8vec4 &color);
+  inline RGBA *GetFrameColor(int x, int y, int sample = 0);
+  inline void SetFrameColor(int x, int y, const RGBA &color, int sample = 0);
 
   VertexHolder &ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process = false);
   void VertexShaderImpl(VertexHolder &vertex);
@@ -110,8 +112,8 @@ class RendererSoft : public Renderer {
   VertexArrayObjectSoft *vao_ = nullptr;
   ShaderProgramSoft *shader_program_ = nullptr;
 
-  std::shared_ptr<BufferRGBA> fbo_color_ = nullptr;
-  std::shared_ptr<BufferDepth> fbo_depth_ = nullptr;
+  std::shared_ptr<ImageBufferColor> fbo_color_ = nullptr;
+  std::shared_ptr<ImageBufferDepth> fbo_depth_ = nullptr;
 
   std::vector<VertexHolder> vertexes_;
   std::vector<PrimitiveHolder> primitives_;
@@ -122,6 +124,8 @@ class RendererSoft : public Renderer {
   size_t varyings_aligned_size_ = 0;
 
   bool reverse_z = true;
+  bool early_z = false;
+  int raster_samples = 1;
   int raster_block_size_ = 32;
 
   ThreadPool thread_pool_;

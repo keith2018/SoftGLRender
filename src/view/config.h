@@ -14,7 +14,7 @@ namespace View {
 
 enum AAType {
   AAType_NONE,
-  AAType_SSAA,
+  AAType_MSAA,
   AAType_FXAA,
 };
 

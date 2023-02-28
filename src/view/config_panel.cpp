@@ -89,26 +89,31 @@ void ConfigPanel::DrawSettings() {
   // model
   ImGui::Separator();
   ImGui::Text("load model");
+  std::vector<const char *> model_names;
   for (const auto &kv : model_paths_) {
-    if (ImGui::RadioButton(kv.first.c_str(), config_.model_name == kv.first)) {
-      ReloadModel(kv.first);
-    }
+    model_names.emplace_back(kv.first.c_str());
+  }
+  int model_idx = 0;
+  if (ImGui::Combo("##load model", &model_idx, model_names.data(), (int) model_names.size())) {
+    ReloadModel(model_names[model_idx]);
   }
 
   // skybox
   ImGui::Separator();
-  ImGui::Checkbox("skybox", &config_.show_skybox);
+  ImGui::Checkbox("load skybox", &config_.show_skybox);
 
   if (config_.show_skybox) {
-    for (const auto &kv : skybox_paths_) {
-      if (ImGui::RadioButton(kv.first.c_str(), config_.skybox_name == kv.first)) {
-        ReloadSkybox(kv.first);
-      }
-    }
-
     // pbr ibl
-    ImGui::Separator();
     ImGui::Checkbox("enable IBL", &config_.pbr_ibl);
+
+    std::vector<const char *> skybox_names;
+    for (const auto &kv : skybox_paths_) {
+      skybox_names.emplace_back(kv.first.c_str());
+    }
+    int skybox_idx = 0;
+    if (ImGui::Combo("##skybox", &skybox_idx, skybox_names.data(), (int) skybox_names.size())) {
+      ReloadSkybox(skybox_names[skybox_idx]);
+    }
   }
 
   // clear Color
@@ -170,12 +175,17 @@ void ConfigPanel::DrawSettings() {
   // Anti aliasing
   const char *aaItems[] = {
       "NONE",
-      "SSAA",
+      "MSAA",
       "FXAA",
   };
   ImGui::Separator();
   ImGui::Text("Anti-aliasing");
-  ImGui::Combo("##Anti-aliasing", &config_.aa_type, aaItems, IM_ARRAYSIZE(aaItems));
+  for (int i = 0; i < 3; i++) {
+    if (ImGui::RadioButton(aaItems[i], config_.aa_type == i)) {
+      config_.aa_type = i;
+    }
+    ImGui::SameLine();
+  }
 }
 
 void ConfigPanel::Destroy() {

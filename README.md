@@ -40,7 +40,7 @@ Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipe
 - [x] Shader derivative `dFdx` `dFdy`
 - [x] Alpha mask & blend
 - [x] Reversed Z
-- [ ] Early Z
+- [x] Early Z
 
 #### Texture
 
@@ -80,8 +80,7 @@ The storage of texture supports three modes:
 
 - [x] SSAA
 - [x] FXAA
-- [ ] MSAA
-- [ ] TAA
+- [x] MSAA
 
 #### Shading
 

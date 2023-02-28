@@ -26,7 +26,7 @@ class FrameBufferSoft : public FrameBuffer {
     return color_ready;
   }
 
-  std::shared_ptr<BufferRGBA> GetColorBuffer() const {
+  std::shared_ptr<ImageBufferColor> GetColorBuffer() const {
     if (!color_ready) {
       return nullptr;
     }
@@ -47,7 +47,7 @@ class FrameBufferSoft : public FrameBuffer {
     return nullptr;
   };
 
-  std::shared_ptr<BufferDepth> GetDepthBuffer() const {
+  std::shared_ptr<ImageBufferDepth> GetDepthBuffer() const {
     if (!depth_ready) {
       return nullptr;
     }

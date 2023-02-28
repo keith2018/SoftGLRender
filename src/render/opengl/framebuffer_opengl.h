@@ -46,7 +46,7 @@ class FrameBufferOpenGL : public FrameBuffer {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
-                                    GL_TEXTURE_2D,
+                                    color->multi_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
                                     color->GetId(),
                                     level));
     FrameBuffer::SetColorAttachment(color, level);

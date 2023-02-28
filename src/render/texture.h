@@ -83,12 +83,13 @@ class Texture {
   virtual int GetId() const = 0;
   virtual TextureType Type() = 0;
   virtual void SetSamplerDesc(SamplerDesc &sampler) {};
-  virtual void SetImageData(const std::vector<std::shared_ptr<BufferRGBA>> &buffers) {};
+  virtual void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
   virtual void InitImageData(int w, int h) {};
 
  public:
   int width = 0;
   int height = 0;
+  bool multi_sample = false;
 };
 
 class Texture2D : public Texture {

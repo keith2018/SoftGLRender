@@ -22,7 +22,8 @@ namespace View {
 class ViewerOpenGL : public Viewer {
  public:
   ViewerOpenGL(Config &config, Camera &camera) : Viewer(config, camera) {
-    GL_CHECK(glGenFramebuffers(1, &fbo_));
+    GL_CHECK(glGenFramebuffers(1, &fbo_in_));
+    GL_CHECK(glGenFramebuffers(1, &fbo_out_));
   }
 
   void ConfigRenderer() override {
@@ -35,24 +36,30 @@ class ViewerOpenGL : public Viewer {
     int width = color_tex_out_->width;
     int height = color_tex_out_->height;
 
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_in_));
+    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
+                                    GL_COLOR_ATTACHMENT0,
+                                    color_tex_out_->multi_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
+                                    color_tex_out_->GetId(),
+                                    0));
+
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
     GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_out_));
+    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, outTexId_, 0));
 
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
-    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_tex_out_->GetId(), 0));
-    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, outTexId_, 0));
-
-    GL_CHECK(glReadBuffer(GL_COLOR_ATTACHMENT0));
-    GL_CHECK(glDrawBuffer(GL_COLOR_ATTACHMENT1));
+    GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_in_));
+    GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_out_));
 
     GL_CHECK(glBlitFramebuffer(0, 0, width, height,
                                0, 0, width, height,
                                GL_COLOR_BUFFER_BIT,
-                               GL_LINEAR));
+                               GL_NEAREST));
   }
 
   void Destroy() override {
-    GL_CHECK(glDeleteFramebuffers(1, &fbo_));
+    GL_CHECK(glDeleteFramebuffers(1, &fbo_in_));
+    GL_CHECK(glDeleteFramebuffers(1, &fbo_out_));
   }
 
   std::shared_ptr<Renderer> CreateRenderer() override {
@@ -77,7 +84,8 @@ class ViewerOpenGL : public Viewer {
   }
 
  private:
-  GLuint fbo_ = 0;
+  GLuint fbo_in_ = 0;
+  GLuint fbo_out_ = 0;
 };
 
 }

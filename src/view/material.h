@@ -93,7 +93,7 @@ struct UniformsIBLPrefilter {
 };
 
 struct TextureData {
-  std::vector<std::shared_ptr<BufferRGBA>> data;
+  std::vector<std::shared_ptr<Buffer<RGBA>>> data;
   WrapMode wrap_mode = Wrap_REPEAT;
 };
 

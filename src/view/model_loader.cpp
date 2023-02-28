@@ -130,7 +130,7 @@ bool ModelLoader::LoadSkybox(const std::string &filepath) {
   material.Reset();
   material.shading = Shading_Skybox;
 
-  std::vector<std::shared_ptr<BufferRGBA>> skybox_tex;
+  std::vector<std::shared_ptr<Buffer<RGBA>>> skybox_tex;
   if (StringUtils::EndsWith(filepath, "/")) {
     skybox_tex.resize(6);
 
@@ -432,7 +432,7 @@ void ModelLoader::PreloadTextureFiles(const aiScene *scene, const std::string &r
   }
 }
 
-std::shared_ptr<BufferRGBA> ModelLoader::LoadTextureFile(const std::string &path) {
+std::shared_ptr<Buffer<RGBA>> ModelLoader::LoadTextureFile(const std::string &path) {
   tex_cache_mutex_.lock();
   if (texture_cache_.find(path) != texture_cache_.end()) {
     auto &buffer = texture_cache_[path];
@@ -449,7 +449,7 @@ std::shared_ptr<BufferRGBA> ModelLoader::LoadTextureFile(const std::string &path
     LOGD("load texture failed, path: %s", path.c_str());
     return nullptr;
   }
-  auto buffer = BufferRGBA::MakeDefault(iw, ih);
+  auto buffer = Buffer<RGBA>::MakeDefault(iw, ih);
 
   // convert to rgba
   for (size_t y = 0; y < ih; y++) {
