@@ -80,16 +80,23 @@ void Viewer::DrawFrame(DemoScene &scene) {
   // update scene uniform
   UpdateUniformScene();
 
+  // draw point light
+  if (config_.show_light) {
+    glm::mat4 light_transform(1.0f);
+    DrawPoints(scene_->point_light, light_transform);
+  }
+
   // draw world axis
   if (config_.world_axis) {
     glm::mat4 axis_transform(1.0f);
     DrawLines(scene_->world_axis, axis_transform);
   }
 
-  // draw point light
-  if (config_.show_light) {
-    glm::mat4 light_transform(1.0f);
-    DrawPoints(scene_->point_light, light_transform);
+  // draw floor
+  if (config_.show_floor) {
+    glm::mat4 floor_matrix(1.0f);
+    UpdateUniformMVP(floor_matrix);
+    DrawMeshBaseColor(scene_->floor, config_.wireframe);
   }
 
   // init skybox ibl
@@ -157,7 +164,6 @@ void Viewer::DrawPoints(ModelPoints &points, glm::mat4 &transform) {
                     {UniformBlock_MVP, uniforms_block_mvp_},
                     {UniformBlock_Color, uniforms_block_color_},
                 },
-                false,
                 [&](RenderState &rs) -> void {
                   rs.point_size = points.point_size;
                 });
@@ -174,7 +180,6 @@ void Viewer::DrawLines(ModelLines &lines, glm::mat4 &transform) {
                     {UniformBlock_MVP, uniforms_block_mvp_},
                     {UniformBlock_Color, uniforms_block_color_},
                 },
-                false,
                 [&](RenderState &rs) -> void {
                   rs.line_width = lines.line_width;
                 });
@@ -189,7 +194,6 @@ void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
                 {
                     {UniformBlock_MVP, uniforms_block_mvp_}
                 },
-                false,
                 [&](RenderState &rs) -> void {
                   rs.depth_func = config_.reverse_z ? DepthFunc_GEQUAL : DepthFunc_LEQUAL;
                   rs.depth_mask = false;
@@ -197,21 +201,20 @@ void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
   PipelineDraw(skybox, *skybox.material);
 }
 
-void Viewer::DrawMeshWireframe(ModelMesh &mesh) {
-  UpdateUniformColor(glm::vec4(1.f));
+void Viewer::DrawMeshBaseColor(ModelMesh &mesh, bool wireframe) {
+  UpdateUniformColor(mesh.material_base_color.base_color);
 
   PipelineSetup(mesh,
-                mesh.material_wireframe,
+                mesh.material_base_color,
                 {
                     {UniformBlock_MVP, uniforms_block_mvp_},
                     {UniformBlock_Scene, uniform_block_scene_},
                     {UniformBlock_Color, uniforms_block_color_},
                 },
-                false,
                 [&](RenderState &rs) -> void {
-                  rs.polygon_mode = PolygonMode_LINE;
+                  rs.polygon_mode = wireframe ? PolygonMode_LINE : PolygonMode_FILL;
                 });
-  PipelineDraw(mesh, mesh.material_wireframe);
+  PipelineDraw(mesh, mesh.material_base_color);
 }
 
 void Viewer::DrawMeshTextured(ModelMesh &mesh) {
@@ -223,10 +226,6 @@ void Viewer::DrawMeshTextured(ModelMesh &mesh) {
                     {UniformBlock_MVP, uniforms_block_mvp_},
                     {UniformBlock_Scene, uniform_block_scene_},
                     {UniformBlock_Color, uniforms_block_color_},
-                },
-                mesh.material_textured.alpha_mode == Alpha_Blend,
-                [&](RenderState &rs) -> void {
-                  rs.cull_face = config_.cull_face && (!mesh.material_textured.double_sided);
                 });
 
   // update IBL textures
@@ -255,7 +254,7 @@ void Viewer::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
     }
 
     // draw mesh
-    wireframe ? DrawMeshWireframe(mesh) : DrawMeshTextured(mesh);
+    wireframe ? DrawMeshBaseColor(mesh, true) : DrawMeshTextured(mesh);
   }
 
   // draw child
@@ -267,10 +266,13 @@ void Viewer::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
 void Viewer::PipelineSetup(ModelVertexes &vertexes,
                            Material &material,
                            const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks,
-                           bool blend,
                            const std::function<void(RenderState &rs)> &extra_states) {
   SetupVertexArray(vertexes);
-  SetupRenderStates(material.render_state, blend, extra_states);
+  SetupRenderStates(material.render_state, material.alpha_mode == Alpha_Blend);
+  material.render_state.cull_face = config_.cull_face && (!material.double_sided);
+  if (extra_states) {
+    extra_states(material.render_state);
+  }
   SetupMaterial(material, uniform_blocks);
 }
 
@@ -319,7 +321,7 @@ void Viewer::SetupVertexArray(ModelVertexes &vertexes) {
   }
 }
 
-void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const {
+void Viewer::SetupRenderStates(RenderState &rs, bool blend) const {
   rs.blend = blend;
   rs.blend_parameters.SetBlendFactor(BlendFactor_SRC_ALPHA, BlendFactor_ONE_MINUS_SRC_ALPHA);
 
@@ -332,10 +334,6 @@ void Viewer::SetupRenderStates(RenderState &rs, bool blend, const std::function<
 
   rs.line_width = 1.f;
   rs.point_size = 1.f;
-
-  if (extra) {
-    extra(rs);
-  }
 }
 
 void Viewer::SetupTextures(Material &material) {

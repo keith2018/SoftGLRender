@@ -30,6 +30,7 @@ ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
     : config_(config), config_panel_(panel) {
   LoadWorldAxis();
   LoadLights();
+  LoadFloor();
 
   config_panel_.SetReloadModelFunc([&](const std::string &path) -> bool {
     return LoadModel(path);
@@ -66,21 +67,13 @@ void ModelLoader::LoadWorldAxis() {
   float axis_y = -0.01f;
   int idx = 0;
   for (int i = -10; i <= 10; i++) {
-    Vertex vertex_x0;
-    Vertex vertex_x1;
-    vertex_x0.a_position = glm::vec3(-2, axis_y, 0.2f * (float) i);
-    vertex_x1.a_position = glm::vec3(2, axis_y, 0.2f * (float) i);
-    scene_.world_axis.vertexes.push_back(vertex_x0);
-    scene_.world_axis.vertexes.push_back(vertex_x1);
+    scene_.world_axis.vertexes.push_back({glm::vec3(-2, axis_y, 0.2f * (float) i)});
+    scene_.world_axis.vertexes.push_back({glm::vec3(2, axis_y, 0.2f * (float) i)});
     scene_.world_axis.indices.push_back(idx++);
     scene_.world_axis.indices.push_back(idx++);
 
-    Vertex vertex_y0;
-    Vertex vertex_y1;
-    vertex_y0.a_position = glm::vec3(0.2f * (float) i, axis_y, -2);
-    vertex_y1.a_position = glm::vec3(0.2f * (float) i, axis_y, 2);
-    scene_.world_axis.vertexes.push_back(vertex_y0);
-    scene_.world_axis.vertexes.push_back(vertex_y1);
+    scene_.world_axis.vertexes.push_back({glm::vec3(0.2f * (float) i, axis_y, -2)});
+    scene_.world_axis.vertexes.push_back({glm::vec3(0.2f * (float) i, axis_y, 2)});
     scene_.world_axis.indices.push_back(idx++);
     scene_.world_axis.indices.push_back(idx++);
   }
@@ -100,15 +93,37 @@ void ModelLoader::LoadLights() {
   scene_.point_light.vertexes.resize(scene_.point_light.primitive_cnt);
   scene_.point_light.indices.resize(scene_.point_light.primitive_cnt);
 
-  Vertex vertex;
-  vertex.a_position = config_.point_light_position;
-  scene_.point_light.vertexes[0] = vertex;
+  scene_.point_light.vertexes[0] = {config_.point_light_position};
   scene_.point_light.indices[0] = 0;
   scene_.point_light.material.Reset();
   scene_.point_light.material.shading = Shading_BaseColor;
   scene_.point_light.material.base_color = glm::vec4(config_.point_light_color, 1.f);
   scene_.point_light.point_size = 10.f;
   scene_.point_light.InitVertexes();
+}
+
+void ModelLoader::LoadFloor() {
+  float floor_y = -0.02f;
+  scene_.floor.vertexes.push_back({glm::vec3(-2.f, floor_y, 2.f), glm::vec2(0.f, 1.f), glm::vec3(0.f, 1.f, 0.f)});
+  scene_.floor.vertexes.push_back({glm::vec3(-2.f, floor_y, -2.f), glm::vec2(0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)});
+  scene_.floor.vertexes.push_back({glm::vec3(2.f, floor_y, -2.f), glm::vec2(1.f, 0.f), glm::vec3(0.f, 1.f, 0.f)});
+  scene_.floor.vertexes.push_back({glm::vec3(2.f, floor_y, 2.f), glm::vec2(1.f, 1.f), glm::vec3(0.f, 1.f, 0.f)});
+  scene_.floor.indices.push_back(0);
+  scene_.floor.indices.push_back(2);
+  scene_.floor.indices.push_back(1);
+  scene_.floor.indices.push_back(0);
+  scene_.floor.indices.push_back(3);
+  scene_.floor.indices.push_back(2);
+
+  scene_.floor.primitive_type = Primitive_TRIANGLE;
+  scene_.floor.primitive_cnt = 2;
+
+  scene_.floor.material_base_color.Reset();
+  scene_.floor.material_base_color.shading = Shading_BaseColor;
+  scene_.floor.material_base_color.base_color = glm::vec4(0.5f);
+  scene_.floor.material_base_color.double_sided = true;
+  scene_.floor.aabb = BoundingBox(glm::vec3(-2, 0, -2), glm::vec3(2, 0, 2));
+  scene_.floor.InitVertexes();
 }
 
 bool ModelLoader::LoadSkybox(const std::string &filepath) {
@@ -308,9 +323,9 @@ bool ModelLoader::ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     }
   }
 
-  out_mesh.material_wireframe.Reset();
-  out_mesh.material_wireframe.shading = Shading_BaseColor;
-  out_mesh.material_wireframe.base_color = glm::vec4(1.f);
+  out_mesh.material_base_color.Reset();
+  out_mesh.material_base_color.shading = Shading_BaseColor;
+  out_mesh.material_base_color.base_color = glm::vec4(1.f);
 
   out_mesh.primitive_type = Primitive_TRIANGLE;
   out_mesh.primitive_cnt = ai_mesh->mNumFaces;

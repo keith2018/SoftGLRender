@@ -129,6 +129,10 @@ void ConfigPanel::DrawSettings() {
   ImGui::Separator();
   ImGui::Checkbox("world axis", &config_.world_axis);
 
+  // shadow floor
+  ImGui::Separator();
+  ImGui::Checkbox("shadow floor", &config_.show_floor);
+
   if (config_.wireframe) {
     return;
   }

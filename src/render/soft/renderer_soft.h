@@ -63,9 +63,9 @@ class RendererSoft : public Renderer {
   void ProcessFaceCulling();
   void ProcessRasterization();
   void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings, ShaderProgramSoft *shader);
-  void ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample = 0);
-  bool ProcessDepthTest(int x, int y, float depth, int sample = 0);
-  void ProcessColorBlending(int x, int y, glm::vec4 &color, int sample = 0);
+  void ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample);
+  bool ProcessDepthTest(int x, int y, float depth, int sample, bool skip_write);
+  void ProcessColorBlending(int x, int y, glm::vec4 &color, int sample);
 
   void ProcessPointAssembly();
   void ProcessLineAssembly();
@@ -91,8 +91,9 @@ class RendererSoft : public Renderer {
   bool EarlyZTest(PixelQuadContext &quad);
   void MultiSampleResolve();
  private:
-  inline RGBA *GetFrameColor(int x, int y, int sample = 0);
-  inline void SetFrameColor(int x, int y, const RGBA &color, int sample = 0);
+  inline RGBA *GetFrameColor(int x, int y, int sample);
+  inline float *GetFrameDepth(int x, int y, int sample);
+  inline void SetFrameColor(int x, int y, const RGBA &color, int sample);
 
   VertexHolder &ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process = false);
   void VertexShaderImpl(VertexHolder &vertex);
@@ -102,7 +103,6 @@ class RendererSoft : public Renderer {
   BoundingBox TriangleBoundingBox(glm::vec4 *vert, float width, float height);
 
   bool Barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
-  void BarycentricCorrect(PixelQuadContext &quad);
 
  private:
   Viewport viewport_{};

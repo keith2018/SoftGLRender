@@ -141,16 +141,12 @@ void RendererSoft::SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) 
 }
 
 void RendererSoft::Draw(PrimitiveType type) {
-  if (!fbo_) {
+  if (!fbo_ || !vao_ || !shader_program_) {
     return;
   }
 
   fbo_color_ = fbo_->GetColorBuffer();
   fbo_depth_ = fbo_->GetDepthBuffer();
-  if (!fbo_color_ || !vao_ || !shader_program_) {
-    return;
-  }
-
   primitive_type_ = type;
 
   ProcessVertexShader();
@@ -161,7 +157,7 @@ void RendererSoft::Draw(PrimitiveType type) {
   ProcessFaceCulling();
   ProcessRasterization();
 
-  if (fbo_color_->multi_sample) {
+  if (fbo_color_ && fbo_color_->multi_sample) {
     MultiSampleResolve();
   }
 }
@@ -281,9 +277,9 @@ void RendererSoft::ProcessFaceCulling() {
       continue;
     }
 
-    glm::vec4 &v0 = vertexes_[triangle.indices[0]].src_pos;
-    glm::vec4 &v1 = vertexes_[triangle.indices[1]].src_pos;
-    glm::vec4 &v2 = vertexes_[triangle.indices[2]].src_pos;
+    glm::vec4 &v0 = vertexes_[triangle.indices[0]].frag_pos;
+    glm::vec4 &v1 = vertexes_[triangle.indices[1]].frag_pos;
+    glm::vec4 &v2 = vertexes_[triangle.indices[2]].frag_pos;
 
     glm::vec3 n = glm::cross(glm::vec3(v1 - v0), glm::vec3(v2 - v0));
     float area = glm::dot(n, glm::vec3(0, 0, 1));
@@ -342,7 +338,6 @@ void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos,
                                          ShaderProgramSoft *shader) {
   auto &builtin = shader->GetShaderBuiltin();
   builtin.FragCoord = screen_pos;
-  builtin.FragCoord.w = 1.f / builtin.FragCoord.w;
   builtin.FrontFacing = front_facing;
 
   shader->BindFragmentShaderVaryings(varyings);
@@ -351,7 +346,11 @@ void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos,
 
 void RendererSoft::ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample) {
   // depth test
-  if (!ProcessDepthTest(x, y, depth, sample)) {
+  if (!ProcessDepthTest(x, y, depth, sample, false)) {
+    return;
+  }
+
+  if (!fbo_color_) {
     return;
   }
 
@@ -364,8 +363,8 @@ void RendererSoft::ProcessPerSampleOperations(int x, int y, float depth, const g
   SetFrameColor(x, y, color_clamp * 255.f, sample);
 }
 
-bool RendererSoft::ProcessDepthTest(int x, int y, float depth, int sample) {
-  if (!render_state_->depth_test) {
+bool RendererSoft::ProcessDepthTest(int x, int y, float depth, int sample, bool skip_write) {
+  if (!render_state_->depth_test || !fbo_depth_) {
     return true;
   }
 
@@ -373,19 +372,10 @@ bool RendererSoft::ProcessDepthTest(int x, int y, float depth, int sample) {
   depth = glm::clamp(depth, viewport_.depth_min, viewport_.depth_max);
 
   // depth comparison
-  float *z_ptr = nullptr;
-  if (fbo_depth_->multi_sample) {
-    auto *ptr = fbo_depth_->buffer_ms4x->Get(x, y);
-    if (ptr) {
-      z_ptr = &ptr->x + sample;
-    }
-  } else {
-    z_ptr = fbo_depth_->buffer->Get(x, y);
-  }
-
+  float *z_ptr = GetFrameDepth(x, y, sample);
   if (z_ptr && DepthTest(depth, *z_ptr, render_state_->depth_func)) {
     // depth attachment writes
-    if (render_state_->depth_mask) {
+    if (!skip_write && render_state_->depth_mask) {
       *z_ptr = depth;
     }
     return true;
@@ -637,12 +627,16 @@ void RendererSoft::RasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &p
 }
 
 void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
-  float left = v->src_pos.x - point_size / 2.f + 0.5f;
+  if (!fbo_color_) {
+    return;
+  }
+
+  float left = v->frag_pos.x - point_size / 2.f + 0.5f;
   float right = left + point_size;
-  float top = v->src_pos.y - point_size / 2.f + 0.5f;
+  float top = v->frag_pos.y - point_size / 2.f + 0.5f;
   float bottom = top + point_size;
 
-  glm::vec4 &screen_pos = v->src_pos;
+  glm::vec4 &screen_pos = v->frag_pos;
   for (int x = (int) left; x < (int) right; x++) {
     for (int y = (int) top; y < (int) bottom; y++) {
       screen_pos.x = (float) x;
@@ -650,8 +644,8 @@ void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
       ProcessFragmentShader(screen_pos, true, v->varyings, shader_program_);
       auto &builtIn = shader_program_->GetShaderBuiltin();
       if (!builtIn.discard) {
+        // TODO MSAA
         for (int idx = 0; idx < fbo_color_->sample_cnt; idx++) {
-          // TODO MSAA
           ProcessPerSampleOperations(x, y, screen_pos.z, builtIn.FragColor, idx);
         }
       }
@@ -660,14 +654,15 @@ void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
 }
 
 void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width) {
-  int x0 = (int) v0->src_pos.x, y0 = (int) v0->src_pos.y;
-  int x1 = (int) v1->src_pos.x, y1 = (int) v1->src_pos.y;
+  // TODO diamond-exit rule
+  int x0 = (int) v0->frag_pos.x, y0 = (int) v0->frag_pos.y;
+  int x1 = (int) v1->frag_pos.x, y1 = (int) v1->frag_pos.y;
 
-  float z0 = v0->src_pos.z;
-  float z1 = v1->src_pos.z;
+  float z0 = v0->frag_pos.z;
+  float z1 = v1->frag_pos.z;
 
-  float w0 = v0->src_pos.w;
-  float w1 = v1->src_pos.w;
+  float w0 = v0->frag_pos.w;
+  float w1 = v1->frag_pos.w;
 
   bool steep = false;
   if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
@@ -693,11 +688,6 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
 
   int y = y0;
 
-  float z = z0;
-  float w = w0;
-  float dz = (x1 == x0) ? 0 : (z1 - z0) / (float) (x1 - x0);
-  float dw = (x1 == x0) ? 0 : (w1 - w0) / (float) (x1 - x0);
-
   auto varyings = MemoryUtils::MakeBuffer<float>(varyings_cnt_);
   VertexHolder pt{};
   pt.varyings = varyings.get();
@@ -705,12 +695,9 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
   float t = 0;
   for (int x = x0; x <= x1; x++) {
     t = (float) (x - x0) / (float) dx;
-    z += dz;
-    w += dw;
-
-    pt.src_pos = glm::vec4(x, y, z, w);
+    pt.frag_pos = glm::vec4(x, y, glm::mix(z0, z1, t), glm::mix(w0, w1, t));
     if (steep) {
-      std::swap(pt.src_pos.x, pt.src_pos.y);
+      std::swap(pt.frag_pos.x, pt.frag_pos.y);
     }
     InterpolateLinear(pt.varyings, varyings_in, varyings_cnt_, t);
     RasterizationPoint(&pt, line_width);
@@ -724,8 +711,9 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
 }
 
 void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing) {
+  // TODO top-left rule
   VertexHolder *vert[3] = {v0, v1, v2};
-  glm::aligned_vec4 screen_pos[3] = {vert[0]->src_pos, vert[1]->src_pos, vert[2]->src_pos};
+  glm::aligned_vec4 screen_pos[3] = {vert[0]->frag_pos, vert[1]->frag_pos, vert[2]->frag_pos};
   BoundingBox bounds = TriangleBoundingBox(screen_pos, viewport_.width, viewport_.height);
   bounds.min -= 1.f;
 
@@ -745,8 +733,9 @@ void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, Ver
         pixel_quad.front_facing = front_facing;
 
         for (int i = 0; i < 3; i++) {
-          pixel_quad.vert_pos[i] = vert[i]->src_pos;
-          pixel_quad.vert_bc_factor[i] = vert[i]->clip_pos.z + vert[i]->clip_pos.w;
+          pixel_quad.vert_pos[i] = vert[i]->frag_pos;
+          pixel_quad.vert_z[i] = &vert[i]->frag_pos.z;
+          pixel_quad.vert_w[i] = vert[i]->frag_pos.w;
           pixel_quad.vert_varyings[i] = vert[i]->varyings;
         }
 
@@ -788,8 +777,24 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
     return;
   }
 
-  // barycentric correction
-  BarycentricCorrect(quad);
+  for (auto &pixel : quad.pixels) {
+    for (auto &sample : pixel.samples) {
+      if (!sample.inside) {
+        continue;
+      }
+
+      // interpolate z, w
+      InterpolateBarycentric(&sample.position.z, quad.vert_z, 2, sample.barycentric);
+
+      // depth clip
+      if (sample.position.z < viewport_.depth_min || sample.position.z > viewport_.depth_max) {
+        sample.inside = false;
+      }
+
+      // barycentric correction
+      sample.barycentric *= (1.f / sample.position.w * quad.vert_w);
+    }
+  }
 
   // early z
   if (early_z && render_state_->depth_test) {
@@ -833,7 +838,7 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
       }
     } else {
       auto &sample = *pixel.sample_shading;
-      ProcessPerSampleOperations(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, builtIn.FragColor);
+      ProcessPerSampleOperations(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, builtIn.FragColor, 0);
     }
   }
 }
@@ -850,7 +855,7 @@ bool RendererSoft::EarlyZTest(PixelQuadContext &quad) {
         if (!sample.inside) {
           continue;
         }
-        sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, idx);
+        sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, idx, true);
         if (sample.inside) {
           inside = true;
         }
@@ -858,7 +863,7 @@ bool RendererSoft::EarlyZTest(PixelQuadContext &quad) {
       pixel.inside = inside;
     } else {
       auto &sample = *pixel.sample_shading;
-      sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z);
+      sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, 0, true);
       pixel.inside = sample.inside;
     }
   }
@@ -882,8 +887,11 @@ void RendererSoft::MultiSampleResolve() {
       auto *src = row_src;
       auto *dst = row_dst;
       for (size_t idx = 0; idx < fbo_color_->width; idx++) {
-        glm::vec4 color = (glm::vec4) src->x + (glm::vec4) src->y + (glm::vec4) src->z + (glm::vec4) src->w;
-        color /= 4.f;
+        glm::vec4 color(0.f);
+        for (int i = 0; i < fbo_color_->sample_cnt; i++) {
+          color += (glm::vec4) (*src)[i];
+        }
+        color /= fbo_color_->sample_cnt;
         *dst = color;
         src++;
         dst++;
@@ -897,6 +905,10 @@ void RendererSoft::MultiSampleResolve() {
 }
 
 RGBA *RendererSoft::GetFrameColor(int x, int y, int sample) {
+  if (!fbo_color_) {
+    return nullptr;
+  }
+
   RGBA *ptr = nullptr;
   if (fbo_color_->multi_sample) {
     auto *ptr_ms = fbo_color_->buffer_ms4x->Get(x, y);
@@ -908,6 +920,23 @@ RGBA *RendererSoft::GetFrameColor(int x, int y, int sample) {
   }
 
   return ptr;
+}
+
+float *RendererSoft::GetFrameDepth(int x, int y, int sample) {
+  if (!fbo_depth_) {
+    return nullptr;
+  }
+
+  float *depth_ptr = nullptr;
+  if (fbo_depth_->multi_sample) {
+    auto *ptr = fbo_depth_->buffer_ms4x->Get(x, y);
+    if (ptr) {
+      depth_ptr = &ptr->x + sample;
+    }
+  } else {
+    depth_ptr = fbo_depth_->buffer->Get(x, y);
+  }
+  return depth_ptr;
 }
 
 void RendererSoft::SetFrameColor(int x, int y, const RGBA &color, int sample) {
@@ -942,16 +971,16 @@ void RendererSoft::VertexShaderImpl(VertexHolder &vertex) {
 }
 
 void RendererSoft::PerspectiveDivideImpl(VertexHolder &vertex) {
-  vertex.src_pos = vertex.clip_pos;
-  auto &pos = vertex.src_pos;
-  float inv_w = 1.0f / pos.w;
-  pos.w *= pos.w;
+  vertex.frag_pos = vertex.clip_pos;
+  auto &pos = vertex.frag_pos;
+  float inv_w = 1.f / pos.w;
   pos *= inv_w;
+  pos.w = inv_w;
 }
 
 void RendererSoft::ViewportTransformImpl(VertexHolder &vertex) {
-  vertex.src_pos *= viewport_.inner_p;
-  vertex.src_pos += viewport_.inner_o;
+  vertex.frag_pos *= viewport_.inner_p;
+  vertex.frag_pos += viewport_.inner_o;
 }
 
 int RendererSoft::CountFrustumClipMask(glm::vec4 &clip_pos) {
@@ -1018,53 +1047,6 @@ bool RendererSoft::Barycentric(glm::aligned_vec4 *vert,
   }
 
   return true;
-}
-
-void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
-  glm::aligned_vec4 *vert = quad.vert_pos_flat;
-#ifdef SOFTGL_SIMD_OPT
-  __m128 m_bc_factor = _mm_load_ps(&quad.vert_bc_factor.x);
-  __m128 m_screen_z = _mm_load_ps(&vert[2].x);
-  __m128 m_screen_w = _mm_load_ps(&vert[3].x);
-  for (auto &pixel : quad.pixels) {
-    for (auto &sample : pixel.samples) {
-      if (!sample.inside) {
-        continue;
-      }
-      auto &bc = sample.barycentric;
-      __m128 m_bc = _mm_load_ps(&bc.x);
-
-      // barycentric correction
-      m_bc = _mm_div_ps(m_bc, m_bc_factor);
-      m_bc = _mm_div_ps(m_bc, _mm_set1_ps(MM_F32(m_bc, 0) + MM_F32(m_bc, 1) + MM_F32(m_bc, 2)));
-      _mm_store_ps(&bc.x, m_bc);
-
-      // interpolate z, w
-      auto dz = _mm_dp_ps(m_screen_z, m_bc, 0x7f);
-      auto dw = _mm_dp_ps(m_screen_w, m_bc, 0x7f);
-
-      sample.position.z = MM_F32(dz, 0);
-      sample.position.w = MM_F32(dw, 0);
-    }
-  }
-#else
-  for (auto &pixel : quad.pixels) {
-    for (auto &sample : pixel.samples) {
-      if (!sample.inside) {
-        continue;
-      }
-      auto &bc = sample.barycentric;
-
-      // barycentric correction
-      bc /= quad.vert_bc_factor;
-      bc /= (bc.x + bc.y + bc.z);
-
-      // interpolate z, w
-      sample.position.z = glm::dot(vert[2], bc);
-      sample.position.w = glm::dot(vert[3], bc);
-    }
-  }
-#endif
 }
 
 void RendererSoft::InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t) {

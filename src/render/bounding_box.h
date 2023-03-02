@@ -13,7 +13,7 @@ namespace SoftGL {
 class BoundingBox {
  public:
   BoundingBox() = default;
-  BoundingBox(glm::vec3 &a, glm::vec3 &b) : min(a), max(b) {}
+  BoundingBox(const glm::vec3 &a, const glm::vec3 &b) : min(a), max(b) {}
 
   void GetCorners(glm::vec3 *dst) const;
   BoundingBox Transform(const glm::mat4 &matrix) const;
