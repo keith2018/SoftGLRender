@@ -34,6 +34,7 @@ class Config {
 
   bool wireframe = false;
   bool world_axis = true;
+  bool show_floor = false;
   bool show_skybox = false;
 
   bool pbr_ibl = false;

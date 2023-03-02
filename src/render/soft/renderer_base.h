@@ -36,7 +36,7 @@ struct VertexHolder {
 
   int clip_mask = 0;
   glm::vec4 clip_pos = glm::vec4(0.f);  // clip space position
-  glm::vec4 src_pos = glm::vec4(0.f);   // screen space position
+  glm::vec4 scr_pos = glm::vec4(0.f);   // screen space position
 
   std::shared_ptr<uint8_t> vertex_holder = nullptr;
   std::shared_ptr<float> varyings_holder = nullptr;
@@ -168,7 +168,7 @@ class PixelQuadContext {
   glm::aligned_vec4 vert_pos_flat[4];
 
   // triangle barycentric correct factor
-  glm::aligned_vec4 vert_bc_factor = glm::aligned_vec4(0.f, 0.f, 0.f, 1.f);
+  glm::aligned_vec4 vert_clip_z = glm::aligned_vec4(0.f, 0.f, 0.f, 1.f);
 
   // triangle vertex shader varyings
   const float *vert_varyings[3] = {nullptr, nullptr, nullptr};

@@ -40,7 +40,7 @@ class Viewer {
 
   void DrawPoints(ModelPoints &points, glm::mat4 &transform);
   void DrawLines(ModelLines &lines, glm::mat4 &transform);
-  void DrawMeshWireframe(ModelMesh &mesh);
+  void DrawMeshBaseColor(ModelMesh &mesh, bool wireframe);
   void DrawMeshTextured(ModelMesh &mesh);
   void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
   void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
@@ -48,8 +48,7 @@ class Viewer {
   void PipelineSetup(ModelVertexes &vertexes,
                      Material &material,
                      const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks,
-                     bool blend,
-                     const std::function<void(RenderState &rs)> &extra_states);
+                     const std::function<void(RenderState &rs)> &extra_states = nullptr);
   void PipelineDraw(ModelVertexes &vertexes, Material &material);
 
   void SetupFrameBuffer();
@@ -57,7 +56,7 @@ class Viewer {
   void SetupDepthBuffer(bool multi_sample);
 
   void SetupVertexArray(ModelVertexes &vertexes);
-  void SetupRenderStates(RenderState &rs, bool blend, const std::function<void(RenderState &rs)> &extra) const;
+  void SetupRenderStates(RenderState &rs, bool blend) const;
   bool SetupShaderProgram(Material &material);
   void SetupTextures(Material &material);
   void SetupSamplerUniforms(Material &material);

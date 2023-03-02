@@ -145,6 +145,8 @@ class Material {
 
  public:
   ShadingModel shading;
+  AlphaMode alpha_mode = Alpha_Opaque;
+  bool double_sided = false;
   std::unordered_map<int, TextureData> texture_data;
 
   RenderState render_state;
@@ -172,10 +174,6 @@ class TexturedMaterial : public Material {
   MaterialType Type() const override {
     return Material_Textured;
   }
-
- public:
-  AlphaMode alpha_mode = Alpha_Opaque;
-  bool double_sided = false;
 };
 
 class SkyboxMaterial : public Material {

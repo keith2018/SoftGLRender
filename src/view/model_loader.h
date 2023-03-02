@@ -39,6 +39,7 @@ class ModelLoader {
  private:
   void LoadWorldAxis();
   void LoadLights();
+  void LoadFloor();
 
   bool ProcessNode(const aiNode *ai_node, const aiScene *ai_scene, ModelNode &out_node, glm::mat4 &transform);
   bool ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &out_mesh);

@@ -64,7 +64,7 @@ struct ModelLines : ModelVertexes {
 
 struct ModelMesh : ModelVertexes {
   BoundingBox aabb;
-  BaseColorMaterial material_wireframe;
+  BaseColorMaterial material_base_color;
   TexturedMaterial material_textured;
 };
 
@@ -92,6 +92,7 @@ struct Model {
 
 struct DemoScene {
   std::shared_ptr<Model> model;
+  ModelMesh floor;
   ModelLines world_axis;
   ModelPoints point_light;
   ModelSkybox skybox;
@@ -112,7 +113,7 @@ struct DemoScene {
     std::function<void(ModelNode &node)> reset_node_func = [&](ModelNode &node) -> void {
       for (auto &mesh : node.meshes) {
         mesh.vao = nullptr;
-        mesh.material_wireframe.ResetRuntimeStates();
+        mesh.material_base_color.ResetRuntimeStates();
         mesh.material_textured.ResetRuntimeStates();
       }
       for (auto &child_node : node.children) {
@@ -120,6 +121,11 @@ struct DemoScene {
       }
     };
     reset_node_func(model->root_node);
+
+    floor.vao = nullptr;
+    floor.material_base_color.ResetRuntimeStates();
+    floor.material_textured.ResetRuntimeStates();
+
     world_axis.vao = nullptr;
     world_axis.material.ResetRuntimeStates();
 
