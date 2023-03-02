@@ -277,9 +277,9 @@ void RendererSoft::ProcessFaceCulling() {
       continue;
     }
 
-    glm::vec4 &v0 = vertexes_[triangle.indices[0]].scr_pos;
-    glm::vec4 &v1 = vertexes_[triangle.indices[1]].scr_pos;
-    glm::vec4 &v2 = vertexes_[triangle.indices[2]].scr_pos;
+    glm::vec4 &v0 = vertexes_[triangle.indices[0]].frag_pos;
+    glm::vec4 &v1 = vertexes_[triangle.indices[1]].frag_pos;
+    glm::vec4 &v2 = vertexes_[triangle.indices[2]].frag_pos;
 
     glm::vec3 n = glm::cross(glm::vec3(v1 - v0), glm::vec3(v2 - v0));
     float area = glm::dot(n, glm::vec3(0, 0, 1));
@@ -338,7 +338,6 @@ void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos,
                                          ShaderProgramSoft *shader) {
   auto &builtin = shader->GetShaderBuiltin();
   builtin.FragCoord = screen_pos;
-  builtin.FragCoord.w = 1.f / builtin.FragCoord.w;
   builtin.FrontFacing = front_facing;
 
   shader->BindFragmentShaderVaryings(varyings);
@@ -632,12 +631,12 @@ void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
     return;
   }
 
-  float left = v->scr_pos.x - point_size / 2.f + 0.5f;
+  float left = v->frag_pos.x - point_size / 2.f + 0.5f;
   float right = left + point_size;
-  float top = v->scr_pos.y - point_size / 2.f + 0.5f;
+  float top = v->frag_pos.y - point_size / 2.f + 0.5f;
   float bottom = top + point_size;
 
-  glm::vec4 &screen_pos = v->scr_pos;
+  glm::vec4 &screen_pos = v->frag_pos;
   for (int x = (int) left; x < (int) right; x++) {
     for (int y = (int) top; y < (int) bottom; y++) {
       screen_pos.x = (float) x;
@@ -656,14 +655,14 @@ void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
 
 void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width) {
   // TODO diamond-exit rule
-  int x0 = (int) v0->scr_pos.x, y0 = (int) v0->scr_pos.y;
-  int x1 = (int) v1->scr_pos.x, y1 = (int) v1->scr_pos.y;
+  int x0 = (int) v0->frag_pos.x, y0 = (int) v0->frag_pos.y;
+  int x1 = (int) v1->frag_pos.x, y1 = (int) v1->frag_pos.y;
 
-  float z0 = v0->scr_pos.z;
-  float z1 = v1->scr_pos.z;
+  float z0 = v0->frag_pos.z;
+  float z1 = v1->frag_pos.z;
 
-  float w0 = v0->scr_pos.w;
-  float w1 = v1->scr_pos.w;
+  float w0 = v0->frag_pos.w;
+  float w1 = v1->frag_pos.w;
 
   bool steep = false;
   if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
@@ -696,9 +695,9 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
   float t = 0;
   for (int x = x0; x <= x1; x++) {
     t = (float) (x - x0) / (float) dx;
-    pt.scr_pos = glm::vec4(x, y, glm::mix(z0, z1, t), glm::mix(w0, w1, t));
+    pt.frag_pos = glm::vec4(x, y, glm::mix(z0, z1, t), glm::mix(w0, w1, t));
     if (steep) {
-      std::swap(pt.scr_pos.x, pt.scr_pos.y);
+      std::swap(pt.frag_pos.x, pt.frag_pos.y);
     }
     InterpolateLinear(pt.varyings, varyings_in, varyings_cnt_, t);
     RasterizationPoint(&pt, line_width);
@@ -714,7 +713,7 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
 void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing) {
   // TODO top-left rule
   VertexHolder *vert[3] = {v0, v1, v2};
-  glm::aligned_vec4 screen_pos[3] = {vert[0]->scr_pos, vert[1]->scr_pos, vert[2]->scr_pos};
+  glm::aligned_vec4 screen_pos[3] = {vert[0]->frag_pos, vert[1]->frag_pos, vert[2]->frag_pos};
   BoundingBox bounds = TriangleBoundingBox(screen_pos, viewport_.width, viewport_.height);
   bounds.min -= 1.f;
 
@@ -734,8 +733,9 @@ void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, Ver
         pixel_quad.front_facing = front_facing;
 
         for (int i = 0; i < 3; i++) {
-          pixel_quad.vert_pos[i] = vert[i]->scr_pos;
-          pixel_quad.vert_clip_z[i] = vert[i]->clip_pos.z;
+          pixel_quad.vert_pos[i] = vert[i]->frag_pos;
+          pixel_quad.vert_z[i] = &vert[i]->frag_pos.z;
+          pixel_quad.vert_w[i] = vert[i]->frag_pos.w;
           pixel_quad.vert_varyings[i] = vert[i]->varyings;
         }
 
@@ -777,8 +777,24 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
     return;
   }
 
-  // barycentric correction
-  BarycentricCorrect(quad);
+  for (auto &pixel : quad.pixels) {
+    for (auto &sample : pixel.samples) {
+      if (!sample.inside) {
+        continue;
+      }
+
+      // interpolate z, w
+      InterpolateBarycentric(&sample.position.z, quad.vert_z, 2, sample.barycentric);
+
+      // depth clip
+      if (sample.position.z < viewport_.depth_min || sample.position.z > viewport_.depth_max) {
+        sample.inside = false;
+      }
+
+      // barycentric correction
+      sample.barycentric *= (1.f / sample.position.w * quad.vert_w);
+    }
+  }
 
   // early z
   if (early_z && render_state_->depth_test) {
@@ -955,16 +971,16 @@ void RendererSoft::VertexShaderImpl(VertexHolder &vertex) {
 }
 
 void RendererSoft::PerspectiveDivideImpl(VertexHolder &vertex) {
-  vertex.scr_pos = vertex.clip_pos;
-  auto &pos = vertex.scr_pos;
-  float inv_w = 1.0f / pos.w;
-  pos.w *= pos.w;
+  vertex.frag_pos = vertex.clip_pos;
+  auto &pos = vertex.frag_pos;
+  float inv_w = 1.f / pos.w;
   pos *= inv_w;
+  pos.w = inv_w;
 }
 
 void RendererSoft::ViewportTransformImpl(VertexHolder &vertex) {
-  vertex.scr_pos *= viewport_.inner_p;
-  vertex.scr_pos += viewport_.inner_o;
+  vertex.frag_pos *= viewport_.inner_p;
+  vertex.frag_pos += viewport_.inner_o;
 }
 
 int RendererSoft::CountFrustumClipMask(glm::vec4 &clip_pos) {
@@ -1031,53 +1047,6 @@ bool RendererSoft::Barycentric(glm::aligned_vec4 *vert,
   }
 
   return true;
-}
-
-void RendererSoft::BarycentricCorrect(PixelQuadContext &quad) {
-  glm::aligned_vec4 *vert = quad.vert_pos_flat;
-#ifdef SOFTGL_SIMD_OPT
-  __m128 m_bc_factor = _mm_load_ps(&quad.vert_clip_z.x);
-  __m128 m_screen_z = _mm_load_ps(&vert[2].x);
-  __m128 m_screen_w = _mm_load_ps(&vert[3].x);
-  for (auto &pixel : quad.pixels) {
-    for (auto &sample : pixel.samples) {
-      if (!sample.inside) {
-        continue;
-      }
-      auto &bc = sample.barycentric;
-      __m128 m_bc = _mm_load_ps(&bc.x);
-
-      // barycentric correction
-      m_bc = _mm_div_ps(m_bc, m_bc_factor);
-      m_bc = _mm_div_ps(m_bc, _mm_set1_ps(MM_F32(m_bc, 0) + MM_F32(m_bc, 1) + MM_F32(m_bc, 2)));
-      _mm_store_ps(&bc.x, m_bc);
-
-      // interpolate z, w
-      auto dz = _mm_dp_ps(m_screen_z, m_bc, 0x7f);
-      auto dw = _mm_dp_ps(m_screen_w, m_bc, 0x7f);
-
-      sample.position.z = MM_F32(dz, 0);
-      sample.position.w = MM_F32(dw, 0);
-    }
-  }
-#else
-  for (auto &pixel : quad.pixels) {
-    for (auto &sample : pixel.samples) {
-      if (!sample.inside) {
-        continue;
-      }
-      auto &bc = sample.barycentric;
-
-      // barycentric correction
-      bc /= quad.vert_clip_z;
-      bc /= (bc.x + bc.y + bc.z);
-
-      // interpolate z, w
-      sample.position.z = glm::dot(vert[2], bc);
-      sample.position.w = glm::dot(vert[3], bc);
-    }
-  }
-#endif
 }
 
 void RendererSoft::InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t) {

@@ -103,7 +103,6 @@ class RendererSoft : public Renderer {
   BoundingBox TriangleBoundingBox(glm::vec4 *vert, float width, float height);
 
   bool Barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
-  void BarycentricCorrect(PixelQuadContext &quad);
 
  private:
   Viewport viewport_{};

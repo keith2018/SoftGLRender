@@ -103,7 +103,7 @@ void ModelLoader::LoadLights() {
 }
 
 void ModelLoader::LoadFloor() {
-  float floor_y = -0.05f;
+  float floor_y = -0.02f;
   scene_.floor.vertexes.push_back({glm::vec3(-2.f, floor_y, 2.f), glm::vec2(0.f, 1.f), glm::vec3(0.f, 1.f, 0.f)});
   scene_.floor.vertexes.push_back({glm::vec3(-2.f, floor_y, -2.f), glm::vec2(0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)});
   scene_.floor.vertexes.push_back({glm::vec3(2.f, floor_y, -2.f), glm::vec2(1.f, 0.f), glm::vec3(0.f, 1.f, 0.f)});
