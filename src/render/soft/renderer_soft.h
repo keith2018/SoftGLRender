@@ -76,8 +76,9 @@ class RendererSoft : public Renderer {
   void ClippingTriangle(PrimitiveHolder &triangle);
 
   void InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t);
-  void InterpolateLinear(float *varyings_out, const float *varyings_in[2], size_t elem_cnt, float t);
-  void InterpolateBarycentric(float *varyings_out, const float *varyings_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
+  void InterpolateLinear(float *vars_out, const float *vars_in[2], size_t elem_cnt, float t);
+  void InterpolateBarycentric(float *vars_out, const float *vars_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
+  void InterpolateBarycentricSIMD(float *vars_out, const float *vars_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
 
   void RasterizationPoint(VertexHolder *v, float point_size);
   void RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width);
