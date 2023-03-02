@@ -1063,39 +1063,61 @@ void RendererSoft::InterpolateVertex(VertexHolder &out, VertexHolder &v0, Vertex
   VertexShaderImpl(out);
 }
 
-void RendererSoft::InterpolateLinear(float *varyings_out,
-                                     const float *varyings_in[2],
+void RendererSoft::InterpolateLinear(float *vars_out,
+                                     const float *vars_in[2],
                                      size_t elem_cnt,
                                      float t) {
-  const float *in_vary0 = varyings_in[0];
-  const float *in_vary1 = varyings_in[1];
+  const float *in_var0 = vars_in[0];
+  const float *in_var1 = vars_in[1];
 
-  if (in_vary0 == nullptr || in_vary1 == nullptr) {
+  if (in_var0 == nullptr || in_var1 == nullptr) {
     return;
   }
 
   for (int i = 0; i < elem_cnt; i++) {
-    varyings_out[i] = glm::mix(*(in_vary0 + i), *(in_vary1 + i), t);
+    vars_out[i] = glm::mix(*(in_var0 + i), *(in_var1 + i), t);
   }
 }
 
-void RendererSoft::InterpolateBarycentric(float *varyings_out,
-                                          const float *varyings_in[3],
+void RendererSoft::InterpolateBarycentric(float *vars_out,
+                                          const float *vars_in[3],
                                           size_t elem_cnt,
                                           glm::aligned_vec4 &bc) {
-  const float *in_vary0 = varyings_in[0];
-  const float *in_vary1 = varyings_in[1];
-  const float *in_vary2 = varyings_in[2];
+  const float *in_var0 = vars_in[0];
+  const float *in_var1 = vars_in[1];
+  const float *in_var2 = vars_in[2];
 
-  if (in_vary0 == nullptr || in_vary1 == nullptr || in_vary2 == nullptr) {
+  if (in_var0 == nullptr || in_var1 == nullptr || in_var2 == nullptr) {
     return;
   }
 
+  bool simd_enabled = false;
 #ifdef SOFTGL_SIMD_OPT
-  assert(PTR_ADDR(in_vary0) % SOFTGL_ALIGNMENT == 0);
-  assert(PTR_ADDR(in_vary1) % SOFTGL_ALIGNMENT == 0);
-  assert(PTR_ADDR(in_vary2) % SOFTGL_ALIGNMENT == 0);
-  assert(PTR_ADDR(varyings_out) % SOFTGL_ALIGNMENT == 0);
+  if ((PTR_ADDR(in_var0) % SOFTGL_ALIGNMENT == 0) &&
+      (PTR_ADDR(in_var1) % SOFTGL_ALIGNMENT == 0) &&
+      (PTR_ADDR(in_var2) % SOFTGL_ALIGNMENT == 0) &&
+      (PTR_ADDR(vars_out) % SOFTGL_ALIGNMENT == 0)) {
+    simd_enabled = true;
+  }
+#endif
+
+  if (simd_enabled) {
+    InterpolateBarycentricSIMD(vars_out, vars_in, elem_cnt, bc);
+  } else {
+    for (int i = 0; i < elem_cnt; i++) {
+      vars_out[i] = glm::dot(bc, glm::vec4(*(in_var0 + i), *(in_var1 + i), *(in_var2 + i), 0.f));
+    }
+  }
+}
+
+void RendererSoft::InterpolateBarycentricSIMD(float *vars_out,
+                                              const float *vars_in[3],
+                                              size_t elem_cnt,
+                                              glm::aligned_vec4 &bc) {
+#ifdef SOFTGL_SIMD_OPT
+  const float *in_var0 = vars_in[0];
+  const float *in_var1 = vars_in[1];
+  const float *in_var2 = vars_in[2];
 
   uint32_t idx = 0;
   uint32_t end;
@@ -1107,10 +1129,10 @@ void RendererSoft::InterpolateBarycentric(float *varyings_out,
     __m256 bc2 = _mm256_set1_ps(bc[2]);
 
     for (; idx < end; idx += 8) {
-      __m256 sum = _mm256_mul_ps(_mm256_load_ps(in_vary0 + idx), bc0);
-      sum = _mm256_fmadd_ps(_mm256_load_ps(in_vary1 + idx), bc1, sum);
-      sum = _mm256_fmadd_ps(_mm256_load_ps(in_vary2 + idx), bc2, sum);
-      _mm256_store_ps(varyings_out + idx, sum);
+      __m256 sum = _mm256_mul_ps(_mm256_load_ps(in_var0 + idx), bc0);
+      sum = _mm256_fmadd_ps(_mm256_load_ps(in_var1 + idx), bc1, sum);
+      sum = _mm256_fmadd_ps(_mm256_load_ps(in_var2 + idx), bc2, sum);
+      _mm256_store_ps(vars_out + idx, sum);
     }
   }
 
@@ -1121,22 +1143,18 @@ void RendererSoft::InterpolateBarycentric(float *varyings_out,
     __m128 bc2 = _mm_set1_ps(bc[2]);
 
     for (; idx < end; idx += 4) {
-      __m128 sum = _mm_mul_ps(_mm_load_ps(in_vary0 + idx), bc0);
-      sum = _mm_fmadd_ps(_mm_load_ps(in_vary1 + idx), bc1, sum);
-      sum = _mm_fmadd_ps(_mm_load_ps(in_vary2 + idx), bc2, sum);
-      _mm_store_ps(varyings_out + idx, sum);
+      __m128 sum = _mm_mul_ps(_mm_load_ps(in_var0 + idx), bc0);
+      sum = _mm_fmadd_ps(_mm_load_ps(in_var1 + idx), bc1, sum);
+      sum = _mm_fmadd_ps(_mm_load_ps(in_var2 + idx), bc2, sum);
+      _mm_store_ps(vars_out + idx, sum);
     }
   }
 
   for (; idx < elem_cnt; idx++) {
-    varyings_out[idx] = 0;
-    varyings_out[idx] += *(in_vary0 + idx) * bc[0];
-    varyings_out[idx] += *(in_vary1 + idx) * bc[1];
-    varyings_out[idx] += *(in_vary2 + idx) * bc[2];
-  }
-#else
-  for (int i = 0; i < elem_cnt; i++) {
-    varyings_out[i] = glm::dot(bc, glm::vec4(*(in_vary0 + i), *(in_vary1 + i), *(in_vary2 + i), 0.f));
+    vars_out[idx] = 0;
+    vars_out[idx] += *(in_var0 + idx) * bc[0];
+    vars_out[idx] += *(in_var1 + idx) * bc[1];
+    vars_out[idx] += *(in_var2 + idx) * bc[2];
   }
 #endif
 }
