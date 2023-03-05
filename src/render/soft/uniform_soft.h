@@ -44,14 +44,28 @@ class UniformBlockSoft : public UniformBlock {
 
 class UniformSamplerSoft : public UniformSampler {
  public:
-  explicit UniformSamplerSoft(const std::string &name, TextureType type)
-      : UniformSampler(name, type) {
+  explicit UniformSamplerSoft(const std::string &name, TextureType type, TextureFormat format)
+      : UniformSampler(name, type, format) {
     switch (type) {
       case TextureType_2D:
-        sampler_ = std::make_shared<Sampler2DSoft>();
+        switch (format) {
+          case TextureFormat_RGBA8:
+            sampler_ = std::make_shared<Sampler2DSoft<RGBA>>();
+            break;
+          case TextureFormat_DEPTH:
+            sampler_ = std::make_shared<Sampler2DSoft<float>>();
+            break;
+        }
         break;
       case TextureType_CUBE:
-        sampler_ = std::make_shared<SamplerCubeSoft>();
+        switch (format) {
+          case TextureFormat_RGBA8:
+            sampler_ = std::make_shared<SamplerCubeSoft<RGBA>>();
+            break;
+          case TextureFormat_DEPTH:
+            sampler_ = std::make_shared<SamplerCubeSoft<float>>();
+            break;
+        }
         break;
       default:
         sampler_ = nullptr;

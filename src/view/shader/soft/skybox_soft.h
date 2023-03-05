@@ -29,8 +29,8 @@ struct ShaderUniforms {
   glm::mat3 u_inverseTransposeModelMatrix;
 
   // Samplers
-  Sampler2DSoft *u_equirectangularMap;
-  SamplerCubeSoft *u_cubeMap;
+  Sampler2DSoft<RGBA> *u_equirectangularMap;
+  SamplerCubeSoft<RGBA> *u_cubeMap;
 };
 
 struct ShaderVaryings {

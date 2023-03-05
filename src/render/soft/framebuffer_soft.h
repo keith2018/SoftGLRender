@@ -23,21 +23,21 @@ class FrameBufferSoft : public FrameBuffer {
   }
 
   bool IsValid() override {
-    return color_ready;
+    return color_ready || depth_ready;
   }
 
-  std::shared_ptr<ImageBufferColor> GetColorBuffer() const {
+  std::shared_ptr<ImageBufferSoft<RGBA>> GetColorBuffer() const {
     if (!color_ready) {
       return nullptr;
     }
 
     switch (color_tex_type) {
       case TextureType_2D: {
-        auto *color_2d = dynamic_cast<Texture2DSoft *>(color_attachment_2d.tex.get());
+        auto *color_2d = dynamic_cast<Texture2DSoft<RGBA> *>(color_attachment_2d.tex.get());
         return color_2d->GetImage().GetBuffer(color_attachment_2d.level);
       }
       case TextureType_CUBE: {
-        auto *color_cube = dynamic_cast<TextureCubeSoft *>(color_attachment_cube.tex.get());
+        auto *color_cube = dynamic_cast<TextureCubeSoft<RGBA> *>(color_attachment_cube.tex.get());
         return color_cube->GetImage(color_attachment_cube.face).GetBuffer(color_attachment_cube.level);
       }
       default:
@@ -47,12 +47,12 @@ class FrameBufferSoft : public FrameBuffer {
     return nullptr;
   };
 
-  std::shared_ptr<ImageBufferDepth> GetDepthBuffer() const {
+  std::shared_ptr<ImageBufferSoft<float>> GetDepthBuffer() const {
     if (!depth_ready) {
       return nullptr;
     }
-    auto *depth_tex = dynamic_cast<TextureDepthSoft *>(depth_attachment.get());
-    return depth_tex->GetBuffer();
+    auto *depth_tex = dynamic_cast<Texture2DSoft<float> *>(depth_attachment.get());
+    return depth_tex->GetImage().GetBuffer();
   };
 
  private:

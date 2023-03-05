@@ -42,7 +42,7 @@ class FrameBufferOpenGL : public FrameBuffer {
     return true;
   }
 
-  void SetColorAttachment(std::shared_ptr<Texture2D> &color, int level) override {
+  void SetColorAttachment(std::shared_ptr<Texture> &color, int level) override {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
@@ -52,7 +52,7 @@ class FrameBufferOpenGL : public FrameBuffer {
     FrameBuffer::SetColorAttachment(color, level);
   }
 
-  void SetColorAttachment(std::shared_ptr<TextureCube> &color, CubeMapFace face, int level) override {
+  void SetColorAttachment(std::shared_ptr<Texture> &color, CubeMapFace face, int level) override {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
@@ -62,12 +62,13 @@ class FrameBufferOpenGL : public FrameBuffer {
     FrameBuffer::SetColorAttachment(color, face, level);
   }
 
-  void SetDepthAttachment(std::shared_ptr<TextureDepth> &depth) override {
+  void SetDepthAttachment(std::shared_ptr<Texture> &depth) override {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
-    GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER,
-                                       GL_DEPTH_ATTACHMENT,
-                                       GL_RENDERBUFFER,
-                                       depth->GetId()));
+    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
+                                    GL_DEPTH_ATTACHMENT,
+                                    depth->multi_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
+                                    depth->GetId(),
+                                    0));
     FrameBuffer::SetDepthAttachment(depth);
   }
 

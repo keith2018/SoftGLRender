@@ -43,10 +43,10 @@ struct ShaderUniforms {
   glm::vec4 u_baseColor;
 
   // Samplers
-  Sampler2DSoft *u_albedoMap;
-  Sampler2DSoft *u_normalMap;
-  Sampler2DSoft *u_emissiveMap;
-  Sampler2DSoft *u_aoMap;
+  Sampler2DSoft<RGBA> *u_albedoMap;
+  Sampler2DSoft<RGBA> *u_normalMap;
+  Sampler2DSoft<RGBA> *u_emissiveMap;
+  Sampler2DSoft<RGBA> *u_aoMap;
 };
 
 struct ShaderVaryings {
@@ -118,7 +118,7 @@ class FS : public ShaderBlinnPhong {
  public:
   CREATE_SHADER_CLONE(FS)
 
-  size_t GetSamplerDerivativeOffset(BaseSampler<uint8_t> *sampler) const override {
+  size_t GetSamplerDerivativeOffset(BaseSampler<RGBA> *sampler) const override {
     return offsetof(ShaderVaryings, v_texCoord);
   }
 

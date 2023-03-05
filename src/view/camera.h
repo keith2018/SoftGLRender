@@ -11,6 +11,10 @@
 namespace SoftGL {
 namespace View {
 
+constexpr float CAMERA_FOV = 60.f;
+constexpr float CAMERA_NEAR = 0.01f;
+constexpr float CAMERA_FAR = 100.f;
+
 class Camera {
  public:
   void Update();

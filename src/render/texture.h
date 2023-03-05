@@ -75,42 +75,36 @@ struct SamplerCubeDesc : Sampler2DDesc {
 enum TextureType {
   TextureType_2D,
   TextureType_CUBE,
-  TextureType_Depth,
+};
+
+enum TextureFormat {
+  TextureFormat_RGBA8 = 0,
+  TextureFormat_DEPTH = 1,
+};
+
+struct TextureDesc {
+  TextureDesc(TextureType type, TextureFormat format, bool multi_sample)
+      : type(type), format(format), multi_sample(multi_sample) {}
+
+  TextureType type = TextureType_2D;
+  TextureFormat format = TextureFormat_RGBA8;
+  bool multi_sample = false;
 };
 
 class Texture {
  public:
   virtual int GetId() const = 0;
-  virtual TextureType Type() = 0;
   virtual void SetSamplerDesc(SamplerDesc &sampler) {};
   virtual void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
+  virtual void SetImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {};
   virtual void InitImageData(int w, int h) {};
 
  public:
   int width = 0;
   int height = 0;
   bool multi_sample = false;
-};
-
-class Texture2D : public Texture {
- public:
-  TextureType Type() override {
-    return TextureType_2D;
-  }
-};
-
-class TextureCube : public Texture {
- public:
-  TextureType Type() override {
-    return TextureType_CUBE;
-  }
-};
-
-class TextureDepth : public Texture {
- public:
-  TextureType Type() override {
-    return TextureType_Depth;
-  }
+  TextureType type = TextureType_2D;
+  TextureFormat format = TextureFormat_RGBA8;
 };
 
 }

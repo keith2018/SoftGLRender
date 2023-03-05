@@ -47,6 +47,7 @@ class ModelLoader {
 
   static glm::mat4 ConvertMatrix(const aiMatrix4x4 &m);
   static BoundingBox ConvertBoundingBox(const aiAABB &aabb);
+  static glm::mat4 AdjustModelCenter(BoundingBox &bounds);
 
   void PreloadTextureFiles(const aiScene *scene, const std::string &res_dir);
   std::shared_ptr<Buffer<RGBA>> LoadTextureFile(const std::string &path);

@@ -132,6 +132,7 @@ void ConfigPanel::DrawSettings() {
   // shadow floor
   ImGui::Separator();
   ImGui::Checkbox("shadow floor", &config_.show_floor);
+  config_.shadow_map = config_.show_floor;
 
   if (config_.wireframe) {
     return;

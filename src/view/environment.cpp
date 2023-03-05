@@ -19,8 +19,8 @@ struct LookAtParam {
 
 bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
                                          const std::function<bool(ShaderProgram &program)> &shader_func,
-                                         const std::shared_ptr<Texture2D> &tex_in,
-                                         std::shared_ptr<TextureCube> &tex_out) {
+                                         const std::shared_ptr<Texture> &tex_in,
+                                         std::shared_ptr<Texture> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
@@ -38,8 +38,8 @@ bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &render
 
 bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
                                         const std::function<bool(ShaderProgram &program)> &shader_func,
-                                        const std::shared_ptr<TextureCube> &tex_in,
-                                        std::shared_ptr<TextureCube> &tex_out) {
+                                        const std::shared_ptr<Texture> &tex_in,
+                                        std::shared_ptr<Texture> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
@@ -57,8 +57,8 @@ bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &rendere
 
 bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
                                        const std::function<bool(ShaderProgram &program)> &shader_func,
-                                       const std::shared_ptr<TextureCube> &tex_in,
-                                       std::shared_ptr<TextureCube> &tex_out) {
+                                       const std::shared_ptr<Texture> &tex_in,
+                                       std::shared_ptr<Texture> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
@@ -124,7 +124,7 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
 
   // uniforms
   const char *sampler_name = Material::SamplerName(tex_usage);
-  auto uniform = context.renderer->CreateUniformSampler(sampler_name, tex_in->Type());
+  auto uniform = context.renderer->CreateUniformSampler(sampler_name, tex_in->type, tex_in->format);
   uniform->SetTexture(tex_in);
   context.model_skybox.material->shader_uniforms->samplers[tex_usage] = uniform;
 
@@ -137,7 +137,7 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
 void Environment::DrawCubeFaces(CubeRenderContext &context,
                                 int width,
                                 int height,
-                                std::shared_ptr<TextureCube> &tex_out,
+                                std::shared_ptr<Texture> &tex_out,
                                 int tex_out_level,
                                 const std::function<void()> &before_draw) {
   static LookAtParam capture_views[] = {
@@ -153,7 +153,7 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
   glm::mat4 model_matrix(1.f);
 
   // draw
-  context.renderer->SetFrameBuffer(*context.fbo);
+  context.renderer->SetFrameBuffer(context.fbo);
   context.renderer->SetViewPort(0, 0, width, height);
 
   for (int i = 0; i < 6; i++) {

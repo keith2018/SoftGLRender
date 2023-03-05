@@ -26,16 +26,24 @@ std::shared_ptr<FrameBuffer> RendererSoft::CreateFrameBuffer() {
 }
 
 // texture
-std::shared_ptr<Texture2D> RendererSoft::CreateTexture2D(bool multi_sample) {
-  return std::make_shared<Texture2DSoft>(multi_sample);
-}
-
-std::shared_ptr<TextureCube> RendererSoft::CreateTextureCube() {
-  return std::make_shared<TextureCubeSoft>();
-}
-
-std::shared_ptr<TextureDepth> RendererSoft::CreateTextureDepth(bool multi_sample) {
-  return std::make_shared<TextureDepthSoft>(multi_sample);
+std::shared_ptr<Texture> RendererSoft::CreateTexture(const TextureDesc &desc) {
+  switch (desc.type) {
+    case TextureType_2D:
+      switch (desc.format) {
+        case TextureFormat_RGBA8:
+          return std::make_shared<Texture2DSoft<RGBA>>(desc);
+        case TextureFormat_DEPTH:
+          return std::make_shared<Texture2DSoft<float>>(desc);
+      }
+    case TextureType_CUBE:
+      switch (desc.format) {
+        case TextureFormat_RGBA8:
+          return std::make_shared<TextureCubeSoft<RGBA>>(desc);
+        case TextureFormat_DEPTH:
+          return std::make_shared<TextureCubeSoft<float>>(desc);
+      }
+  }
+  return nullptr;
 }
 
 // vertex
@@ -53,13 +61,15 @@ std::shared_ptr<UniformBlock> RendererSoft::CreateUniformBlock(const std::string
   return std::make_shared<UniformBlockSoft>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::string &name, TextureType type) {
-  return std::make_shared<UniformSamplerSoft>(name, type);
+std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::string &name,
+                                                                   TextureType type,
+                                                                   TextureFormat format) {
+  return std::make_shared<UniformSamplerSoft>(name, type, format);
 }
 
 // pipeline
-void RendererSoft::SetFrameBuffer(FrameBuffer &frame_buffer) {
-  fbo_ = dynamic_cast<FrameBufferSoft *>(&frame_buffer);
+void RendererSoft::SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) {
+  fbo_ = dynamic_cast<FrameBufferSoft *>(frame_buffer.get());
 }
 
 void RendererSoft::SetViewPort(int x, int y, int width, int height) {
@@ -111,7 +121,7 @@ void RendererSoft::Clear(const ClearState &state) {
 
   if (state.depth_flag && fbo_depth_) {
     float depth = viewport_.depth_far;
-    if (fbo_color_->multi_sample) {
+    if (fbo_depth_->multi_sample) {
       fbo_depth_->buffer_ms4x->SetAll(glm::tvec4<float>(depth));
     } else {
       fbo_depth_->buffer->SetAll(depth);
@@ -336,6 +346,10 @@ void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos,
                                          bool front_facing,
                                          void *varyings,
                                          ShaderProgramSoft *shader) {
+  if (!fbo_color_) {
+    return;
+  }
+
   auto &builtin = shader->GetShaderBuiltin();
   builtin.FragCoord = screen_pos;
   builtin.FrontFacing = front_facing;

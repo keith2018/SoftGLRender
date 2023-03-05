@@ -217,6 +217,8 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
     return false;
   }
 
+  // model center transform
+  scene_.model->centered_transform = AdjustModelCenter(scene_.model->root_aabb);
   return true;
 }
 
@@ -416,6 +418,16 @@ BoundingBox ModelLoader::ConvertBoundingBox(const aiAABB &aabb) {
   ret.min = glm::vec3(aabb.mMin.x, aabb.mMin.y, aabb.mMin.z);
   ret.max = glm::vec3(aabb.mMax.x, aabb.mMax.y, aabb.mMax.z);
   return ret;
+}
+
+glm::mat4 ModelLoader::AdjustModelCenter(BoundingBox &bounds) {
+  glm::mat4 model_transform(1.0f);
+  glm::vec3 trans = (bounds.max + bounds.min) / -2.f;
+  trans.y = -bounds.min.y;
+  float bounds_len = glm::length(bounds.max - bounds.min);
+  model_transform = glm::scale(model_transform, glm::vec3(3.f / bounds_len));
+  model_transform = glm::translate(model_transform, trans);
+  return model_transform;
 }
 
 void ModelLoader::PreloadTextureFiles(const aiScene *scene, const std::string &res_dir) {

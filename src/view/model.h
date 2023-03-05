@@ -88,6 +88,8 @@ struct Model {
   size_t mesh_cnt = 0;
   size_t primitive_cnt = 0;
   size_t vertex_cnt = 0;
+
+  glm::mat4 centered_transform;
 };
 
 struct DemoScene {

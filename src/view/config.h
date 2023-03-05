@@ -37,6 +37,7 @@ class Config {
   bool show_floor = false;
   bool show_skybox = false;
 
+  bool shadow_map = false;
   bool pbr_ibl = false;
   bool mipmaps = false;
 

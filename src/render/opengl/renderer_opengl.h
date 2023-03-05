@@ -22,9 +22,7 @@ class RendererOpenGL : public Renderer {
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
 
   // texture
-  std::shared_ptr<Texture2D> CreateTexture2D(bool multi_sample) override;
-  std::shared_ptr<TextureCube> CreateTextureCube() override;
-  std::shared_ptr<TextureDepth> CreateTextureDepth(bool multi_sample) override;
+  std::shared_ptr<Texture> CreateTexture(const TextureDesc &desc) override;
 
   // vertex
   std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) override;
@@ -34,10 +32,12 @@ class RendererOpenGL : public Renderer {
 
   // uniform
   std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) override;
+  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name,
+                                                       TextureType type,
+                                                       TextureFormat format) override;
 
   // pipeline
-  void SetFrameBuffer(FrameBuffer &frame_buffer) override;
+  void SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) override;
   void SetViewPort(int x, int y, int width, int height) override;
   void Clear(const ClearState &state) override;
   void SetRenderState(const RenderState &state) override;

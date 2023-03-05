@@ -32,7 +32,7 @@ struct ShaderUniforms {
   float u_roughness;
 
   // Samplers
-  SamplerCubeSoft *u_cubeMap;
+  SamplerCubeSoft<RGBA> *u_cubeMap;
 };
 
 struct ShaderVaryings {
