@@ -159,6 +159,14 @@ void RendererSoft::Draw(PrimitiveType type) {
   fbo_depth_ = fbo_->GetDepthBuffer();
   primitive_type_ = type;
 
+  if (fbo_color_) {
+    raster_samples = fbo_color_->sample_cnt;
+  } else if (fbo_depth_) {
+    raster_samples = fbo_depth_->sample_cnt;
+  } else {
+    raster_samples = 1;
+  }
+
   ProcessVertexShader();
   ProcessPrimitiveAssembly();
   ProcessClipping();
@@ -478,16 +486,12 @@ void RendererSoft::ClippingLine(PrimitiveHolder &line, bool post_vertex_process)
   }
 
   if (v0->clip_mask) {
-    auto &vert = ClippingNewVertex(vertexes_[line.indices[0]],
-                                   vertexes_[line.indices[1]], t0,
-                                   post_vertex_process);
+    auto &vert = ClippingNewVertex(line.indices[0], line.indices[1], t0, post_vertex_process);
     line.indices[0] = vert.index;
   }
 
   if (v1->clip_mask) {
-    auto &vert = ClippingNewVertex(vertexes_[line.indices[0]],
-                                   vertexes_[line.indices[1]], t1,
-                                   post_vertex_process);
+    auto &vert = ClippingNewVertex(line.indices[0], line.indices[1], t1, post_vertex_process);
     line.indices[1] = vert.index;
   }
 }
@@ -532,7 +536,7 @@ void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
         if (std::signbit(d_pre) != std::signbit(d)) {
           float t = d < 0 ? d_pre / (d_pre - d) : -d_pre / (d - d_pre);
           // create new vertex
-          auto &vert = ClippingNewVertex(vertexes_[idx_pre], vertexes_[idx], t);
+          auto &vert = ClippingNewVertex(idx_pre, idx, t);
           indices_out.push_back(vert.index);
         }
 
@@ -659,7 +663,7 @@ void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
       auto &builtIn = shader_program_->GetShaderBuiltin();
       if (!builtIn.discard) {
         // TODO MSAA
-        for (int idx = 0; idx < fbo_color_->sample_cnt; idx++) {
+        for (int idx = 0; idx < raster_samples; idx++) {
           ProcessPerSampleOperations(x, y, screen_pos.z, builtIn.FragColor, idx);
         }
       }
@@ -764,7 +768,7 @@ void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, Ver
         int block_start_y = bounds.min.y + block_y * block_size;
         for (int y = block_start_y + 1; y < block_start_y + block_size && y <= bounds.max.y; y += 2) {
           for (int x = block_start_x + 1; x < block_start_x + block_size && x <= bounds.max.x; x += 2) {
-            pixel_quad.Init((float) x, (float) y, fbo_color_->sample_cnt);
+            pixel_quad.Init((float) x, (float) y, raster_samples);
             RasterizationPixelQuad(pixel_quad);
           }
         }
@@ -960,12 +964,12 @@ void RendererSoft::SetFrameColor(int x, int y, const RGBA &color, int sample) {
   }
 }
 
-VertexHolder &RendererSoft::ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process) {
+VertexHolder &RendererSoft::ClippingNewVertex(size_t idx0, size_t idx1, float t, bool post_vertex_process) {
   vertexes_.emplace_back();
   VertexHolder &vh = vertexes_.back();
   vh.discard = false;
   vh.index = vertexes_.size() - 1;
-  InterpolateVertex(vh, v0, v1, t);
+  InterpolateVertex(vh, vertexes_[idx0], vertexes_[idx1], t);
 
   if (post_vertex_process) {
     PerspectiveDivideImpl(vh);

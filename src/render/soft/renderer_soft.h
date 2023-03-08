@@ -96,7 +96,7 @@ class RendererSoft : public Renderer {
   inline float *GetFrameDepth(int x, int y, int sample);
   inline void SetFrameColor(int x, int y, const RGBA &color, int sample);
 
-  VertexHolder &ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process = false);
+  VertexHolder &ClippingNewVertex(size_t idx0, size_t idx1, float t, bool post_vertex_process = false);
   void VertexShaderImpl(VertexHolder &vertex);
   void PerspectiveDivideImpl(VertexHolder &vertex);
   void ViewportTransformImpl(VertexHolder &vertex);

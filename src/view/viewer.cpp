@@ -79,6 +79,8 @@ void Viewer::DrawFrame(DemoScene &scene) {
                                     (float) SHADOW_MAP_WIDTH / (float) SHADOW_MAP_HEIGHT,
                                     CAMERA_NEAR,
                                     CAMERA_FAR);
+      camera_depth_->LookAt(config_.point_light_position, glm::vec3(0.0f), glm::vec3(1.0));
+      camera_depth_->Update();
     }
     camera_ = camera_depth_.get();
 
