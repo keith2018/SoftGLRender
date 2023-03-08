@@ -28,6 +28,7 @@ void Viewer::Create(int width, int height, int outTexId) {
   uniform_block_scene_ = renderer_->CreateUniformBlock("UniformsScene", sizeof(UniformsScene));
   uniforms_block_mvp_ = renderer_->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
   uniforms_block_color_ = renderer_->CreateUniformBlock("UniformsColor", sizeof(UniformsColor));
+  uniforms_block_blinn_phong_ = renderer_->CreateUniformBlock("UniformsBlinnPhong", sizeof(UniformsBlinnPhong));
 
   // reset variables
   camera_ = &camera_main_;
@@ -156,7 +157,11 @@ void Viewer::DrawScene(bool skybox) {
   if (config_.show_floor) {
     glm::mat4 floor_matrix(1.0f);
     UpdateUniformMVP(floor_matrix, camera_->ViewMatrix(), camera_->ProjectionMatrix());
-    DrawMeshBaseColor(scene_->floor, config_.wireframe);
+    if (config_.wireframe) {
+      DrawMeshBaseColor(scene_->floor, true);
+    } else {
+      DrawMeshTextured(scene_->floor, 0.f);
+    }
   }
 
   // draw model nodes opaque
@@ -236,8 +241,9 @@ void Viewer::DrawMeshBaseColor(ModelMesh &mesh, bool wireframe) {
   PipelineDraw(mesh, mesh.material_base_color);
 }
 
-void Viewer::DrawMeshTextured(ModelMesh &mesh) {
+void Viewer::DrawMeshTextured(ModelMesh &mesh, float specular) {
   UpdateUniformColor(glm::vec4(1.f));
+  UpdateUniformBlinnPhong(specular);
 
   PipelineSetup(mesh,
                 mesh.material_textured,
@@ -245,6 +251,7 @@ void Viewer::DrawMeshTextured(ModelMesh &mesh) {
                     {UniformBlock_MVP, uniforms_block_mvp_},
                     {UniformBlock_Scene, uniform_block_scene_},
                     {UniformBlock_Color, uniforms_block_color_},
+                    {UniformBlock_BlinnPhong, uniforms_block_blinn_phong_},
                 });
 
   // update IBL textures
@@ -273,7 +280,7 @@ void Viewer::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
     }
 
     // draw mesh
-    wireframe ? DrawMeshBaseColor(mesh, true) : DrawMeshTextured(mesh);
+    wireframe ? DrawMeshBaseColor(mesh, true) : DrawMeshTextured(mesh, 1.f);
   }
 
   // draw child
@@ -500,6 +507,11 @@ void Viewer::UpdateUniformMVP(const glm::mat4 &model, const glm::mat4 &view, con
 void Viewer::UpdateUniformColor(const glm::vec4 &color) {
   uniforms_color_.u_baseColor = color;
   uniforms_block_color_->SetData(&uniforms_color_, sizeof(UniformsColor));
+}
+
+void Viewer::UpdateUniformBlinnPhong(float specular) {
+  uniforms_blinn_phong_.u_kSpecular = specular;
+  uniforms_block_blinn_phong_->SetData(&uniforms_blinn_phong_, sizeof(UniformsBlinnPhong));
 }
 
 bool Viewer::InitSkyboxIBL(ModelSkybox &skybox) {

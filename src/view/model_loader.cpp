@@ -122,6 +122,11 @@ void ModelLoader::LoadFloor() {
   scene_.floor.material_base_color.shading = Shading_BaseColor;
   scene_.floor.material_base_color.base_color = glm::vec4(0.5f);
   scene_.floor.material_base_color.double_sided = true;
+
+  scene_.floor.material_textured.Reset();
+  scene_.floor.material_textured.shading = Shading_BlinnPhong;
+  scene_.floor.material_textured.double_sided = true;
+
   scene_.floor.aabb = BoundingBox(glm::vec3(-2, 0, -2), glm::vec3(2, 0, 2));
   scene_.floor.InitVertexes();
 }

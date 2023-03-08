@@ -88,6 +88,10 @@ layout (std140) uniform UniformsColor {
     vec4 u_baseColor;
 };
 
+layout (std140) uniform UniformsBlinnPhong {
+    float u_kSpecular;
+};
+
 #if defined(ALBEDO_MAP)
 uniform sampler2D u_albedoMap;
 #endif
@@ -148,7 +152,7 @@ void main() {
         vec3 cameraDirection = normalize(v_cameraDirection);
         vec3 halfVector = normalize(lightDirection + cameraDirection);
         float specularAngle = max(dot(normalVector, halfVector), 0.0f);
-        specularColor = vec3(pow(specularAngle, specularExponent));
+        specularColor = u_kSpecular * vec3(pow(specularAngle, specularExponent));
     }
 
     #if defined(EMISSIVE_MAP)

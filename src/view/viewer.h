@@ -43,7 +43,7 @@ class Viewer {
   void DrawPoints(ModelPoints &points, glm::mat4 &transform);
   void DrawLines(ModelLines &lines, glm::mat4 &transform);
   void DrawMeshBaseColor(ModelMesh &mesh, bool wireframe);
-  void DrawMeshTextured(ModelMesh &mesh);
+  void DrawMeshTextured(ModelMesh &mesh, float specular);
   void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
   void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
 
@@ -68,6 +68,7 @@ class Viewer {
   void UpdateUniformScene();
   void UpdateUniformMVP(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj);
   void UpdateUniformColor(const glm::vec4 &color);
+  void UpdateUniformBlinnPhong(float specular);
 
   bool InitSkyboxIBL(ModelSkybox &skybox);
   bool IBLEnabled();
@@ -95,6 +96,7 @@ class Viewer {
   UniformsScene uniforms_scene_{};
   UniformsMVP uniforms_mvp_{};
   UniformsColor uniforms_color_{};
+  UniformsBlinnPhong uniforms_blinn_phong_{};
 
   std::shared_ptr<Renderer> renderer_ = nullptr;
 
@@ -117,6 +119,7 @@ class Viewer {
   std::shared_ptr<UniformBlock> uniform_block_scene_;
   std::shared_ptr<UniformBlock> uniforms_block_mvp_;
   std::shared_ptr<UniformBlock> uniforms_block_color_;
+  std::shared_ptr<UniformBlock> uniforms_block_blinn_phong_;
 
   std::unordered_map<size_t, std::shared_ptr<ShaderProgram>> program_cache_;
 };

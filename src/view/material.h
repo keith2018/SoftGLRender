@@ -59,6 +59,7 @@ enum UniformBlockType {
   UniformBlock_Scene,
   UniformBlock_MVP,
   UniformBlock_Color,
+  UniformBlock_BlinnPhong,
   UniformBlock_QuadFilter,
   UniformBlock_IBLPrefilter,
 };
@@ -81,6 +82,10 @@ struct UniformsMVP {
 
 struct UniformsColor {
   glm::vec4 u_baseColor;
+};
+
+struct UniformsBlinnPhong {
+  float u_kSpecular;
 };
 
 struct UniformsQuadFilter {

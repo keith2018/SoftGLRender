@@ -42,6 +42,9 @@ struct ShaderUniforms {
   // UniformsColor
   glm::vec4 u_baseColor;
 
+  // UniformsBlinnPhong
+  float u_kSpecular;
+
   // Samplers
   Sampler2DSoft<RGBA> *u_albedoMap;
   Sampler2DSoft<RGBA> *u_normalMap;
@@ -75,6 +78,7 @@ class ShaderBlinnPhong : public ShaderSoft {
         {"UniformsMVP", offsetof(ShaderUniforms, u_modelMatrix)},
         {"UniformsScene", offsetof(ShaderUniforms, u_enablePointLight)},
         {"UniformsColor", offsetof(ShaderUniforms, u_baseColor)},
+        {"UniformsBlinnPhong", offsetof(ShaderUniforms, u_kSpecular)},
         {"u_albedoMap", offsetof(ShaderUniforms, u_albedoMap)},
         {"u_normalMap", offsetof(ShaderUniforms, u_normalMap)},
         {"u_emissiveMap", offsetof(ShaderUniforms, u_emissiveMap)},
@@ -182,7 +186,7 @@ class FS : public ShaderBlinnPhong {
       glm::vec3 cameraDirection = normalize(v->v_cameraDirection);
       glm::vec3 halfVector = normalize(lightDirection + cameraDirection);
       float specularAngle = glm::max(dot(normalVector, halfVector), 0.0f);
-      specularColor = glm::vec3(glm::pow(specularAngle, specularExponent));
+      specularColor = u->u_kSpecular * glm::vec3(glm::pow(specularAngle, specularExponent));
     }
 
     if (def->EMISSIVE_MAP) {

@@ -61,7 +61,7 @@ class ConfigPanel {
   int frame_width_ = 0;
   int frame_height_ = 0;
 
-  float light_position_angle_ = glm::radians(0.f);
+  float light_position_angle_ = glm::radians(235.f);
 
   std::unordered_map<std::string, std::string> model_paths_;
   std::unordered_map<std::string, std::string> skybox_paths_;
