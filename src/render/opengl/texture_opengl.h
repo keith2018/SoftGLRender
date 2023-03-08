@@ -7,6 +7,7 @@
 #pragma once
 
 #include <glad/glad.h>
+#include "base/image_utils.h"
 #include "render/texture.h"
 #include "render/opengl/enums_opengl.h"
 #include "render/opengl/opengl_utils.h"
@@ -125,6 +126,35 @@ class Texture2DOpenGL : public TextureOpenGL {
         GL_CHECK(glGenerateMipmap(target_));
       }
     }
+  }
+
+  void DumpImage(const char *path) override {
+    if (multi_sample) {
+      return;
+    }
+
+    GLuint fbo;
+    GL_CHECK(glGenFramebuffers(1, &fbo));
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
+
+    GLenum attachment = format == TextureFormat_DEPTH ? GL_DEPTH_ATTACHMENT : GL_COLOR_ATTACHMENT0;
+    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texId_, 0));
+
+    auto *pixels = new uint8_t[width * height * 4];
+    GL_CHECK(glReadPixels(0, 0, width, height, gl_desc_.format, gl_desc_.type, pixels));
+
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    GL_CHECK(glDeleteFramebuffers(1, &fbo));
+
+    // convert float to rgba
+    if (format == TextureFormat_DEPTH) {
+      ImageUtils::ConvertFloatImage(reinterpret_cast<RGBA *>(pixels),
+                                    reinterpret_cast<float *>(pixels),
+                                    width,
+                                    height);
+    }
+    ImageUtils::WriteImage(path, width, height, 4, pixels, width * 4, true);
+    delete[] pixels;
   }
 
  private:

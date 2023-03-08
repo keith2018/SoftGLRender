@@ -34,10 +34,11 @@ class Config {
 
   bool wireframe = false;
   bool world_axis = true;
-  bool show_floor = false;
   bool show_skybox = false;
 
-  bool shadow_map = false;
+  bool show_floor = true;
+  bool shadow_map = true;
+
   bool pbr_ibl = false;
   bool mipmaps = false;
 

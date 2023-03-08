@@ -78,8 +78,8 @@ enum TextureType {
 };
 
 enum TextureFormat {
-  TextureFormat_RGBA8 = 0,
-  TextureFormat_DEPTH = 1,
+  TextureFormat_RGBA8 = 0,    // RGBA8888
+  TextureFormat_DEPTH = 1,    // Float32
 };
 
 struct TextureDesc {
@@ -98,6 +98,7 @@ class Texture {
   virtual void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
   virtual void SetImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {};
   virtual void InitImageData(int w, int h) {};
+  virtual void DumpImage(const char *path) {};
 
  public:
   int width = 0;

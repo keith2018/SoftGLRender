@@ -9,6 +9,7 @@
 #include <thread>
 #include <atomic>
 #include "base/buffer.h"
+#include "base/image_utils.h"
 #include "render/texture.h"
 
 namespace SoftGL {
@@ -125,6 +126,27 @@ class Texture2DSoft : public Texture {
     image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(w, h, multi_sample ? SOFT_MS_CNT : 1);
     if (sampler_desc_.use_mipmaps) {
       image_.GenerateMipmap(false);
+    }
+  }
+
+  void DumpImage(const char *path) override {
+    if (multi_sample) {
+      return;
+    }
+
+    void *pixels = image_.GetBuffer()->buffer->GetRawDataPtr();
+
+    // convert float to rgba
+    if (format == TextureFormat_DEPTH) {
+      auto *rgba_pixels = new uint8_t[width * height * 4];
+      ImageUtils::ConvertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels),
+                                    reinterpret_cast<float *>(pixels),
+                                    width,
+                                    height);
+      ImageUtils::WriteImage(path, width, height, 4, rgba_pixels, width * 4, true);
+      delete[] rgba_pixels;
+    } else {
+      ImageUtils::WriteImage(path, width, height, 4, pixels, width * 4, true);
     }
   }
 
