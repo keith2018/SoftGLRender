@@ -51,6 +51,15 @@ void Viewer::DrawFrame(DemoScene &scene) {
   // init frame buffers
   SetupMainBuffers();
 
+  // set fbo & viewport
+  renderer_->SetFrameBuffer(fbo_);
+  renderer_->SetViewPort(0, 0, width_, height_);
+
+  // clear
+  ClearState clear_state;
+  clear_state.clear_color = config_.clear_color;
+  renderer_->Clear(clear_state);
+
   // update scene uniform
   UpdateUniformScene();
 
@@ -67,10 +76,10 @@ void Viewer::DrawFrame(DemoScene &scene) {
     renderer_->SetViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
 
     // clear
-    ClearState clear_state;
-    clear_state.depth_flag = true;
-    clear_state.color_flag = false;
-    renderer_->Clear(clear_state);
+    ClearState clear_depth;
+    clear_depth.depth_flag = true;
+    clear_depth.color_flag = false;
+    renderer_->Clear(clear_depth);
 
     // set camera
     if (!camera_depth_) {
@@ -86,24 +95,19 @@ void Viewer::DrawFrame(DemoScene &scene) {
 
     // draw scene
     DrawScene(false);
+
+    // set back to main camera
+    camera_ = &camera_main_;
+
+    // set back to main fbo
+    renderer_->SetFrameBuffer(fbo_);
+    renderer_->SetViewPort(0, 0, width_, height_);
   }
 
   // FXAA
   if (config_.aa_type == AAType_FXAA) {
     FXAASetup();
   }
-
-  // set fbo & viewport
-  renderer_->SetFrameBuffer(fbo_);
-  renderer_->SetViewPort(0, 0, width_, height_);
-
-  // clear
-  ClearState clear_state;
-  clear_state.clear_color = config_.clear_color;
-  renderer_->Clear(clear_state);
-
-  // set camera
-  camera_ = &camera_main_;
 
   // draw point light
   if (config_.show_light) {
@@ -118,7 +122,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
   }
 
   // draw scene
-  DrawScene(true);
+  DrawScene(config_.show_skybox);
 
   // FXAA
   if (config_.aa_type == AAType_FXAA) {
@@ -171,7 +175,7 @@ void Viewer::DrawScene(bool skybox) {
   DrawModelNodes(model_node, scene_->model->centered_transform, Alpha_Opaque, config_.wireframe);
 
   // draw skybox
-  if (skybox && config_.show_skybox) {
+  if (skybox) {
     glm::mat4 skybox_transform(1.f);
     DrawSkybox(scene_->skybox, skybox_transform);
   }
