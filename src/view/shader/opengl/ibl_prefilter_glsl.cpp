@@ -16,6 +16,7 @@ layout (location = 3) in vec3 a_tangent;
 out vec3 v_worldPos;
 
 layout (std140) uniform UniformsModel {
+    bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;

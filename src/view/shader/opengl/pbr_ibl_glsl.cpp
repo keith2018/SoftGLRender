@@ -25,6 +25,7 @@ out vec3 v_tangent;
 #endif
 
 layout (std140) uniform UniformsModel {
+    bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
@@ -73,6 +74,7 @@ in vec3 v_tangent;
 out vec4 FragColor;
 
 layout (std140) uniform UniformsModel {
+    bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;

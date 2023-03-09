@@ -27,6 +27,7 @@ struct ShaderAttributes {
 
 struct ShaderUniforms {
   // UniformsModel
+  glm::int32_t u_reverseZ;
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
@@ -81,7 +82,7 @@ class ShaderBlinnPhong : public ShaderSoft {
 
   std::vector<UniformDesc> &GetUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
-        {"UniformsModel", offsetof(ShaderUniforms, u_modelMatrix)},
+        {"UniformsModel", offsetof(ShaderUniforms, u_reverseZ)},
         {"UniformsScene", offsetof(ShaderUniforms, u_ambientColor)},
         {"UniformsMaterial", offsetof(ShaderUniforms, u_enableLight)},
         {"u_albedoMap", offsetof(ShaderUniforms, u_albedoMap)},
@@ -160,7 +161,7 @@ class FS : public ShaderBlinnPhong {
   float ShadowCalculation(glm::vec4 fragPos, glm::vec3 normal) {
     glm::vec3 projCoords = glm::vec3(fragPos) / fragPos.w;
     float currentDepth = projCoords.z;
-    if (currentDepth > 1.0f) {
+    if (currentDepth < 0.f || currentDepth > 1.f) {
       return 0.0f;
     }
     projCoords = projCoords * 0.5f + 0.5f;
@@ -173,6 +174,9 @@ class FS : public ShaderBlinnPhong {
     for (int x = -1; x <= 1; ++x) {
       for (int y = -1; y <= 1; ++y) {
         float pcfDepth = texture(u->u_shadowMap, glm::vec2(projCoords) + glm::vec2(x, y) * texelSize);
+        if (u->u_reverseZ) {
+          pcfDepth = 1.f - pcfDepth;
+        }
         shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
       }
     }

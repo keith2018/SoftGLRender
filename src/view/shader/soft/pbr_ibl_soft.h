@@ -28,6 +28,7 @@ struct ShaderAttributes {
 
 struct ShaderUniforms {
   // UniformsModel
+  glm::int32_t u_reverseZ;
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
@@ -86,7 +87,7 @@ class ShaderPbrIBL : public ShaderSoft {
 
   std::vector<UniformDesc> &GetUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
-        {"UniformsModel", offsetof(ShaderUniforms, u_modelMatrix)},
+        {"UniformsModel", offsetof(ShaderUniforms, u_reverseZ)},
         {"UniformsScene", offsetof(ShaderUniforms, u_ambientColor)},
         {"UniformsMaterial", offsetof(ShaderUniforms, u_enableLight)},
         {"u_albedoMap", offsetof(ShaderUniforms, u_albedoMap)},

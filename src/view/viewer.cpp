@@ -51,6 +51,11 @@ void Viewer::DrawFrame(DemoScene &scene) {
   // init frame buffers
   SetupMainBuffers();
 
+  // FXAA
+  if (config_.aa_type == AAType_FXAA) {
+    FXAASetup();
+  }
+
   // set fbo & viewport
   renderer_->SetFrameBuffer(fbo_main_);
   renderer_->SetViewPort(0, 0, width_, height_);
@@ -102,11 +107,6 @@ void Viewer::DrawFrame(DemoScene &scene) {
     // set back to main fbo
     renderer_->SetFrameBuffer(fbo_main_);
     renderer_->SetViewPort(0, 0, width_, height_);
-  }
-
-  // FXAA
-  if (config_.aa_type == AAType_FXAA) {
-    FXAASetup();
   }
 
   // draw point light
@@ -342,18 +342,20 @@ void Viewer::SetupMainBuffers() {
 void Viewer::SetupShowMapBuffers() {
   if (!fbo_shadow_) {
     fbo_shadow_ = renderer_->CreateFrameBuffer();
-    if (!tex_depth_shadow_) {
-      Sampler2DDesc sampler;
-      sampler.use_mipmaps = false;
-      sampler.filter_min = Filter_NEAREST;
-      sampler.filter_mag = Filter_NEAREST;
-      sampler.wrap_s = Wrap_CLAMP_TO_BORDER;
-      sampler.wrap_t = Wrap_CLAMP_TO_BORDER;
-      sampler.border_color = glm::vec4(1.f, 1.f, 1.f, 1.f);
-      tex_depth_shadow_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, false});
-      tex_depth_shadow_->SetSamplerDesc(sampler);
-      tex_depth_shadow_->InitImageData(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
-    }
+  }
+
+  if (!tex_depth_shadow_) {
+    Sampler2DDesc sampler;
+    sampler.use_mipmaps = false;
+    sampler.filter_min = Filter_NEAREST;
+    sampler.filter_mag = Filter_NEAREST;
+    sampler.wrap_s = Wrap_CLAMP_TO_BORDER;
+    sampler.wrap_t = Wrap_CLAMP_TO_BORDER;
+    sampler.border_color = glm::vec4(config_.reverse_z ? 0.f : 1.f);
+    tex_depth_shadow_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, false});
+    tex_depth_shadow_->SetSamplerDesc(sampler);
+    tex_depth_shadow_->InitImageData(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+
     fbo_shadow_->SetDepthAttachment(tex_depth_shadow_);
 
     if (!fbo_shadow_->IsValid()) {
@@ -520,6 +522,8 @@ void Viewer::UpdateUniformScene() {
 }
 
 void Viewer::UpdateUniformModel(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj) {
+  uniforms_model_.u_reverseZ = config_.reverse_z ? 1 : 0;
+
   uniforms_model_.u_modelMatrix = model;
   uniforms_model_.u_modelViewProjectionMatrix = proj * view * model;
   uniforms_model_.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(model)));

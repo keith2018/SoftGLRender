@@ -17,14 +17,13 @@ namespace SoftGL {
 
 class RendererSoft : public Renderer {
  public:
-  // config
-  void SetReverseZ(bool enable) override {
-    reverse_z = enable;
-  }
+  // config reverse z
+  void SetReverseZ(bool enable) override { reverse_z = enable; };
+  bool GetReverseZ() override { return reverse_z; };
 
-  void SetEarlyZ(bool enable) override {
-    early_z = enable;
-  }
+  // config early z
+  void SetEarlyZ(bool enable) override { early_z = enable; };
+  bool GetEarlyZ() override { return early_z; };
 
   // framebuffer
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;

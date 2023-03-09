@@ -26,6 +26,7 @@ out vec3 v_tangent;
 #endif
 
 layout (std140) uniform UniformsModel {
+    bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
@@ -75,6 +76,7 @@ in vec3 v_tangent;
 out vec4 FragColor;
 
 layout (std140) uniform UniformsModel {
+    bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
@@ -134,7 +136,7 @@ float ShadowCalculation(vec4 fragPos, vec3 normal) {
     vec3 projCoords = fragPos.xyz / fragPos.w;
     projCoords = projCoords * 0.5 + 0.5;
     float currentDepth = projCoords.z;
-    if (currentDepth > 1.0) {
+    if (currentDepth < 0.0 || currentDepth > 1.0) {
         return 0.0;
     }
 
@@ -146,6 +148,9 @@ float ShadowCalculation(vec4 fragPos, vec3 normal) {
     for (int x = -1; x <= 1; ++x) {
         for(int y = -1; y <= 1; ++y) {
             float pcfDepth = texture(u_shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            if (u_reverseZ) {
+                pcfDepth = 1.0 - pcfDepth;
+            }
             shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;
         }
     }

@@ -7,7 +7,6 @@
 #pragma once
 
 #include <functional>
-#include "base/simd.h"
 #include "texture_soft.h"
 
 namespace SoftGL {
@@ -23,12 +22,12 @@ class BaseSampler {
   inline size_t Height() const { return height_; }
 
   T TextureImpl(TextureImageSoft<T> *tex, glm::vec2 &uv, float lod = 0.f, glm::ivec2 offset = glm::ivec2(0));
-  static T SampleNearest(Buffer<T> *buffer, glm::vec2 &uv, WrapMode wrap, glm::ivec2 &offset);
-  static T SampleBilinear(Buffer<T> *buffer, glm::vec2 &uv, WrapMode wrap, glm::ivec2 &offset);
+  static T SampleNearest(Buffer<T> *buffer, glm::vec2 &uv, WrapMode wrap, glm::ivec2 &offset, T border);
+  static T SampleBilinear(Buffer<T> *buffer, glm::vec2 &uv, WrapMode wrap, glm::ivec2 &offset, T border);
 
-  static T PixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wrap);
-  static void SampleBufferBilinear(Buffer<T> *buffer_out, Buffer<T> *buffer_in);
-  static T SamplePixelBilinear(Buffer<T> *buffer, glm::vec2 uv, WrapMode wrap);
+  static T PixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wrap, T border);
+  static void SampleBufferBilinear(Buffer<T> *buffer_out, Buffer<T> *buffer_in, T border);
+  static T SamplePixelBilinear(Buffer<T> *buffer, glm::vec2 uv, WrapMode wrap, T border);
 
   inline void SetWrapMode(int wrap_mode) {
     wrap_mode_ = (WrapMode) wrap_mode;
@@ -45,9 +44,8 @@ class BaseSampler {
   static void GenerateMipmaps(TextureImageSoft<T> *tex, bool sample);
 
  public:
-  static T BORDER_COLOR;
+  T border_color;
 
- protected:
   size_t width_ = 0;
   size_t height_ = 0;
 
@@ -88,9 +86,6 @@ class BaseSampler2D : public BaseSampler<T> {
 };
 
 template<typename T>
-T BaseSampler<T>::BORDER_COLOR;
-
-template<typename T>
 void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<T> *tex, bool sample) {
   int width = tex->GetWidth();
   int height = tex->GetHeight();
@@ -110,7 +105,7 @@ void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<T> *tex, bool sample) {
   }
 
   for (int i = 1; i < tex->levels.size(); i++) {
-    BaseSampler<T>::SampleBufferBilinear(tex->levels[i]->buffer.get(), tex->levels[i - 1]->buffer.get());
+    BaseSampler<T>::SampleBufferBilinear(tex->levels[i]->buffer.get(), tex->levels[i - 1]->buffer.get(), T(0));
   }
 }
 
@@ -126,10 +121,10 @@ T BaseSampler<T>::TextureImpl(TextureImageSoft<T> *tex,
                               glm::ivec2 offset) {
   if (tex != nullptr && !tex->Empty()) {
     if (filter_mode_ == Filter_NEAREST) {
-      return SampleNearest(tex->levels[0]->buffer.get(), uv, wrap_mode_, offset);
+      return SampleNearest(tex->levels[0]->buffer.get(), uv, wrap_mode_, offset, border_color);
     }
     if (filter_mode_ == Filter_LINEAR) {
-      return SampleBilinear(tex->levels[0]->buffer.get(), uv, wrap_mode_, offset);
+      return SampleBilinear(tex->levels[0]->buffer.get(), uv, wrap_mode_, offset, border_color);
     }
 
     // mipmaps
@@ -138,9 +133,9 @@ T BaseSampler<T>::TextureImpl(TextureImageSoft<T> *tex,
     if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST || filter_mode_ == Filter_LINEAR_MIPMAP_NEAREST) {
       int level = glm::clamp((int) glm::ceil(lod + 0.5f) - 1, 0, max_level);
       if (filter_mode_ == Filter_NEAREST_MIPMAP_NEAREST) {
-        return SampleNearest(tex->levels[level]->buffer.get(), uv, wrap_mode_, offset);
+        return SampleNearest(tex->levels[level]->buffer.get(), uv, wrap_mode_, offset, border_color);
       } else {
-        return SampleBilinear(tex->levels[level]->buffer.get(), uv, wrap_mode_, offset);
+        return SampleBilinear(tex->levels[level]->buffer.get(), uv, wrap_mode_, offset, border_color);
       }
     }
 
@@ -150,18 +145,18 @@ T BaseSampler<T>::TextureImpl(TextureImageSoft<T> *tex,
 
       T texel_hi, texel_lo;
       if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-        texel_hi = SampleNearest(tex->levels[level_hi]->buffer.get(), uv, wrap_mode_, offset);
+        texel_hi = SampleNearest(tex->levels[level_hi]->buffer.get(), uv, wrap_mode_, offset, border_color);
       } else {
-        texel_hi = SampleBilinear(tex->levels[level_hi]->buffer.get(), uv, wrap_mode_, offset);
+        texel_hi = SampleBilinear(tex->levels[level_hi]->buffer.get(), uv, wrap_mode_, offset, border_color);
       }
 
       if (level_hi == level_lo) {
         return texel_hi;
       } else {
         if (filter_mode_ == Filter_NEAREST_MIPMAP_LINEAR) {
-          texel_lo = SampleNearest(tex->levels[level_lo]->buffer.get(), uv, wrap_mode_, offset);
+          texel_lo = SampleNearest(tex->levels[level_lo]->buffer.get(), uv, wrap_mode_, offset, border_color);
         } else {
-          texel_lo = SampleBilinear(tex->levels[level_lo]->buffer.get(), uv, wrap_mode_, offset);
+          texel_lo = SampleBilinear(tex->levels[level_lo]->buffer.get(), uv, wrap_mode_, offset, border_color);
         }
       }
 
@@ -173,7 +168,7 @@ T BaseSampler<T>::TextureImpl(TextureImageSoft<T> *tex,
 }
 
 template<typename T>
-T BaseSampler<T>::PixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wrap) {
+T BaseSampler<T>::PixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wrap, T border) {
   int w = (int) buffer->GetWidth();
   int h = (int) buffer->GetHeight();
   switch (wrap) {
@@ -204,8 +199,8 @@ T BaseSampler<T>::PixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wr
       break;
     }
     case Wrap_CLAMP_TO_BORDER: {
-      if (x < 0 || x >= w) return BORDER_COLOR;
-      if (y < 0 || y >= h) return BORDER_COLOR;
+      if (x < 0 || x >= w) return border;
+      if (y < 0 || y >= h) return border;
       break;
     }
     case Wrap_CLAMP_TO_ZERO: {
@@ -226,68 +221,53 @@ template<typename T>
 T BaseSampler<T>::SampleNearest(Buffer<T> *buffer,
                                 glm::vec2 &uv,
                                 WrapMode wrap,
-                                glm::ivec2 &offset) {
+                                glm::ivec2 &offset,
+                                T border) {
   glm::vec2 texUV = uv * glm::vec2(buffer->GetWidth(), buffer->GetHeight());
   auto x = (int) glm::floor(texUV.x) + offset.x;
   auto y = (int) glm::floor(texUV.y) + offset.y;
 
-  return PixelWithWrapMode(buffer, x, y, wrap);
+  return PixelWithWrapMode(buffer, x, y, wrap, border);
 }
 
 template<typename T>
 T BaseSampler<T>::SampleBilinear(Buffer<T> *buffer,
                                  glm::vec2 &uv,
                                  WrapMode wrap,
-                                 glm::ivec2 &offset) {
+                                 glm::ivec2 &offset,
+                                 T border) {
   glm::vec2 texUV = uv * glm::vec2(buffer->GetWidth(), buffer->GetHeight());
   texUV.x += (float) offset.x;
   texUV.y += (float) offset.y;
-  return SamplePixelBilinear(buffer, texUV, wrap);
+  return SamplePixelBilinear(buffer, texUV, wrap, border);
 }
 
 template<typename T>
-void BaseSampler<T>::SampleBufferBilinear(Buffer<T> *buffer_out, Buffer<T> *buffer_in) {
+void BaseSampler<T>::SampleBufferBilinear(Buffer<T> *buffer_out, Buffer<T> *buffer_in, T border) {
   float ratio_x = (float) buffer_in->GetWidth() / (float) buffer_out->GetWidth();
   float ratio_y = (float) buffer_in->GetHeight() / (float) buffer_out->GetHeight();
   glm::vec2 delta = 0.5f * glm::vec2(ratio_x, ratio_y);
   for (int y = 0; y < (int) buffer_out->GetHeight(); y++) {
     for (int x = 0; x < (int) buffer_out->GetWidth(); x++) {
       glm::vec2 uv = glm::vec2((float) x * ratio_x, (float) y * ratio_y) + delta;
-      auto color = SamplePixelBilinear(buffer_in, uv, Wrap_CLAMP_TO_EDGE);
+      auto color = SamplePixelBilinear(buffer_in, uv, Wrap_CLAMP_TO_EDGE, border);
       buffer_out->Set(x, y, color);
     }
   }
 }
 
 template<typename T>
-T BaseSampler<T>::SamplePixelBilinear(Buffer<T> *buffer, glm::vec2 uv, WrapMode wrap) {
+T BaseSampler<T>::SamplePixelBilinear(Buffer<T> *buffer, glm::vec2 uv, WrapMode wrap, T border) {
   auto x = (int) glm::floor(uv.x - 0.5f);
   auto y = (int) glm::floor(uv.y - 0.5f);
 
-  auto s1 = PixelWithWrapMode(buffer, x, y, wrap);
-  auto s2 = PixelWithWrapMode(buffer, x + 1, y, wrap);
-  auto s3 = PixelWithWrapMode(buffer, x, y + 1, wrap);
-  auto s4 = PixelWithWrapMode(buffer, x + 1, y + 1, wrap);
+  auto s1 = PixelWithWrapMode(buffer, x, y, wrap, border);
+  auto s2 = PixelWithWrapMode(buffer, x + 1, y, wrap, border);
+  auto s3 = PixelWithWrapMode(buffer, x, y + 1, wrap, border);
+  auto s4 = PixelWithWrapMode(buffer, x + 1, y + 1, wrap, border);
 
   glm::vec2 f = glm::fract(uv - glm::vec2(0.5f));
-
-#ifdef SOFTGL_SIMD_OPT
-  __m128 s1_ = _mm_set_ps(s1[3], s1[2], s1[1], s1[0]);
-  __m128 s2_ = _mm_set_ps(s2[3], s2[2], s2[1], s2[0]);
-  __m128 s3_ = _mm_set_ps(s3[3], s3[2], s3[1], s3[0]);
-  __m128 s4_ = _mm_set_ps(s4[3], s4[2], s4[1], s4[0]);
-
-  __m128 fx_ = _mm_set1_ps(f.x);
-  __m128 fy_ = _mm_set1_ps(f.y);
-
-  __m128 r1 = _mm_fmadd_ps(fx_, s2_, _mm_fnmadd_ps(fx_, s1_, s1_));
-  __m128 r2 = _mm_fmadd_ps(fx_, s4_, _mm_fnmadd_ps(fx_, s3_, s3_));
-  __m128 ret = _mm_fmadd_ps(fy_, r2, _mm_fnmadd_ps(fy_, r1, r1));
-
-  return {MM_F32(ret, 0), MM_F32(ret, 1), MM_F32(ret, 2), MM_F32(ret, 3)};
-#else
   return glm::mix(glm::mix(s1, s2, f.x), glm::mix(s3, s4, f.x), f.y);
-#endif
 }
 
 template<typename T>
@@ -412,7 +392,7 @@ class Sampler2DSoft : public SamplerSoft {
 
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
     tex_ = dynamic_cast<Texture2DSoft<T> *>(tex.get());
-    tex_->GetBorderColor(sampler_.BORDER_COLOR);
+    tex_->GetBorderColor(sampler_.border_color);
     sampler_.SetFilterMode(tex_->GetSamplerDesc().filter_min);
     sampler_.SetWrapMode(tex_->GetSamplerDesc().wrap_s);
     sampler_.SetImage(&tex_->GetImage());
@@ -452,7 +432,7 @@ class SamplerCubeSoft : public SamplerSoft {
 
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
     tex_ = dynamic_cast<TextureCubeSoft<T> *>(tex.get());
-    tex_->GetBorderColor(sampler_.BORDER_COLOR);
+    tex_->GetBorderColor(sampler_.border_color);
     sampler_.SetFilterMode(tex_->GetSamplerDesc().filter_min);
     sampler_.SetWrapMode(tex_->GetSamplerDesc().wrap_s);
     for (int i = 0; i < 6; i++) {

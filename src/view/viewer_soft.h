@@ -23,6 +23,9 @@ class ViewerSoft : public Viewer {
   ViewerSoft(Config &config, Camera &camera) : Viewer(config, camera) {}
 
   void ConfigRenderer() override {
+    if (renderer_->GetReverseZ() != config_.reverse_z) {
+      tex_depth_shadow_ = nullptr;
+    }
     renderer_->SetReverseZ(config_.reverse_z);
     renderer_->SetEarlyZ(config_.early_z);
   }
