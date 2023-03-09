@@ -66,18 +66,19 @@ class Viewer {
   void SetupMaterial(Material &material, const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks);
 
   void UpdateUniformScene();
-  void UpdateUniformMVP(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj);
-  void UpdateUniformColor(const glm::vec4 &color);
-  void UpdateUniformBlinnPhong(float specular);
+  void UpdateUniformModel(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj);
+  void UpdateUniformMaterial(const glm::vec4 &color, float specular = 1.f);
 
   bool InitSkyboxIBL(ModelSkybox &skybox);
   bool IBLEnabled();
   void UpdateIBLTextures(Material &material);
+  void UpdateShadowTextures(Material &material);
 
   static std::set<std::string> GenerateShaderDefines(Material &material);
   static size_t GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
 
   std::shared_ptr<Texture> CreateTextureCubeDefault(int width, int height, bool mipmaps = false);
+  std::shared_ptr<Texture> CreateTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps = false);
   bool CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
 
  protected:
@@ -94,32 +95,31 @@ class Viewer {
   int outTexId_ = 0;
 
   UniformsScene uniforms_scene_{};
-  UniformsMVP uniforms_mvp_{};
-  UniformsColor uniforms_color_{};
-  UniformsBlinnPhong uniforms_blinn_phong_{};
+  UniformsModel uniforms_model_{};
+  UniformsMaterial uniforms_material_{};
 
   std::shared_ptr<Renderer> renderer_ = nullptr;
 
   // main fbo
-  std::shared_ptr<FrameBuffer> fbo_ = nullptr;
-  std::shared_ptr<Texture> color_tex_out_ = nullptr;
-  std::shared_ptr<Texture> depth_tex_out_ = nullptr;
+  std::shared_ptr<FrameBuffer> fbo_main_ = nullptr;
+  std::shared_ptr<Texture> tex_color_main_ = nullptr;
+  std::shared_ptr<Texture> tex_depth_main_ = nullptr;
 
   // shadow map
-  std::shared_ptr<FrameBuffer> depth_fbo_ = nullptr;
-  std::shared_ptr<Texture> depth_fbo_tex_ = nullptr;
+  std::shared_ptr<FrameBuffer> fbo_shadow_ = nullptr;
+  std::shared_ptr<Texture> tex_depth_shadow_ = nullptr;
+  std::shared_ptr<Texture> shadow_placeholder_ = nullptr;
 
   // fxaa
   std::shared_ptr<QuadFilter> fxaa_filter_ = nullptr;
-  std::shared_ptr<Texture> color_tex_fxaa_ = nullptr;
+  std::shared_ptr<Texture> tex_color_fxaa_ = nullptr;
 
   // ibl
   std::shared_ptr<Texture> ibl_placeholder_ = nullptr;
 
   std::shared_ptr<UniformBlock> uniform_block_scene_;
-  std::shared_ptr<UniformBlock> uniforms_block_mvp_;
-  std::shared_ptr<UniformBlock> uniforms_block_color_;
-  std::shared_ptr<UniformBlock> uniforms_block_blinn_phong_;
+  std::shared_ptr<UniformBlock> uniforms_block_model_;
+  std::shared_ptr<UniformBlock> uniforms_block_material_;
 
   std::unordered_map<size_t, std::shared_ptr<ShaderProgram>> program_cache_;
 };

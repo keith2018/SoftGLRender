@@ -55,7 +55,7 @@ class Config {
   glm::vec3 point_light_color = {0.5f, 0.5f, 0.5f};
 
   int aa_type = AAType_NONE;
-  int renderer_type = Renderer_SOFT;
+  int renderer_type = Renderer_OPENGL;
 };
 
 }

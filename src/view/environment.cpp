@@ -128,8 +128,8 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
   uniform->SetTexture(tex_in);
   context.model_skybox.material->shader_uniforms->samplers[tex_usage] = uniform;
 
-  context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_MVP] = context.uniforms_block_mvp;
+  context.uniforms_block_model = context.renderer->CreateUniformBlock("UniformsModel", sizeof(UniformsModel));
+  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_Model] = context.uniforms_block_model;
 
   return true;
 }
@@ -149,7 +149,7 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)}
   };
 
-  UniformsMVP uniforms_mvp{};
+  UniformsModel uniforms_model{};
   glm::mat4 model_matrix(1.f);
 
   // draw
@@ -162,8 +162,8 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
 
     // update mvp
     glm::mat4 view_matrix = glm::mat3(context.camera.ViewMatrix());  // only rotation
-    uniforms_mvp.u_modelViewProjectionMatrix = context.camera.ProjectionMatrix() * view_matrix * model_matrix;
-    context.uniforms_block_mvp->SetData(&uniforms_mvp, sizeof(UniformsMVP));
+    uniforms_model.u_modelViewProjectionMatrix = context.camera.ProjectionMatrix() * view_matrix * model_matrix;
+    context.uniforms_block_model->SetData(&uniforms_model, sizeof(UniformsModel));
 
     if (before_draw) {
       before_draw();

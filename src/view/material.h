@@ -47,6 +47,8 @@ enum TextureUsage {
   TextureUsage_IBL_PREFILTER,
 
   TextureUsage_QUAD_FILTER,
+
+  TextureUsage_SHADOWMAP,
 };
 
 enum MaterialType {
@@ -57,35 +59,33 @@ enum MaterialType {
 
 enum UniformBlockType {
   UniformBlock_Scene,
-  UniformBlock_MVP,
-  UniformBlock_Color,
-  UniformBlock_BlinnPhong,
+  UniformBlock_Model,
+  UniformBlock_Material,
   UniformBlock_QuadFilter,
   UniformBlock_IBLPrefilter,
 };
 
 struct UniformsScene {
-  glm::int32_t u_enablePointLight;
-  glm::int32_t u_enableIBL;
-
   glm::vec3 u_ambientColor;
   glm::vec3 u_cameraPosition;
   glm::vec3 u_pointLightPosition;
   glm::vec3 u_pointLightColor;
 };
 
-struct UniformsMVP {
+struct UniformsModel {
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
+  glm::mat4 u_shadowMVPMatrix;
 };
 
-struct UniformsColor {
-  glm::vec4 u_baseColor;
-};
+struct UniformsMaterial {
+  glm::int32_t u_enableLight;
+  glm::int32_t u_enableIBL;
+  glm::int32_t u_enableShadow;
 
-struct UniformsBlinnPhong {
   float u_kSpecular;
+  glm::vec4 u_baseColor;
 };
 
 struct UniformsQuadFilter {

@@ -71,6 +71,11 @@ class ShaderSoft {
     return ret / 255.f;
   }
 
+  static inline float texture(Sampler2DSoft<float> *sampler, glm::vec2 coord) {
+    float ret = sampler->Texture2D(coord);
+    return ret;
+  }
+
   static inline glm::vec4 texture(SamplerCubeSoft<RGBA> *sampler, glm::vec3 coord) {
     glm::vec4 ret = sampler->TextureCube(coord);
     return ret / 255.f;

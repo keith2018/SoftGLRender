@@ -26,19 +26,19 @@ void Viewer::Create(int width, int height, int outTexId) {
 
   // create uniforms
   uniform_block_scene_ = renderer_->CreateUniformBlock("UniformsScene", sizeof(UniformsScene));
-  uniforms_block_mvp_ = renderer_->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  uniforms_block_color_ = renderer_->CreateUniformBlock("UniformsColor", sizeof(UniformsColor));
-  uniforms_block_blinn_phong_ = renderer_->CreateUniformBlock("UniformsBlinnPhong", sizeof(UniformsBlinnPhong));
+  uniforms_block_model_ = renderer_->CreateUniformBlock("UniformsModel", sizeof(UniformsModel));
+  uniforms_block_material_ = renderer_->CreateUniformBlock("UniformsMaterial", sizeof(UniformsMaterial));
 
   // reset variables
   camera_ = &camera_main_;
-  fbo_ = nullptr;
-  color_tex_out_ = nullptr;
-  depth_tex_out_ = nullptr;
-  depth_fbo_ = nullptr;
-  depth_fbo_tex_ = nullptr;
+  fbo_main_ = nullptr;
+  tex_color_main_ = nullptr;
+  tex_depth_main_ = nullptr;
+  fbo_shadow_ = nullptr;
+  tex_depth_shadow_ = nullptr;
+  shadow_placeholder_ = CreateTexture2DDefault(1, 1, TextureFormat_DEPTH);
   fxaa_filter_ = nullptr;
-  color_tex_fxaa_ = nullptr;
+  tex_color_fxaa_ = nullptr;
   ibl_placeholder_ = CreateTextureCubeDefault(1, 1);
   program_cache_.clear();
 }
@@ -52,7 +52,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
   SetupMainBuffers();
 
   // set fbo & viewport
-  renderer_->SetFrameBuffer(fbo_);
+  renderer_->SetFrameBuffer(fbo_main_);
   renderer_->SetViewPort(0, 0, width_, height_);
 
   // clear
@@ -72,7 +72,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
   if (config_.shadow_map) {
     // set fbo & viewport
     SetupShowMapBuffers();
-    renderer_->SetFrameBuffer(depth_fbo_);
+    renderer_->SetFrameBuffer(fbo_shadow_);
     renderer_->SetViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
 
     // clear
@@ -88,9 +88,9 @@ void Viewer::DrawFrame(DemoScene &scene) {
                                     (float) SHADOW_MAP_WIDTH / (float) SHADOW_MAP_HEIGHT,
                                     CAMERA_NEAR,
                                     CAMERA_FAR);
-      camera_depth_->LookAt(config_.point_light_position, glm::vec3(0.0f), glm::vec3(1.0));
-      camera_depth_->Update();
     }
+    camera_depth_->LookAt(config_.point_light_position, glm::vec3(0), glm::vec3(0, 1, 0));
+    camera_depth_->Update();
     camera_ = camera_depth_.get();
 
     // draw scene
@@ -100,7 +100,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
     camera_ = &camera_main_;
 
     // set back to main fbo
-    renderer_->SetFrameBuffer(fbo_);
+    renderer_->SetFrameBuffer(fbo_main_);
     renderer_->SetViewPort(0, 0, width_, height_);
   }
 
@@ -133,14 +133,14 @@ void Viewer::DrawFrame(DemoScene &scene) {
 void Viewer::Destroy() {}
 
 void Viewer::FXAASetup() {
-  if (!color_tex_fxaa_) {
+  if (!tex_color_fxaa_) {
     Sampler2DDesc sampler;
     sampler.use_mipmaps = false;
     sampler.filter_min = Filter_LINEAR;
 
-    color_tex_fxaa_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_RGBA8, false});
-    color_tex_fxaa_->InitImageData(width_, height_);
-    color_tex_fxaa_->SetSamplerDesc(sampler);
+    tex_color_fxaa_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_RGBA8, false});
+    tex_color_fxaa_->InitImageData(width_, height_);
+    tex_color_fxaa_->SetSamplerDesc(sampler);
   }
 
   if (!fxaa_filter_) {
@@ -150,8 +150,8 @@ void Viewer::FXAASetup() {
                                                 });
   }
 
-  fbo_->SetColorAttachment(color_tex_fxaa_, 0);
-  fxaa_filter_->SetTextures(color_tex_fxaa_, color_tex_out_);
+  fbo_main_->SetColorAttachment(tex_color_fxaa_, 0);
+  fxaa_filter_->SetTextures(tex_color_fxaa_, tex_color_main_);
 }
 
 void Viewer::FXAADraw() {
@@ -162,7 +162,7 @@ void Viewer::DrawScene(bool skybox) {
   // draw floor
   if (config_.show_floor) {
     glm::mat4 floor_matrix(1.0f);
-    UpdateUniformMVP(floor_matrix, camera_->ViewMatrix(), camera_->ProjectionMatrix());
+    UpdateUniformModel(floor_matrix, camera_->ViewMatrix(), camera_->ProjectionMatrix());
     if (config_.wireframe) {
       DrawMeshBaseColor(scene_->floor, true);
     } else {
@@ -185,14 +185,14 @@ void Viewer::DrawScene(bool skybox) {
 }
 
 void Viewer::DrawPoints(ModelPoints &points, glm::mat4 &transform) {
-  UpdateUniformMVP(transform, camera_->ViewMatrix(), camera_->ProjectionMatrix());
-  UpdateUniformColor(points.material.base_color);
+  UpdateUniformModel(transform, camera_->ViewMatrix(), camera_->ProjectionMatrix());
+  UpdateUniformMaterial(points.material.base_color);
 
   PipelineSetup(points,
                 points.material,
                 {
-                    {UniformBlock_MVP, uniforms_block_mvp_},
-                    {UniformBlock_Color, uniforms_block_color_},
+                    {UniformBlock_Model, uniforms_block_model_},
+                    {UniformBlock_Material, uniforms_block_material_},
                 },
                 [&](RenderState &rs) -> void {
                   rs.point_size = points.point_size;
@@ -201,14 +201,14 @@ void Viewer::DrawPoints(ModelPoints &points, glm::mat4 &transform) {
 }
 
 void Viewer::DrawLines(ModelLines &lines, glm::mat4 &transform) {
-  UpdateUniformMVP(transform, camera_->ViewMatrix(), camera_->ProjectionMatrix());
-  UpdateUniformColor(lines.material.base_color);
+  UpdateUniformModel(transform, camera_->ViewMatrix(), camera_->ProjectionMatrix());
+  UpdateUniformMaterial(lines.material.base_color);
 
   PipelineSetup(lines,
                 lines.material,
                 {
-                    {UniformBlock_MVP, uniforms_block_mvp_},
-                    {UniformBlock_Color, uniforms_block_color_},
+                    {UniformBlock_Model, uniforms_block_model_},
+                    {UniformBlock_Material, uniforms_block_material_},
                 },
                 [&](RenderState &rs) -> void {
                   rs.line_width = lines.line_width;
@@ -217,12 +217,12 @@ void Viewer::DrawLines(ModelLines &lines, glm::mat4 &transform) {
 }
 
 void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
-  UpdateUniformMVP(transform, glm::mat3(camera_->ViewMatrix()), camera_->ProjectionMatrix());
+  UpdateUniformModel(transform, glm::mat3(camera_->ViewMatrix()), camera_->ProjectionMatrix());
 
   PipelineSetup(skybox,
                 *skybox.material,
                 {
-                    {UniformBlock_MVP, uniforms_block_mvp_}
+                    {UniformBlock_Model, uniforms_block_model_}
                 },
                 [&](RenderState &rs) -> void {
                   rs.depth_func = config_.reverse_z ? DepthFunc_GEQUAL : DepthFunc_LEQUAL;
@@ -232,14 +232,14 @@ void Viewer::DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
 }
 
 void Viewer::DrawMeshBaseColor(ModelMesh &mesh, bool wireframe) {
-  UpdateUniformColor(mesh.material_base_color.base_color);
+  UpdateUniformMaterial(mesh.material_base_color.base_color);
 
   PipelineSetup(mesh,
                 mesh.material_base_color,
                 {
-                    {UniformBlock_MVP, uniforms_block_mvp_},
+                    {UniformBlock_Model, uniforms_block_model_},
                     {UniformBlock_Scene, uniform_block_scene_},
-                    {UniformBlock_Color, uniforms_block_color_},
+                    {UniformBlock_Material, uniforms_block_material_},
                 },
                 [&](RenderState &rs) -> void {
                   rs.polygon_mode = wireframe ? PolygonMode_LINE : PolygonMode_FILL;
@@ -248,21 +248,24 @@ void Viewer::DrawMeshBaseColor(ModelMesh &mesh, bool wireframe) {
 }
 
 void Viewer::DrawMeshTextured(ModelMesh &mesh, float specular) {
-  UpdateUniformColor(glm::vec4(1.f));
-  UpdateUniformBlinnPhong(specular);
+  UpdateUniformMaterial(glm::vec4(1.f), specular);
 
   PipelineSetup(mesh,
                 mesh.material_textured,
                 {
-                    {UniformBlock_MVP, uniforms_block_mvp_},
+                    {UniformBlock_Model, uniforms_block_model_},
                     {UniformBlock_Scene, uniform_block_scene_},
-                    {UniformBlock_Color, uniforms_block_color_},
-                    {UniformBlock_BlinnPhong, uniforms_block_blinn_phong_},
+                    {UniformBlock_Material, uniforms_block_material_},
                 });
 
   // update IBL textures
   if (mesh.material_textured.shading == Shading_PBR) {
     UpdateIBLTextures(mesh.material_textured);
+  }
+
+  // update shadow textures
+  if (config_.shadow_map) {
+    UpdateShadowTextures(mesh.material_textured);
   }
 
   PipelineDraw(mesh, mesh.material_textured);
@@ -271,7 +274,7 @@ void Viewer::DrawMeshTextured(ModelMesh &mesh, float specular) {
 void Viewer::DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe) {
   // update mvp uniform
   glm::mat4 model_matrix = transform * node.transform;
-  UpdateUniformMVP(model_matrix, camera_->ViewMatrix(), camera_->ProjectionMatrix());
+  UpdateUniformModel(model_matrix, camera_->ViewMatrix(), camera_->ProjectionMatrix());
 
   // draw nodes
   for (auto &mesh : node.meshes) {
@@ -325,47 +328,47 @@ void Viewer::SetupMainBuffers() {
     SetupMainDepthBuffer(false);
   }
 
-  if (!fbo_) {
-    fbo_ = renderer_->CreateFrameBuffer();
+  if (!fbo_main_) {
+    fbo_main_ = renderer_->CreateFrameBuffer();
   }
-  fbo_->SetColorAttachment(color_tex_out_, 0);
-  fbo_->SetDepthAttachment(depth_tex_out_);
+  fbo_main_->SetColorAttachment(tex_color_main_, 0);
+  fbo_main_->SetDepthAttachment(tex_depth_main_);
 
-  if (!fbo_->IsValid()) {
+  if (!fbo_main_->IsValid()) {
     LOGE("SetupMainBuffers failed");
   }
 }
 
 void Viewer::SetupShowMapBuffers() {
-  if (!depth_fbo_) {
-    depth_fbo_ = renderer_->CreateFrameBuffer();
-    if (!depth_fbo_tex_) {
-      depth_fbo_tex_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, false});
-      depth_fbo_tex_->InitImageData(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+  if (!fbo_shadow_) {
+    fbo_shadow_ = renderer_->CreateFrameBuffer();
+    if (!tex_depth_shadow_) {
+      tex_depth_shadow_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, false});
+      tex_depth_shadow_->InitImageData(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
     }
-    depth_fbo_->SetDepthAttachment(depth_fbo_tex_);
+    fbo_shadow_->SetDepthAttachment(tex_depth_shadow_);
 
-    if (!depth_fbo_->IsValid()) {
+    if (!fbo_shadow_->IsValid()) {
       LOGE("SetupShowMapBuffers failed");
     }
   }
 }
 
 void Viewer::SetupMainColorBuffer(bool multi_sample) {
-  if (!color_tex_out_ || color_tex_out_->multi_sample != multi_sample) {
+  if (!tex_color_main_ || tex_color_main_->multi_sample != multi_sample) {
     Sampler2DDesc sampler;
     sampler.use_mipmaps = false;
     sampler.filter_min = Filter_LINEAR;
-    color_tex_out_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_RGBA8, multi_sample});
-    color_tex_out_->InitImageData(width_, height_);
-    color_tex_out_->SetSamplerDesc(sampler);
+    tex_color_main_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_RGBA8, multi_sample});
+    tex_color_main_->InitImageData(width_, height_);
+    tex_color_main_->SetSamplerDesc(sampler);
   }
 }
 
 void Viewer::SetupMainDepthBuffer(bool multi_sample) {
-  if (!depth_tex_out_ || depth_tex_out_->multi_sample != multi_sample) {
-    depth_tex_out_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, multi_sample});
-    depth_tex_out_->InitImageData(width_, height_);
+  if (!tex_depth_main_ || tex_depth_main_->multi_sample != multi_sample) {
+    tex_depth_main_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, multi_sample});
+    tex_depth_main_->InitImageData(width_, height_);
   }
 }
 
@@ -428,6 +431,9 @@ void Viewer::SetupTextures(Material &material) {
     texture->SetImageData(kv.second.data);
     material.textures[kv.first] = texture;
   }
+
+  // default shadow depth texture
+  material.textures[TextureUsage_SHADOWMAP] = shadow_placeholder_;
 
   // default IBL texture
   if (material.shading == Shading_PBR) {
@@ -493,9 +499,6 @@ void Viewer::SetupMaterial(Material &material,
 }
 
 void Viewer::UpdateUniformScene() {
-  uniforms_scene_.u_enablePointLight = config_.show_light ? 1 : 0;
-  uniforms_scene_.u_enableIBL = IBLEnabled() ? 1 : 0;
-
   uniforms_scene_.u_ambientColor = config_.ambient_color;
   uniforms_scene_.u_cameraPosition = camera_->Eye();
   uniforms_scene_.u_pointLightPosition = config_.point_light_position;
@@ -503,21 +506,28 @@ void Viewer::UpdateUniformScene() {
   uniform_block_scene_->SetData(&uniforms_scene_, sizeof(UniformsScene));
 }
 
-void Viewer::UpdateUniformMVP(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj) {
-  uniforms_mvp_.u_modelMatrix = model;
-  uniforms_mvp_.u_modelViewProjectionMatrix = proj * view * model;
-  uniforms_mvp_.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
-  uniforms_block_mvp_->SetData(&uniforms_mvp_, sizeof(UniformsMVP));
+void Viewer::UpdateUniformModel(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj) {
+  uniforms_model_.u_modelMatrix = model;
+  uniforms_model_.u_modelViewProjectionMatrix = proj * view * model;
+  uniforms_model_.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+
+  // shadow mvp
+  if (config_.shadow_map && camera_depth_) {
+    uniforms_model_.u_shadowMVPMatrix = camera_depth_->ProjectionMatrix() * camera_depth_->ViewMatrix() * model;
+  }
+
+  uniforms_block_model_->SetData(&uniforms_model_, sizeof(UniformsModel));
 }
 
-void Viewer::UpdateUniformColor(const glm::vec4 &color) {
-  uniforms_color_.u_baseColor = color;
-  uniforms_block_color_->SetData(&uniforms_color_, sizeof(UniformsColor));
-}
+void Viewer::UpdateUniformMaterial(const glm::vec4 &color, float specular) {
+  uniforms_material_.u_enableLight = config_.show_light ? 1 : 0;
+  uniforms_material_.u_enableIBL = IBLEnabled() ? 1 : 0;
+  uniforms_material_.u_enableShadow = config_.shadow_map;
 
-void Viewer::UpdateUniformBlinnPhong(float specular) {
-  uniforms_blinn_phong_.u_kSpecular = specular;
-  uniforms_block_blinn_phong_->SetData(&uniforms_blinn_phong_, sizeof(UniformsBlinnPhong));
+  uniforms_material_.u_kSpecular = specular;
+  uniforms_material_.u_baseColor = color;
+
+  uniforms_block_material_->SetData(&uniforms_material_, sizeof(UniformsMaterial));
 }
 
 bool Viewer::InitSkyboxIBL(ModelSkybox &skybox) {
@@ -626,6 +636,19 @@ void Viewer::UpdateIBLTextures(Material &material) {
   }
 }
 
+void Viewer::UpdateShadowTextures(Material &material) {
+  if (!material.shader_uniforms) {
+    return;
+  }
+
+  auto &samplers = material.shader_uniforms->samplers;
+  if (config_.shadow_map) {
+    samplers[TextureUsage_SHADOWMAP]->SetTexture(tex_depth_shadow_);
+  } else {
+    samplers[TextureUsage_SHADOWMAP]->SetTexture(shadow_placeholder_);
+  }
+}
+
 std::shared_ptr<Texture> Viewer::CreateTextureCubeDefault(int width, int height, bool mipmaps) {
   SamplerCubeDesc sampler_cube;
   sampler_cube.use_mipmaps = mipmaps;
@@ -636,6 +659,18 @@ std::shared_ptr<Texture> Viewer::CreateTextureCubeDefault(int width, int height,
   texture_cube->InitImageData(width, height);
 
   return texture_cube;
+}
+
+std::shared_ptr<Texture> Viewer::CreateTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps) {
+  Sampler2DDesc sampler_2d;
+  sampler_2d.use_mipmaps = mipmaps;
+  sampler_2d.filter_min = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
+
+  auto texture_2d = renderer_->CreateTexture({TextureType_2D, format, false});
+  texture_2d->SetSamplerDesc(sampler_2d);
+  texture_2d->InitImageData(width, height);
+
+  return texture_2d;
 }
 
 std::set<std::string> Viewer::GenerateShaderDefines(Material &material) {

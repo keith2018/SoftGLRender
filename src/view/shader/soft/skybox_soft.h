@@ -23,10 +23,11 @@ struct ShaderAttributes {
 };
 
 struct ShaderUniforms {
-  // UniformsMVP
+  // UniformsModel
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
+  glm::mat4 u_shadowMVPMatrix;
 
   // Samplers
   Sampler2DSoft<RGBA> *u_equirectangularMap;
@@ -50,7 +51,7 @@ class ShaderSkybox : public ShaderSoft {
 
   std::vector<UniformDesc> &GetUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
-        {"UniformsMVP", offsetof(ShaderUniforms, u_modelMatrix)},
+        {"UniformsModel", offsetof(ShaderUniforms, u_modelMatrix)},
         {"u_equirectangularMap", offsetof(ShaderUniforms, u_equirectangularMap)},
         {"u_cubeMap", offsetof(ShaderUniforms, u_cubeMap)},
     };

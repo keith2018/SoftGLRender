@@ -15,10 +15,11 @@ layout (location = 3) in vec3 a_tangent;
 
 out vec3 v_worldPos;
 
-layout (std140) uniform UniformsMVP {
+layout (std140) uniform UniformsModel {
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
+    mat4 u_shadowMVPMatrix;
 };
 
 void main() {

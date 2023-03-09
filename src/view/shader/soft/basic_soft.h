@@ -22,12 +22,17 @@ struct ShaderAttributes {
 };
 
 struct ShaderUniforms {
-  // UniformsMVP
+  // UniformsModel
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
+  glm::mat4 u_shadowMVPMatrix;
 
-  // UniformsColor
+  // UniformsMaterial
+  glm::int32_t u_enableLight;
+  glm::int32_t u_enableIBL;
+  glm::int32_t u_enableShadow;
+  glm::int32_t u_kSpecular;
   glm::vec4 u_baseColor;
 };
 
@@ -45,8 +50,8 @@ class ShaderBasic : public ShaderSoft {
 
   std::vector<UniformDesc> &GetUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
-        {"UniformsMVP", offsetof(ShaderUniforms, u_modelMatrix)},
-        {"UniformsColor", offsetof(ShaderUniforms, u_baseColor)},
+        {"UniformsModel", offsetof(ShaderUniforms, u_modelMatrix)},
+        {"UniformsMaterial", offsetof(ShaderUniforms, u_enableLight)},
     };
     return desc;
   };

@@ -26,37 +26,43 @@ struct ShaderAttributes {
 };
 
 struct ShaderUniforms {
-  // UniformsMVP
+  // UniformsModel
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
+  glm::mat4 u_shadowMVPMatrix;
 
   // UniformsScene
-  glm::int32_t u_enablePointLight;
-  glm::int32_t u_enableIBL;
   glm::vec3 u_ambientColor;
   glm::vec3 u_cameraPosition;
   glm::vec3 u_pointLightPosition;
   glm::vec3 u_pointLightColor;
 
-  // UniformsColor
-  glm::vec4 u_baseColor;
-
-  // UniformsBlinnPhong
+  // UniformsMaterial
+  glm::int32_t u_enableLight;
+  glm::int32_t u_enableIBL;
+  glm::int32_t u_enableShadow;
   float u_kSpecular;
+  glm::vec4 u_baseColor;
 
   // Samplers
   Sampler2DSoft<RGBA> *u_albedoMap;
   Sampler2DSoft<RGBA> *u_normalMap;
   Sampler2DSoft<RGBA> *u_emissiveMap;
   Sampler2DSoft<RGBA> *u_aoMap;
+  Sampler2DSoft<float> *u_shadowMap;
 };
 
 struct ShaderVaryings {
   glm::vec2 v_texCoord;
   glm::vec3 v_normalVector;
+  glm::vec3 v_worldPos;
   glm::vec3 v_cameraDirection;
   glm::vec3 v_lightDirection;
+  glm::vec4 v_shadowFragPos;
+
+  glm::vec3 v_normal;
+  glm::vec3 v_tangent;
 };
 
 class ShaderBlinnPhong : public ShaderSoft {
@@ -75,14 +81,14 @@ class ShaderBlinnPhong : public ShaderSoft {
 
   std::vector<UniformDesc> &GetUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
-        {"UniformsMVP", offsetof(ShaderUniforms, u_modelMatrix)},
-        {"UniformsScene", offsetof(ShaderUniforms, u_enablePointLight)},
-        {"UniformsColor", offsetof(ShaderUniforms, u_baseColor)},
-        {"UniformsBlinnPhong", offsetof(ShaderUniforms, u_kSpecular)},
+        {"UniformsModel", offsetof(ShaderUniforms, u_modelMatrix)},
+        {"UniformsScene", offsetof(ShaderUniforms, u_ambientColor)},
+        {"UniformsMaterial", offsetof(ShaderUniforms, u_enableLight)},
         {"u_albedoMap", offsetof(ShaderUniforms, u_albedoMap)},
         {"u_normalMap", offsetof(ShaderUniforms, u_normalMap)},
         {"u_emissiveMap", offsetof(ShaderUniforms, u_emissiveMap)},
         {"u_aoMap", offsetof(ShaderUniforms, u_aoMap)},
+        {"u_shadowMap", offsetof(ShaderUniforms, u_shadowMap)},
     };
     return desc;
   };
@@ -96,24 +102,19 @@ class VS : public ShaderBlinnPhong {
     glm::vec4 position = glm::vec4(a->a_position, 1.0);
     gl->Position = u->u_modelViewProjectionMatrix * position;
     v->v_texCoord = a->a_texCoord;
+    v->v_shadowFragPos = u->u_shadowMVPMatrix * position;
 
     // world space
-    glm::vec3 fragWorldPos = glm::vec3(u->u_modelMatrix * position);
-    v->v_normalVector = normalize(u->u_inverseTransposeModelMatrix * a->a_normal);
-    v->v_lightDirection = u->u_pointLightPosition - fragWorldPos;
-    v->v_cameraDirection = u->u_cameraPosition - fragWorldPos;
+    v->v_worldPos = glm::vec3(u->u_modelMatrix * position);
+    v->v_normalVector = glm::mat3(u->u_modelMatrix) * a->a_normal;
+    v->v_lightDirection = u->u_pointLightPosition - v->v_worldPos;
+    v->v_cameraDirection = u->u_cameraPosition - v->v_worldPos;
 
     if (def->NORMAL_MAP) {
-      // TBN
-      glm::vec3 N = normalize(u->u_inverseTransposeModelMatrix * a->a_normal);
-      glm::vec3 T = normalize(u->u_inverseTransposeModelMatrix * a->a_tangent);
-      T = normalize(T - dot(T, N) * N);
-      glm::vec3 B = cross(T, N);
-      glm::mat3 TBN = transpose(glm::mat3(T, B, N));
-
-      // TBN space
-      v->v_lightDirection = TBN * v->v_lightDirection;
-      v->v_cameraDirection = TBN * v->v_cameraDirection;
+      glm::vec3 N = glm::normalize(u->u_inverseTransposeModelMatrix * a->a_normal);
+      glm::vec3 T = glm::normalize(u->u_inverseTransposeModelMatrix * a->a_tangent);
+      v->v_normal = N;
+      v->v_tangent = glm::normalize(T - glm::dot(T, N) * N);
     }
   }
 };
@@ -143,11 +144,31 @@ class FS : public ShaderBlinnPhong {
 
   glm::vec3 GetNormalFromMap() {
     if (def->NORMAL_MAP) {
-      glm::vec3 normalVector = texture(u->u_normalMap, v->v_texCoord);
-      return normalize(normalVector * 2.f - 1.f);
+      glm::vec3 N = glm::normalize(v->v_normal);
+      glm::vec3 T = glm::normalize(v->v_tangent);
+      T = glm::normalize(T - glm::dot(T, N) * N);
+      glm::vec3 B = glm::cross(T, N);
+      glm::mat3 TBN = glm::mat3(T, B, N);
+
+      glm::vec3 tangentNormal = glm::vec3(texture(u->u_normalMap, v->v_texCoord)) * 2.0f - 1.0f;
+      return glm::normalize(TBN * tangentNormal);
     } else {
-      return normalize(v->v_normalVector);
+      return glm::normalize(v->v_normalVector);
     }
+  }
+
+  float ShadowCalculation(glm::vec4 fragPos, glm::vec3 normal) {
+    glm::vec3 projCoords = glm::vec3(fragPos) / fragPos.w;
+    projCoords = projCoords * 0.5f + 0.5f;
+    float closestDepth = texture(u->u_shadowMap, glm::vec2(projCoords));
+    float currentDepth = projCoords.z;
+
+    float shadow = currentDepth > closestDepth ? 1.0f : 0.0f;
+
+    if (projCoords.z > 1.0f) {
+      shadow = 0.0f;
+    }
+    return shadow;
   }
 
   void ShaderMain() override {
@@ -161,7 +182,7 @@ class FS : public ShaderBlinnPhong {
       baseColor = u->u_baseColor;
     }
 
-    glm::vec3 normalVector = GetNormalFromMap();
+    glm::vec3 N = GetNormalFromMap();
 
     // ambient
     float ao = 1.f;
@@ -173,20 +194,27 @@ class FS : public ShaderBlinnPhong {
     glm::vec3 specularColor = glm::vec3(0.f);
     glm::vec3 emissiveColor = glm::vec3(0.f);
 
-    if (u->u_enablePointLight) {
+    if (u->u_enableLight) {
       // diffuse
       glm::vec3 lDir = v->v_lightDirection * pointLightRangeInverse;
       float attenuation = glm::clamp(1.0f - dot(lDir, lDir), 0.0f, 1.0f);
 
       glm::vec3 lightDirection = normalize(v->v_lightDirection);
-      float diffuse = glm::max(dot(normalVector, lightDirection), 0.0f);
+      float diffuse = glm::max(dot(N, lightDirection), 0.0f);
       diffuseColor = u->u_pointLightColor * glm::vec3(baseColor) * diffuse * attenuation;
 
       // specular
       glm::vec3 cameraDirection = normalize(v->v_cameraDirection);
       glm::vec3 halfVector = normalize(lightDirection + cameraDirection);
-      float specularAngle = glm::max(dot(normalVector, halfVector), 0.0f);
+      float specularAngle = glm::max(dot(N, halfVector), 0.0f);
       specularColor = u->u_kSpecular * glm::vec3(glm::pow(specularAngle, specularExponent));
+
+      if (u->u_enableShadow) {
+        // calculate shadow
+        float shadow = 1.0f - ShadowCalculation(v->v_shadowFragPos, N);
+        diffuseColor *= shadow;
+        specularColor *= shadow;
+      }
     }
 
     if (def->EMISSIVE_MAP) {
