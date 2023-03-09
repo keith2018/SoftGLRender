@@ -12,12 +12,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/GltfMaterial.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
-
-//#define STB_IMAGE_WRITE_IMPLEMENTATION
-//#include <stb/stb_image_write.h>
-
+#include "base/image_utils.h"
 #include "base/thread_pool.h"
 #include "base/string_utils.h"
 #include "base/logger.h"
@@ -66,14 +61,14 @@ void ModelLoader::LoadCubeMesh(ModelVertexes &mesh) {
 void ModelLoader::LoadWorldAxis() {
   float axis_y = -0.01f;
   int idx = 0;
-  for (int i = -10; i <= 10; i++) {
-    scene_.world_axis.vertexes.push_back({glm::vec3(-2, axis_y, 0.2f * (float) i)});
-    scene_.world_axis.vertexes.push_back({glm::vec3(2, axis_y, 0.2f * (float) i)});
+  for (int i = -16; i <= 16; i++) {
+    scene_.world_axis.vertexes.push_back({glm::vec3(-3.2, axis_y, 0.2f * (float) i)});
+    scene_.world_axis.vertexes.push_back({glm::vec3(3.2, axis_y, 0.2f * (float) i)});
     scene_.world_axis.indices.push_back(idx++);
     scene_.world_axis.indices.push_back(idx++);
 
-    scene_.world_axis.vertexes.push_back({glm::vec3(0.2f * (float) i, axis_y, -2)});
-    scene_.world_axis.vertexes.push_back({glm::vec3(0.2f * (float) i, axis_y, 2)});
+    scene_.world_axis.vertexes.push_back({glm::vec3(0.2f * (float) i, axis_y, -3.2)});
+    scene_.world_axis.vertexes.push_back({glm::vec3(0.2f * (float) i, axis_y, 3.2)});
     scene_.world_axis.indices.push_back(idx++);
     scene_.world_axis.indices.push_back(idx++);
   }
@@ -103,11 +98,16 @@ void ModelLoader::LoadLights() {
 }
 
 void ModelLoader::LoadFloor() {
-  float floor_y = -0.02f;
-  scene_.floor.vertexes.push_back({glm::vec3(-2.f, floor_y, 2.f), glm::vec2(0.f, 1.f), glm::vec3(0.f, 1.f, 0.f)});
-  scene_.floor.vertexes.push_back({glm::vec3(-2.f, floor_y, -2.f), glm::vec2(0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)});
-  scene_.floor.vertexes.push_back({glm::vec3(2.f, floor_y, -2.f), glm::vec2(1.f, 0.f), glm::vec3(0.f, 1.f, 0.f)});
-  scene_.floor.vertexes.push_back({glm::vec3(2.f, floor_y, 2.f), glm::vec2(1.f, 1.f), glm::vec3(0.f, 1.f, 0.f)});
+  float floor_y = 0.01f;
+  float floor_size = 2.0f;
+  scene_.floor.vertexes.push_back({glm::vec3(-floor_size, floor_y, floor_size), glm::vec2(0.f, 1.f),
+                                   glm::vec3(0.f, 1.f, 0.f)});
+  scene_.floor.vertexes.push_back({glm::vec3(-floor_size, floor_y, -floor_size), glm::vec2(0.f, 0.f),
+                                   glm::vec3(0.f, 1.f, 0.f)});
+  scene_.floor.vertexes.push_back({glm::vec3(floor_size, floor_y, -floor_size), glm::vec2(1.f, 0.f),
+                                   glm::vec3(0.f, 1.f, 0.f)});
+  scene_.floor.vertexes.push_back({glm::vec3(floor_size, floor_y, floor_size), glm::vec2(1.f, 1.f),
+                                   glm::vec3(0.f, 1.f, 0.f)});
   scene_.floor.indices.push_back(0);
   scene_.floor.indices.push_back(2);
   scene_.floor.indices.push_back(1);
@@ -122,6 +122,11 @@ void ModelLoader::LoadFloor() {
   scene_.floor.material_base_color.shading = Shading_BaseColor;
   scene_.floor.material_base_color.base_color = glm::vec4(0.5f);
   scene_.floor.material_base_color.double_sided = true;
+
+  scene_.floor.material_textured.Reset();
+  scene_.floor.material_textured.shading = Shading_BlinnPhong;
+  scene_.floor.material_textured.double_sided = true;
+
   scene_.floor.aabb = BoundingBox(glm::vec3(-2, 0, -2), glm::vec3(2, 0, 2));
   scene_.floor.InitVertexes();
 }
@@ -217,6 +222,8 @@ bool ModelLoader::LoadModel(const std::string &filepath) {
     return false;
   }
 
+  // model center transform
+  scene_.model->centered_transform = AdjustModelCenter(scene_.model->root_aabb);
   return true;
 }
 
@@ -418,6 +425,16 @@ BoundingBox ModelLoader::ConvertBoundingBox(const aiAABB &aabb) {
   return ret;
 }
 
+glm::mat4 ModelLoader::AdjustModelCenter(BoundingBox &bounds) {
+  glm::mat4 model_transform(1.0f);
+  glm::vec3 trans = (bounds.max + bounds.min) / -2.f;
+  trans.y = -bounds.min.y;
+  float bounds_len = glm::length(bounds.max - bounds.min);
+  model_transform = glm::scale(model_transform, glm::vec3(3.f / bounds_len));
+  model_transform = glm::translate(model_transform, trans);
+  return model_transform;
+}
+
 void ModelLoader::PreloadTextureFiles(const aiScene *scene, const std::string &res_dir) {
   std::set<std::string> tex_paths;
   for (int material_idx = 0; material_idx < scene->mNumMaterials; material_idx++) {
@@ -458,54 +475,11 @@ std::shared_ptr<Buffer<RGBA>> ModelLoader::LoadTextureFile(const std::string &pa
 
   LOGD("load texture, path: %s", path.c_str());
 
-  int iw = 0, ih = 0, n = 0;
-  unsigned char *data = stbi_load(path.c_str(), &iw, &ih, &n, STBI_default);
-  if (data == nullptr) {
+  auto buffer = ImageUtils::ReadImageRGBA(path);
+  if (buffer == nullptr) {
     LOGD("load texture failed, path: %s", path.c_str());
     return nullptr;
   }
-  auto buffer = Buffer<RGBA>::MakeDefault(iw, ih);
-
-  // convert to rgba
-  for (size_t y = 0; y < ih; y++) {
-    for (size_t x = 0; x < iw; x++) {
-      auto &to = *buffer->Get(x, y);
-      size_t idx = x + y * iw;
-
-      switch (n) {
-        case STBI_grey: {
-          to.r = data[idx];
-          to.g = to.b = to.r;
-          to.a = 255;
-          break;
-        }
-        case STBI_grey_alpha: {
-          to.r = data[idx * 2 + 0];
-          to.g = to.b = to.r;
-          to.a = data[idx * 2 + 1];
-          break;
-        }
-        case STBI_rgb: {
-          to.r = data[idx * 3 + 0];
-          to.g = data[idx * 3 + 1];
-          to.b = data[idx * 3 + 2];
-          to.a = 255;
-          break;
-        }
-        case STBI_rgb_alpha: {
-          to.r = data[idx * 4 + 0];
-          to.g = data[idx * 4 + 1];
-          to.b = data[idx * 4 + 2];
-          to.a = data[idx * 4 + 3];
-          break;
-        }
-        default:
-          break;
-      }
-    }
-  }
-
-  stbi_image_free(data);
 
   tex_cache_mutex_.lock();
   texture_cache_[path] = buffer;

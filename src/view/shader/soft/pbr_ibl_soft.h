@@ -27,44 +27,47 @@ struct ShaderAttributes {
 };
 
 struct ShaderUniforms {
-  // UniformsMVP
+  // UniformsModel
+  glm::int32_t u_reverseZ;
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
+  glm::mat4 u_shadowMVPMatrix;
 
   // UniformsScene
-  glm::int32_t u_enablePointLight;
-  glm::int32_t u_enableIBL;
   glm::vec3 u_ambientColor;
   glm::vec3 u_cameraPosition;
   glm::vec3 u_pointLightPosition;
   glm::vec3 u_pointLightColor;
 
-  // UniformsColor
+  // UniformsMaterial
+  glm::int32_t u_enableLight;
+  glm::int32_t u_enableIBL;
+  glm::int32_t u_enableShadow;
+  float u_kSpecular;
   glm::vec4 u_baseColor;
 
   // Samplers
-  Sampler2DSoft *u_albedoMap;
-  Sampler2DSoft *u_normalMap;
-  Sampler2DSoft *u_emissiveMap;
-  Sampler2DSoft *u_aoMap;
+  Sampler2DSoft<RGBA> *u_albedoMap;
+  Sampler2DSoft<RGBA> *u_normalMap;
+  Sampler2DSoft<RGBA> *u_emissiveMap;
+  Sampler2DSoft<RGBA> *u_aoMap;
 
-  Sampler2DSoft *u_metalRoughnessMap;
+  Sampler2DSoft<RGBA> *u_metalRoughnessMap;
 
-  SamplerCubeSoft *u_irradianceMap;
-  SamplerCubeSoft *u_prefilterMap;
+  SamplerCubeSoft<RGBA> *u_irradianceMap;
+  SamplerCubeSoft<RGBA> *u_prefilterMap;
 };
 
 struct ShaderVaryings {
   glm::vec2 v_texCoord;
   glm::vec3 v_normalVector;
   glm::vec3 v_worldPos;
+  glm::vec3 v_cameraDirection;
+  glm::vec3 v_lightDirection;
 
   glm::vec3 v_normal;
   glm::vec3 v_tangent;
-
-  glm::vec3 v_cameraDirection;
-  glm::vec3 v_lightDirection;
 };
 
 class ShaderPbrIBL : public ShaderSoft {
@@ -84,9 +87,9 @@ class ShaderPbrIBL : public ShaderSoft {
 
   std::vector<UniformDesc> &GetUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
-        {"UniformsMVP", offsetof(ShaderUniforms, u_modelMatrix)},
-        {"UniformsScene", offsetof(ShaderUniforms, u_enablePointLight)},
-        {"UniformsColor", offsetof(ShaderUniforms, u_baseColor)},
+        {"UniformsModel", offsetof(ShaderUniforms, u_reverseZ)},
+        {"UniformsScene", offsetof(ShaderUniforms, u_ambientColor)},
+        {"UniformsMaterial", offsetof(ShaderUniforms, u_enableLight)},
         {"u_albedoMap", offsetof(ShaderUniforms, u_albedoMap)},
         {"u_normalMap", offsetof(ShaderUniforms, u_normalMap)},
         {"u_emissiveMap", offsetof(ShaderUniforms, u_emissiveMap)},
@@ -127,7 +130,7 @@ class FS : public ShaderPbrIBL {
  public:
   CREATE_SHADER_CLONE(FS)
 
-  size_t GetSamplerDerivativeOffset(BaseSampler<uint8_t> *sampler) const override {
+  size_t GetSamplerDerivativeOffset(BaseSampler<RGBA> *sampler) const override {
     return offsetof(ShaderVaryings, v_texCoord);
   }
 
@@ -221,7 +224,13 @@ class FS : public ShaderPbrIBL {
   void ShaderMain() override {
     float pointLightRangeInverse = 1.0f / 5.f;
 
-    glm::vec4 albedo_rgba = texture(u->u_albedoMap, v->v_texCoord);
+    glm::vec4 albedo_rgba;
+    if (def->ALBEDO_MAP) {
+      albedo_rgba = texture(u->u_albedoMap, v->v_texCoord);
+    } else {
+      albedo_rgba = u->u_baseColor;
+    }
+
     glm::vec3 albedo = glm::pow(glm::vec3(albedo_rgba), glm::vec3(2.2f));
 
     glm::vec4 metalRoughness = texture(u->u_metalRoughnessMap, v->v_texCoord);
@@ -244,7 +253,7 @@ class FS : public ShaderPbrIBL {
     glm::vec3 Lo = glm::vec3(0.0f);
 
     // Light begin ---------------------------------------------------------------
-    if (u->u_enablePointLight) {
+    if (u->u_enableLight) {
       // calculate per-light radiance
       glm::vec3 L = glm::normalize(v->v_lightDirection);
       glm::vec3 H = glm::normalize(V + L);

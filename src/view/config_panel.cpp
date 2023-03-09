@@ -132,6 +132,7 @@ void ConfigPanel::DrawSettings() {
   // shadow floor
   ImGui::Separator();
   ImGui::Checkbox("shadow floor", &config_.show_floor);
+  config_.shadow_map = config_.show_floor;
 
   if (config_.wireframe) {
     return;
@@ -201,7 +202,7 @@ void ConfigPanel::Destroy() {
 void ConfigPanel::Update() {
   // update light position
   config_.point_light_position = 2.f * glm::vec3(glm::sin(light_position_angle_),
-                                                 1.0f,
+                                                 1.2f,
                                                  glm::cos(light_position_angle_));
   if (update_light_func_) {
     update_light_func_(config_.point_light_position, config_.point_light_color);

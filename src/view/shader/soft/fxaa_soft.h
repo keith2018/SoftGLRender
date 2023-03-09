@@ -26,7 +26,7 @@ struct ShaderUniforms {
   glm::vec2 u_screenSize;
 
   // Samplers
-  Sampler2DSoft *u_screenTexture;
+  Sampler2DSoft<RGBA> *u_screenTexture;
 };
 
 struct ShaderVaryings {

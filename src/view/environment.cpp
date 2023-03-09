@@ -19,8 +19,8 @@ struct LookAtParam {
 
 bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
                                          const std::function<bool(ShaderProgram &program)> &shader_func,
-                                         const std::shared_ptr<Texture2D> &tex_in,
-                                         std::shared_ptr<TextureCube> &tex_out) {
+                                         const std::shared_ptr<Texture> &tex_in,
+                                         std::shared_ptr<Texture> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
@@ -38,8 +38,8 @@ bool Environment::ConvertEquirectangular(const std::shared_ptr<Renderer> &render
 
 bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
                                         const std::function<bool(ShaderProgram &program)> &shader_func,
-                                        const std::shared_ptr<TextureCube> &tex_in,
-                                        std::shared_ptr<TextureCube> &tex_out) {
+                                        const std::shared_ptr<Texture> &tex_in,
+                                        std::shared_ptr<Texture> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
@@ -57,8 +57,8 @@ bool Environment::GenerateIrradianceMap(const std::shared_ptr<Renderer> &rendere
 
 bool Environment::GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
                                        const std::function<bool(ShaderProgram &program)> &shader_func,
-                                       const std::shared_ptr<TextureCube> &tex_in,
-                                       std::shared_ptr<TextureCube> &tex_out) {
+                                       const std::shared_ptr<Texture> &tex_in,
+                                       std::shared_ptr<Texture> &tex_out) {
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = CreateCubeRenderContext(context,
@@ -124,12 +124,12 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
 
   // uniforms
   const char *sampler_name = Material::SamplerName(tex_usage);
-  auto uniform = context.renderer->CreateUniformSampler(sampler_name, tex_in->Type());
+  auto uniform = context.renderer->CreateUniformSampler(sampler_name, tex_in->type, tex_in->format);
   uniform->SetTexture(tex_in);
   context.model_skybox.material->shader_uniforms->samplers[tex_usage] = uniform;
 
-  context.uniforms_block_mvp = context.renderer->CreateUniformBlock("UniformsMVP", sizeof(UniformsMVP));
-  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_MVP] = context.uniforms_block_mvp;
+  context.uniforms_block_model = context.renderer->CreateUniformBlock("UniformsModel", sizeof(UniformsModel));
+  context.model_skybox.material->shader_uniforms->blocks[UniformBlock_Model] = context.uniforms_block_model;
 
   return true;
 }
@@ -137,7 +137,7 @@ bool Environment::CreateCubeRenderContext(CubeRenderContext &context,
 void Environment::DrawCubeFaces(CubeRenderContext &context,
                                 int width,
                                 int height,
-                                std::shared_ptr<TextureCube> &tex_out,
+                                std::shared_ptr<Texture> &tex_out,
                                 int tex_out_level,
                                 const std::function<void()> &before_draw) {
   static LookAtParam capture_views[] = {
@@ -149,11 +149,11 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)}
   };
 
-  UniformsMVP uniforms_mvp{};
+  UniformsModel uniforms_model{};
   glm::mat4 model_matrix(1.f);
 
   // draw
-  context.renderer->SetFrameBuffer(*context.fbo);
+  context.renderer->SetFrameBuffer(context.fbo);
   context.renderer->SetViewPort(0, 0, width, height);
 
   for (int i = 0; i < 6; i++) {
@@ -162,8 +162,8 @@ void Environment::DrawCubeFaces(CubeRenderContext &context,
 
     // update mvp
     glm::mat4 view_matrix = glm::mat3(context.camera.ViewMatrix());  // only rotation
-    uniforms_mvp.u_modelViewProjectionMatrix = context.camera.ProjectionMatrix() * view_matrix * model_matrix;
-    context.uniforms_block_mvp->SetData(&uniforms_mvp, sizeof(UniformsMVP));
+    uniforms_model.u_modelViewProjectionMatrix = context.camera.ProjectionMatrix() * view_matrix * model_matrix;
+    context.uniforms_block_model->SetData(&uniforms_model, sizeof(UniformsModel));
 
     if (before_draw) {
       before_draw();

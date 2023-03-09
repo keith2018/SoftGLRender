@@ -43,7 +43,7 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   // uniforms
   TextureUsage usage = TextureUsage_QUAD_FILTER;
   const char *sampler_name = Material::SamplerName(usage);
-  uniform_tex_in_ = renderer_->CreateUniformSampler(sampler_name, TextureType_2D);
+  uniform_tex_in_ = renderer_->CreateUniformSampler(sampler_name, TextureType_2D, TextureFormat_RGBA8);
   quad_mesh_.material_textured.shader_uniforms->samplers[usage] = uniform_tex_in_;
 
   uniform_block_filter_ = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
@@ -53,8 +53,8 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   init_ready_ = true;
 }
 
-void QuadFilter::SetTextures(std::shared_ptr<Texture2D> &tex_in,
-                             std::shared_ptr<Texture2D> &tex_out) {
+void QuadFilter::SetTextures(std::shared_ptr<Texture> &tex_in,
+                             std::shared_ptr<Texture> &tex_out) {
   width_ = tex_out->width;
   height_ = tex_out->height;
   uniform_filter_.u_screenSize = glm::vec2(width_, height_);
@@ -69,7 +69,7 @@ void QuadFilter::Draw() {
     return;
   }
 
-  renderer_->SetFrameBuffer(*fbo_);
+  renderer_->SetFrameBuffer(fbo_);
   renderer_->SetViewPort(0, 0, width_, height_);
 
   renderer_->Clear({});

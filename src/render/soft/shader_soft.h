@@ -66,31 +66,54 @@ class ShaderSoft {
   virtual std::shared_ptr<ShaderSoft> clone() = 0;
 
  public:
-  static inline glm::vec4 texture(Sampler2DSoft *sampler, glm::vec2 coord) {
-    return sampler->Texture2D(coord);
+  static inline glm::ivec2 textureSize(Sampler2DSoft<RGBA> *sampler, int lod) {
+    auto &buffer = sampler->GetTexture()->GetImage().GetBuffer(lod);
+    return {buffer->width, buffer->height};
   }
 
-  static inline glm::vec4 texture(SamplerCubeSoft *sampler, glm::vec3 coord) {
-    return sampler->TextureCube(coord);
+  static inline glm::ivec2 textureSize(Sampler2DSoft<float> *sampler, int lod) {
+    auto &buffer = sampler->GetTexture()->GetImage().GetBuffer(lod);
+    return {buffer->width, buffer->height};
   }
 
-  static inline glm::vec4 textureLod(Sampler2DSoft *sampler, glm::vec2 coord, float lod = 0.f) {
-    return sampler->Texture2DLod(coord, lod);
+  static inline glm::vec4 texture(Sampler2DSoft<RGBA> *sampler, glm::vec2 coord) {
+    glm::vec4 ret = sampler->Texture2D(coord);
+    return ret / 255.f;
   }
 
-  static inline glm::vec4 textureLod(SamplerCubeSoft *sampler, glm::vec3 coord, float lod = 0.f) {
-    return sampler->TextureCubeLod(coord, lod);
+  static inline float texture(Sampler2DSoft<float> *sampler, glm::vec2 coord) {
+    float ret = sampler->Texture2D(coord);
+    return ret;
   }
 
-  static inline glm::vec4 textureLodOffset(Sampler2DSoft *sampler, glm::vec2 coord, float lod, glm::ivec2 offset) {
-    return sampler->Texture2DLodOffset(coord, lod, offset);
+  static inline glm::vec4 texture(SamplerCubeSoft<RGBA> *sampler, glm::vec3 coord) {
+    glm::vec4 ret = sampler->TextureCube(coord);
+    return ret / 255.f;
+  }
+
+  static inline glm::vec4 textureLod(Sampler2DSoft<RGBA> *sampler, glm::vec2 coord, float lod = 0.f) {
+    glm::vec4 ret = sampler->Texture2DLod(coord, lod);
+    return ret / 255.f;
+  }
+
+  static inline glm::vec4 textureLod(SamplerCubeSoft<RGBA> *sampler, glm::vec3 coord, float lod = 0.f) {
+    glm::vec4 ret = sampler->TextureCubeLod(coord, lod);
+    return ret / 255.f;
+  }
+
+  static inline glm::vec4 textureLodOffset(Sampler2DSoft<RGBA> *sampler,
+                                           glm::vec2 coord,
+                                           float lod,
+                                           glm::ivec2 offset) {
+    glm::vec4 ret = sampler->Texture2DLodOffset(coord, lod, offset);
+    return ret / 255.f;
   }
 
  public:
   ShaderBuiltin *gl = nullptr;
-  std::function<float(BaseSampler<uint8_t> *)> tex_lod_func;
+  std::function<float(BaseSampler<RGBA> *)> tex_lod_func;
 
-  float GetSampler2DLod(BaseSampler<uint8_t> *sampler) const {
+  float GetSampler2DLod(BaseSampler<RGBA> *sampler) const {
     auto &df_ctx = gl->df_ctx;
     size_t df_offset = GetSamplerDerivativeOffset(sampler);
 
@@ -112,7 +135,7 @@ class ShaderSoft {
     tex_lod_func = std::bind(&ShaderSoft::GetSampler2DLod, this, std::placeholders::_1);
   }
 
-  virtual size_t GetSamplerDerivativeOffset(BaseSampler<uint8_t> *sampler) const {
+  virtual size_t GetSamplerDerivativeOffset(BaseSampler<RGBA> *sampler) const {
     return 0;
   }
 

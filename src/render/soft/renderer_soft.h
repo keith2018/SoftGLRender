@@ -17,22 +17,19 @@ namespace SoftGL {
 
 class RendererSoft : public Renderer {
  public:
-  // config
-  void SetReverseZ(bool enable) override {
-    reverse_z = enable;
-  }
+  // config reverse z
+  void SetReverseZ(bool enable) override { reverse_z = enable; };
+  bool GetReverseZ() override { return reverse_z; };
 
-  void SetEarlyZ(bool enable) override {
-    early_z = enable;
-  }
+  // config early z
+  void SetEarlyZ(bool enable) override { early_z = enable; };
+  bool GetEarlyZ() override { return early_z; };
 
   // framebuffer
   std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
 
   // texture
-  std::shared_ptr<Texture2D> CreateTexture2D(bool multi_sample) override;
-  std::shared_ptr<TextureCube> CreateTextureCube() override;
-  std::shared_ptr<TextureDepth> CreateTextureDepth(bool multi_sample) override;
+  std::shared_ptr<Texture> CreateTexture(const TextureDesc &desc) override;
 
   // vertex
   std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) override;
@@ -42,10 +39,12 @@ class RendererSoft : public Renderer {
 
   // uniform
   std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) override;
+  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name,
+                                                       TextureType type,
+                                                       TextureFormat format) override;
 
   // pipeline
-  void SetFrameBuffer(FrameBuffer &frame_buffer) override;
+  void SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) override;
   void SetViewPort(int x, int y, int width, int height) override;
   void Clear(const ClearState &state) override;
   void SetRenderState(const RenderState &state) override;
@@ -96,7 +95,7 @@ class RendererSoft : public Renderer {
   inline float *GetFrameDepth(int x, int y, int sample);
   inline void SetFrameColor(int x, int y, const RGBA &color, int sample);
 
-  VertexHolder &ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process = false);
+  VertexHolder &ClippingNewVertex(size_t idx0, size_t idx1, float t, bool post_vertex_process = false);
   void VertexShaderImpl(VertexHolder &vertex);
   void PerspectiveDivideImpl(VertexHolder &vertex);
   void ViewportTransformImpl(VertexHolder &vertex);
@@ -113,8 +112,8 @@ class RendererSoft : public Renderer {
   VertexArrayObjectSoft *vao_ = nullptr;
   ShaderProgramSoft *shader_program_ = nullptr;
 
-  std::shared_ptr<ImageBufferColor> fbo_color_ = nullptr;
-  std::shared_ptr<ImageBufferDepth> fbo_depth_ = nullptr;
+  std::shared_ptr<ImageBufferSoft<RGBA>> fbo_color_ = nullptr;
+  std::shared_ptr<ImageBufferSoft<float>> fbo_depth_ = nullptr;
 
   std::vector<VertexHolder> vertexes_;
   std::vector<PrimitiveHolder> primitives_;

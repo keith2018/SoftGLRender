@@ -39,6 +39,7 @@ const char *Material::TextureUsageStr(TextureUsage usage) {
     CASE_ENUM_STR(TextureUsage_IBL_IRRADIANCE);
     CASE_ENUM_STR(TextureUsage_IBL_PREFILTER);
     CASE_ENUM_STR(TextureUsage_QUAD_FILTER);
+    CASE_ENUM_STR(TextureUsage_SHADOWMAP);
     default:
       break;
   }
@@ -93,6 +94,8 @@ const char *Material::SamplerName(TextureUsage usage) {
       return "u_prefilterMap";
     case TextureUsage_QUAD_FILTER:
       return "u_screenTexture";
+    case TextureUsage_SHADOWMAP:
+      return "u_shadowMap";
     default:
       break;
   }

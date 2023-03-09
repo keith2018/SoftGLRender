@@ -24,25 +24,25 @@ struct CubeRenderContext {
   std::shared_ptr<FrameBuffer> fbo;
   Camera camera;
   ModelSkybox model_skybox;
-  std::shared_ptr<UniformBlock> uniforms_block_mvp;
+  std::shared_ptr<UniformBlock> uniforms_block_model;
 };
 
 class Environment {
  public:
   static bool ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
                                      const std::function<bool(ShaderProgram &program)> &shader_func,
-                                     const std::shared_ptr<Texture2D> &tex_in,
-                                     std::shared_ptr<TextureCube> &tex_out);
+                                     const std::shared_ptr<Texture> &tex_in,
+                                     std::shared_ptr<Texture> &tex_out);
 
   static bool GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
                                     const std::function<bool(ShaderProgram &program)> &shader_func,
-                                    const std::shared_ptr<TextureCube> &tex_in,
-                                    std::shared_ptr<TextureCube> &tex_out);
+                                    const std::shared_ptr<Texture> &tex_in,
+                                    std::shared_ptr<Texture> &tex_out);
 
   static bool GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
                                    const std::function<bool(ShaderProgram &program)> &shader_func,
-                                   const std::shared_ptr<TextureCube> &tex_in,
-                                   std::shared_ptr<TextureCube> &tex_out);
+                                   const std::shared_ptr<Texture> &tex_in,
+                                   std::shared_ptr<Texture> &tex_out);
 
  private:
   static bool CreateCubeRenderContext(CubeRenderContext &context,
@@ -53,7 +53,7 @@ class Environment {
   static void DrawCubeFaces(CubeRenderContext &context,
                             int width,
                             int height,
-                            std::shared_ptr<TextureCube> &tex_out,
+                            std::shared_ptr<Texture> &tex_out,
                             int tex_out_level = 0,
                             const std::function<void()> &before_draw = nullptr);
 };

@@ -53,8 +53,8 @@ class UniformBlockOpenGL : public UniformBlock {
 
 class UniformSamplerOpenGL : public UniformSampler {
  public:
-  explicit UniformSamplerOpenGL(const std::string &name, TextureType type)
-      : UniformSampler(name, type) {}
+  explicit UniformSamplerOpenGL(const std::string &name, TextureType type, TextureFormat format)
+      : UniformSampler(name, type, format) {}
   ~UniformSamplerOpenGL() = default;
 
   int GetLocation(ShaderProgram &program) override {
@@ -88,7 +88,7 @@ class UniformSamplerOpenGL : public UniformSampler {
   }
 
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
-    switch (tex->Type()) {
+    switch (tex->type) {
       case TextureType_2D:
         texTarget_ = GL_TEXTURE_2D;
         break;

@@ -33,6 +33,9 @@ class OpenGLUtils {
       case GL_OUT_OF_MEMORY:
         str = "GL_OUT_OF_MEMORY";
         break;
+      case GL_INVALID_FRAMEBUFFER_OPERATION:
+        str = "GL_INVALID_FRAMEBUFFER_OPERATION";
+        break;
       default:
         str = "(ERROR: Unknown Error Enum)";
         break;

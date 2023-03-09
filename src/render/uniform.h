@@ -48,11 +48,13 @@ class UniformBlock : public Uniform {
 
 class UniformSampler : public Uniform {
  public:
-  UniformSampler(const std::string &name, TextureType type) : Uniform(name), type(type) {}
+  UniformSampler(const std::string &name, TextureType type, TextureFormat format)
+      : Uniform(name), type(type), format(format) {}
   virtual void SetTexture(const std::shared_ptr<Texture> &tex) = 0;
 
  protected:
   TextureType type;
+  TextureFormat format;
 };
 
 class ShaderUniforms {

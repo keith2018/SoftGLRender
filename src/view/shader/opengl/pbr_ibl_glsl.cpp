@@ -16,25 +16,23 @@ layout(location = 3) in vec3 a_tangent;
 out vec2 v_texCoord;
 out vec3 v_normalVector;
 out vec3 v_worldPos;
+out vec3 v_cameraDirection;
+out vec3 v_lightDirection;
 
 #if defined(NORMAL_MAP)
 out vec3 v_normal;
 out vec3 v_tangent;
 #endif
 
-out vec3 v_cameraDirection;
-out vec3 v_lightDirection;
-
-layout (std140) uniform UniformsMVP {
+layout (std140) uniform UniformsModel {
+    bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
+    mat4 u_shadowMVPMatrix;
 };
 
 layout(std140) uniform UniformsScene {
-    bool u_enablePointLight;
-    bool u_enableIBL;
-
     vec3 u_ambientColor;
     vec3 u_cameraPosition;
     vec3 u_pointLightPosition;
@@ -65,34 +63,37 @@ const char *PBR_IBL_FS = R"(
 in vec2 v_texCoord;
 in vec3 v_normalVector;
 in vec3 v_worldPos;
+in vec3 v_cameraDirection;
+in vec3 v_lightDirection;
 
 #if defined(NORMAL_MAP)
 in vec3 v_normal;
 in vec3 v_tangent;
 #endif
 
-in vec3 v_cameraDirection;
-in vec3 v_lightDirection;
-
 out vec4 FragColor;
 
-layout (std140) uniform UniformsMVP {
+layout (std140) uniform UniformsModel {
+    bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
+    mat4 u_shadowMVPMatrix;
 };
 
 layout(std140) uniform UniformsScene {
-    bool u_enablePointLight;
-    bool u_enableIBL;
-
     vec3 u_ambientColor;
     vec3 u_cameraPosition;
     vec3 u_pointLightPosition;
     vec3 u_pointLightColor;
 };
 
-layout (std140) uniform UniformsColor {
+layout (std140) uniform UniformsMaterial {
+    bool u_enableLight;
+    bool u_enableIBL;
+    bool u_enableShadow;
+
+    float u_kSpecular;
     vec4 u_baseColor;
 };
 
@@ -195,7 +196,12 @@ vec3 EnvBRDFApprox(vec3 SpecularColor, float Roughness, float NdotV) {
 void main() {
     float pointLightRangeInverse = 1.0f / 5.f;
 
+    #if defined(ALBEDO_MAP)
     vec4 albedo_rgba = texture(u_albedoMap, v_texCoord);
+    #else
+    vec4 albedo_rgba = u_baseColor;
+    #endif
+
     vec3 albedo = pow(albedo_rgba.rgb, vec3(2.2f));
 
     vec4 metalRoughness = texture(u_metalRoughnessMap, v_texCoord);
@@ -218,7 +224,7 @@ void main() {
     vec3 Lo = vec3(0.0f);
 
     // Light begin ---------------------------------------------------------------
-    if (u_enablePointLight) {
+    if (u_enableLight) {
         // calculate per-light radiance
         vec3 L = normalize(v_lightDirection);
         vec3 H = normalize(V + L);

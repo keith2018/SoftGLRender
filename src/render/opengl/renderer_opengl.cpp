@@ -22,16 +22,14 @@ std::shared_ptr<FrameBuffer> RendererOpenGL::CreateFrameBuffer() {
 }
 
 // texture
-std::shared_ptr<Texture2D> RendererOpenGL::CreateTexture2D(bool multi_sample) {
-  return std::make_shared<Texture2DOpenGL>(multi_sample);
-}
-
-std::shared_ptr<TextureCube> RendererOpenGL::CreateTextureCube() {
-  return std::make_shared<TextureCubeOpenGL>();
-}
-
-std::shared_ptr<TextureDepth> RendererOpenGL::CreateTextureDepth(bool multi_sample) {
-  return std::make_shared<TextureDepthOpenGL>(multi_sample);
+std::shared_ptr<Texture> RendererOpenGL::CreateTexture(const TextureDesc &desc) {
+  switch (desc.type) {
+    case TextureType_2D:
+      return std::make_shared<Texture2DOpenGL>(desc);
+    case TextureType_CUBE:
+      return std::make_shared<TextureCubeOpenGL>(desc);
+  }
+  return nullptr;
 }
 
 // vertex
@@ -49,14 +47,16 @@ std::shared_ptr<UniformBlock> RendererOpenGL::CreateUniformBlock(const std::stri
   return std::make_shared<UniformBlockOpenGL>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::string &name, TextureType type) {
-  return std::make_shared<UniformSamplerOpenGL>(name, type);
+std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::string &name,
+                                                                     TextureType type,
+                                                                     TextureFormat format) {
+  return std::make_shared<UniformSamplerOpenGL>(name, type, format);
 }
 
 // pipeline
-void RendererOpenGL::SetFrameBuffer(FrameBuffer &frame_buffer) {
-  auto &fbo = dynamic_cast<FrameBufferOpenGL &>(frame_buffer);
-  fbo.Bind();
+void RendererOpenGL::SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) {
+  auto *fbo = dynamic_cast<FrameBufferOpenGL *>(frame_buffer.get());
+  fbo->Bind();
 }
 
 void RendererOpenGL::SetViewPort(int x, int y, int width, int height) {

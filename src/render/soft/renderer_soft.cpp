@@ -26,16 +26,24 @@ std::shared_ptr<FrameBuffer> RendererSoft::CreateFrameBuffer() {
 }
 
 // texture
-std::shared_ptr<Texture2D> RendererSoft::CreateTexture2D(bool multi_sample) {
-  return std::make_shared<Texture2DSoft>(multi_sample);
-}
-
-std::shared_ptr<TextureCube> RendererSoft::CreateTextureCube() {
-  return std::make_shared<TextureCubeSoft>();
-}
-
-std::shared_ptr<TextureDepth> RendererSoft::CreateTextureDepth(bool multi_sample) {
-  return std::make_shared<TextureDepthSoft>(multi_sample);
+std::shared_ptr<Texture> RendererSoft::CreateTexture(const TextureDesc &desc) {
+  switch (desc.type) {
+    case TextureType_2D:
+      switch (desc.format) {
+        case TextureFormat_RGBA8:
+          return std::make_shared<Texture2DSoft<RGBA>>(desc);
+        case TextureFormat_DEPTH:
+          return std::make_shared<Texture2DSoft<float>>(desc);
+      }
+    case TextureType_CUBE:
+      switch (desc.format) {
+        case TextureFormat_RGBA8:
+          return std::make_shared<TextureCubeSoft<RGBA>>(desc);
+        case TextureFormat_DEPTH:
+          return std::make_shared<TextureCubeSoft<float>>(desc);
+      }
+  }
+  return nullptr;
 }
 
 // vertex
@@ -53,13 +61,15 @@ std::shared_ptr<UniformBlock> RendererSoft::CreateUniformBlock(const std::string
   return std::make_shared<UniformBlockSoft>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::string &name, TextureType type) {
-  return std::make_shared<UniformSamplerSoft>(name, type);
+std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::string &name,
+                                                                   TextureType type,
+                                                                   TextureFormat format) {
+  return std::make_shared<UniformSamplerSoft>(name, type, format);
 }
 
 // pipeline
-void RendererSoft::SetFrameBuffer(FrameBuffer &frame_buffer) {
-  fbo_ = dynamic_cast<FrameBufferSoft *>(&frame_buffer);
+void RendererSoft::SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) {
+  fbo_ = dynamic_cast<FrameBufferSoft *>(frame_buffer.get());
 }
 
 void RendererSoft::SetViewPort(int x, int y, int width, int height) {
@@ -111,7 +121,7 @@ void RendererSoft::Clear(const ClearState &state) {
 
   if (state.depth_flag && fbo_depth_) {
     float depth = viewport_.depth_far;
-    if (fbo_color_->multi_sample) {
+    if (fbo_depth_->multi_sample) {
       fbo_depth_->buffer_ms4x->SetAll(glm::tvec4<float>(depth));
     } else {
       fbo_depth_->buffer->SetAll(depth);
@@ -148,6 +158,14 @@ void RendererSoft::Draw(PrimitiveType type) {
   fbo_color_ = fbo_->GetColorBuffer();
   fbo_depth_ = fbo_->GetDepthBuffer();
   primitive_type_ = type;
+
+  if (fbo_color_) {
+    raster_samples = fbo_color_->sample_cnt;
+  } else if (fbo_depth_) {
+    raster_samples = fbo_depth_->sample_cnt;
+  } else {
+    raster_samples = 1;
+  }
 
   ProcessVertexShader();
   ProcessPrimitiveAssembly();
@@ -336,6 +354,10 @@ void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos,
                                          bool front_facing,
                                          void *varyings,
                                          ShaderProgramSoft *shader) {
+  if (!fbo_color_) {
+    return;
+  }
+
   auto &builtin = shader->GetShaderBuiltin();
   builtin.FragCoord = screen_pos;
   builtin.FrontFacing = front_facing;
@@ -464,16 +486,12 @@ void RendererSoft::ClippingLine(PrimitiveHolder &line, bool post_vertex_process)
   }
 
   if (v0->clip_mask) {
-    auto &vert = ClippingNewVertex(vertexes_[line.indices[0]],
-                                   vertexes_[line.indices[1]], t0,
-                                   post_vertex_process);
+    auto &vert = ClippingNewVertex(line.indices[0], line.indices[1], t0, post_vertex_process);
     line.indices[0] = vert.index;
   }
 
   if (v1->clip_mask) {
-    auto &vert = ClippingNewVertex(vertexes_[line.indices[0]],
-                                   vertexes_[line.indices[1]], t1,
-                                   post_vertex_process);
+    auto &vert = ClippingNewVertex(line.indices[0], line.indices[1], t1, post_vertex_process);
     line.indices[1] = vert.index;
   }
 }
@@ -518,7 +536,7 @@ void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
         if (std::signbit(d_pre) != std::signbit(d)) {
           float t = d < 0 ? d_pre / (d_pre - d) : -d_pre / (d - d_pre);
           // create new vertex
-          auto &vert = ClippingNewVertex(vertexes_[idx_pre], vertexes_[idx], t);
+          auto &vert = ClippingNewVertex(idx_pre, idx, t);
           indices_out.push_back(vert.index);
         }
 
@@ -645,7 +663,7 @@ void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
       auto &builtIn = shader_program_->GetShaderBuiltin();
       if (!builtIn.discard) {
         // TODO MSAA
-        for (int idx = 0; idx < fbo_color_->sample_cnt; idx++) {
+        for (int idx = 0; idx < raster_samples; idx++) {
           ProcessPerSampleOperations(x, y, screen_pos.z, builtIn.FragColor, idx);
         }
       }
@@ -750,7 +768,7 @@ void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, Ver
         int block_start_y = bounds.min.y + block_y * block_size;
         for (int y = block_start_y + 1; y < block_start_y + block_size && y <= bounds.max.y; y += 2) {
           for (int x = block_start_x + 1; x < block_start_x + block_size && x <= bounds.max.x; x += 2) {
-            pixel_quad.Init((float) x, (float) y, fbo_color_->sample_cnt);
+            pixel_quad.Init((float) x, (float) y, raster_samples);
             RasterizationPixelQuad(pixel_quad);
           }
         }
@@ -946,12 +964,12 @@ void RendererSoft::SetFrameColor(int x, int y, const RGBA &color, int sample) {
   }
 }
 
-VertexHolder &RendererSoft::ClippingNewVertex(VertexHolder &v0, VertexHolder &v1, float t, bool post_vertex_process) {
+VertexHolder &RendererSoft::ClippingNewVertex(size_t idx0, size_t idx1, float t, bool post_vertex_process) {
   vertexes_.emplace_back();
   VertexHolder &vh = vertexes_.back();
   vh.discard = false;
   vh.index = vertexes_.size() - 1;
-  InterpolateVertex(vh, v0, v1, t);
+  InterpolateVertex(vh, vertexes_[idx0], vertexes_[idx1], t);
 
   if (post_vertex_process) {
     PerspectiveDivideImpl(vh);

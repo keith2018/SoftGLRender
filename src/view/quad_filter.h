@@ -17,8 +17,8 @@ class QuadFilter {
   QuadFilter(const std::shared_ptr<Renderer> &renderer,
              const std::function<bool(ShaderProgram &program)> &shader_func);
 
-  void SetTextures(std::shared_ptr<Texture2D> &tex_in,
-                   std::shared_ptr<Texture2D> &tex_out);
+  void SetTextures(std::shared_ptr<Texture> &tex_in,
+                   std::shared_ptr<Texture> &tex_out);
 
   void Draw();
 

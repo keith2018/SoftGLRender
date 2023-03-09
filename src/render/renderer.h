@@ -17,17 +17,19 @@ namespace SoftGL {
 
 class Renderer {
  public:
-  // config
-  virtual void SetReverseZ(bool enable) = 0;
-  virtual void SetEarlyZ(bool enable) = 0;
+  // config reverse z
+  virtual void SetReverseZ(bool enable) {};
+  virtual bool GetReverseZ() { return false; };
+
+  // config early z
+  virtual void SetEarlyZ(bool enable) {};
+  virtual bool GetEarlyZ() { return false; };
 
   // framebuffer
   virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
 
   // texture
-  virtual std::shared_ptr<Texture2D> CreateTexture2D(bool multi_sample) = 0;
-  virtual std::shared_ptr<TextureCube> CreateTextureCube() = 0;
-  virtual std::shared_ptr<TextureDepth> CreateTextureDepth(bool multi_sample) = 0;
+  virtual std::shared_ptr<Texture> CreateTexture(const TextureDesc &desc) = 0;
 
   // vertex
   virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) = 0;
@@ -37,10 +39,12 @@ class Renderer {
 
   // uniform
   virtual std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) = 0;
-  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type) = 0;
+  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name,
+                                                               TextureType type,
+                                                               TextureFormat format) = 0;
 
   // pipeline
-  virtual void SetFrameBuffer(FrameBuffer &frame_buffer) = 0;
+  virtual void SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) = 0;
   virtual void SetViewPort(int x, int y, int width, int height) = 0;
   virtual void Clear(const ClearState &state) = 0;
   virtual void SetRenderState(const RenderState &state) = 0;

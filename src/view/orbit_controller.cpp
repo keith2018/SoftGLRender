@@ -11,7 +11,7 @@
 namespace SoftGL {
 namespace View {
 
-static const glm::vec3 init_eye_(0, 1, 3);
+static const glm::vec3 init_eye_(-1.5, 3, 3);
 static const glm::vec3 init_center_(0, 1, 0);
 static const glm::vec3 init_up_(0, 1, 0);
 
