@@ -66,6 +66,16 @@ class ShaderSoft {
   virtual std::shared_ptr<ShaderSoft> clone() = 0;
 
  public:
+  static inline glm::ivec2 textureSize(Sampler2DSoft<RGBA> *sampler, int lod) {
+    auto &buffer = sampler->GetTexture()->GetImage().GetBuffer(lod);
+    return {buffer->width, buffer->height};
+  }
+
+  static inline glm::ivec2 textureSize(Sampler2DSoft<float> *sampler, int lod) {
+    auto &buffer = sampler->GetTexture()->GetImage().GetBuffer(lod);
+    return {buffer->width, buffer->height};
+  }
+
   static inline glm::vec4 texture(Sampler2DSoft<RGBA> *sampler, glm::vec2 coord) {
     glm::vec4 ret = sampler->Texture2D(coord);
     return ret / 255.f;

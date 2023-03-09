@@ -139,8 +139,8 @@ void Viewer::FXAASetup() {
     sampler.filter_min = Filter_LINEAR;
 
     tex_color_fxaa_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_RGBA8, false});
-    tex_color_fxaa_->InitImageData(width_, height_);
     tex_color_fxaa_->SetSamplerDesc(sampler);
+    tex_color_fxaa_->InitImageData(width_, height_);
   }
 
   if (!fxaa_filter_) {
@@ -343,7 +343,15 @@ void Viewer::SetupShowMapBuffers() {
   if (!fbo_shadow_) {
     fbo_shadow_ = renderer_->CreateFrameBuffer();
     if (!tex_depth_shadow_) {
+      Sampler2DDesc sampler;
+      sampler.use_mipmaps = false;
+      sampler.filter_min = Filter_NEAREST;
+      sampler.filter_mag = Filter_NEAREST;
+      sampler.wrap_s = Wrap_CLAMP_TO_BORDER;
+      sampler.wrap_t = Wrap_CLAMP_TO_BORDER;
+      sampler.border_color = glm::vec4(1.f, 1.f, 1.f, 1.f);
       tex_depth_shadow_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, false});
+      tex_depth_shadow_->SetSamplerDesc(sampler);
       tex_depth_shadow_->InitImageData(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
     }
     fbo_shadow_->SetDepthAttachment(tex_depth_shadow_);
@@ -360,14 +368,19 @@ void Viewer::SetupMainColorBuffer(bool multi_sample) {
     sampler.use_mipmaps = false;
     sampler.filter_min = Filter_LINEAR;
     tex_color_main_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_RGBA8, multi_sample});
-    tex_color_main_->InitImageData(width_, height_);
     tex_color_main_->SetSamplerDesc(sampler);
+    tex_color_main_->InitImageData(width_, height_);
   }
 }
 
 void Viewer::SetupMainDepthBuffer(bool multi_sample) {
   if (!tex_depth_main_ || tex_depth_main_->multi_sample != multi_sample) {
+    Sampler2DDesc sampler;
+    sampler.use_mipmaps = false;
+    sampler.filter_min = Filter_NEAREST;
+    sampler.filter_mag = Filter_NEAREST;
     tex_depth_main_ = renderer_->CreateTexture({TextureType_2D, TextureFormat_DEPTH, multi_sample});
+    tex_depth_main_->SetSamplerDesc(sampler);
     tex_depth_main_->InitImageData(width_, height_);
   }
 }

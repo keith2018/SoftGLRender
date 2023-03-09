@@ -49,6 +49,7 @@ struct Sampler2DDesc : SamplerDesc {
   WrapMode wrap_t;
   FilterMode filter_min;
   FilterMode filter_mag;
+  glm::vec4 border_color{0.f};
 
   Sampler2DDesc() {
     use_mipmaps = false;

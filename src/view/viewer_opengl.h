@@ -33,14 +33,14 @@ class ViewerOpenGL : public Viewer {
   }
 
   void SwapBuffer() override {
-    int width = color_tex_out_->width;
-    int height = color_tex_out_->height;
+    int width = tex_color_main_->width;
+    int height = tex_color_main_->height;
 
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_in_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
-                                    color_tex_out_->multi_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
-                                    color_tex_out_->GetId(),
+                                    tex_color_main_->multi_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
+                                    tex_color_main_->GetId(),
                                     0));
 
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));

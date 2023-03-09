@@ -159,15 +159,24 @@ class FS : public ShaderBlinnPhong {
 
   float ShadowCalculation(glm::vec4 fragPos, glm::vec3 normal) {
     glm::vec3 projCoords = glm::vec3(fragPos) / fragPos.w;
-    projCoords = projCoords * 0.5f + 0.5f;
-    float closestDepth = texture(u->u_shadowMap, glm::vec2(projCoords));
     float currentDepth = projCoords.z;
-
-    float shadow = currentDepth > closestDepth ? 1.0f : 0.0f;
-
-    if (projCoords.z > 1.0f) {
-      shadow = 0.0f;
+    if (currentDepth > 1.0f) {
+      return 0.0f;
     }
+    projCoords = projCoords * 0.5f + 0.5f;
+
+    float bias = glm::max(0.0005f * (1.0f - glm::dot(normal, glm::normalize(v->v_lightDirection))), 0.00005f);
+    float shadow = 0.0;
+
+    // PCF
+    glm::vec2 texelSize = 1.0f / (glm::vec2) textureSize(u->u_shadowMap, 0);
+    for (int x = -1; x <= 1; ++x) {
+      for (int y = -1; y <= 1; ++y) {
+        float pcfDepth = texture(u->u_shadowMap, glm::vec2(projCoords) + glm::vec2(x, y) * texelSize);
+        shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+      }
+    }
+    shadow /= 9.0;
     return shadow;
   }
 

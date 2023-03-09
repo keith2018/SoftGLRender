@@ -77,6 +77,7 @@ class Texture2DOpenGL : public TextureOpenGL {
     GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler_2d.wrap_t)));
     GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler_2d.filter_min)));
     GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler_2d.filter_mag)));
+    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler_2d.border_color[0]));
 
     use_mipmaps = sampler_2d.use_mipmaps;
   }
@@ -116,11 +117,6 @@ class Texture2DOpenGL : public TextureOpenGL {
       GL_CHECK(glTexImage2DMultisample(target_, 4, gl_desc_.internalformat, w, h, GL_TRUE));
     } else {
       GL_CHECK(glTexImage2D(target_, 0, gl_desc_.internalformat, w, h, 0, gl_desc_.format, gl_desc_.type, nullptr));
-
-      GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-      GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-      GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, GL_REPEAT));
-      GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, GL_REPEAT));
 
       if (use_mipmaps) {
         GL_CHECK(glGenerateMipmap(target_));
@@ -199,6 +195,7 @@ class TextureCubeOpenGL : public TextureOpenGL {
                              OpenGL::ConvertFilter(sampler_cube.filter_min)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
                              OpenGL::ConvertFilter(sampler_cube.filter_mag)));
+    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &sampler_cube.border_color[0]));
 
     use_mipmaps = sampler_cube.use_mipmaps;
   }

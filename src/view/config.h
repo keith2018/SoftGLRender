@@ -44,6 +44,7 @@ class Config {
 
   bool cull_face = true;
   bool depth_test = true;
+
   bool reverse_z = true;
   bool early_z = false;
 

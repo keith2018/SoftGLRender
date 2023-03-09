@@ -158,6 +158,16 @@ class Texture2DSoft : public Texture {
     return image_;
   }
 
+  inline void GetBorderColor(float &ret) {
+    ret = glm::clamp(sampler_desc_.border_color.r, 0.f, 1.f);
+  }
+
+  inline void GetBorderColor(RGBA &ret) {
+    ret = glm::clamp(sampler_desc_.border_color * 255.f,
+                     {0, 0, 0, 0},
+                     {255, 255, 255, 255});
+  }
+
  private:
   int uuid_ = -1;
   static int uuid_counter_;
@@ -229,6 +239,16 @@ class TextureCubeSoft : public Texture {
 
   inline TextureImageSoft<T> &GetImage(CubeMapFace face) {
     return images_[face];
+  }
+
+  inline void GetBorderColor(float &ret) {
+    ret = glm::clamp(sampler_desc_.border_color.r, 0.f, 1.f);
+  }
+
+  inline void GetBorderColor(RGBA &ret) {
+    ret = glm::clamp(sampler_desc_.border_color * 255.f,
+                     {0, 0, 0, 0},
+                     {255, 255, 255, 255});
   }
 
  private:

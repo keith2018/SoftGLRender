@@ -28,7 +28,7 @@ class ViewerSoft : public Viewer {
   }
 
   void SwapBuffer() override {
-    auto *tex_out = dynamic_cast<Texture2DSoft<RGBA> *>(color_tex_out_.get());
+    auto *tex_out = dynamic_cast<Texture2DSoft<RGBA> *>(tex_color_main_.get());
     auto buffer = tex_out->GetImage().GetBuffer()->buffer;
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
     GL_CHECK(glTexImage2D(GL_TEXTURE_2D,

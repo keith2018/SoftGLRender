@@ -45,7 +45,7 @@ class BaseSampler {
   static void GenerateMipmaps(TextureImageSoft<T> *tex, bool sample);
 
  public:
-  static const T BORDER_COLOR;
+  static T BORDER_COLOR;
 
  protected:
   size_t width_ = 0;
@@ -88,7 +88,7 @@ class BaseSampler2D : public BaseSampler<T> {
 };
 
 template<typename T>
-const T BaseSampler<T>::BORDER_COLOR(0);
+T BaseSampler<T>::BORDER_COLOR;
 
 template<typename T>
 void BaseSampler<T>::GenerateMipmaps(TextureImageSoft<T> *tex, bool sample) {
@@ -180,8 +180,8 @@ T BaseSampler<T>::PixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wr
     case Wrap_REPEAT: {
       x = CoordMod(x, w);
       y = CoordMod(y, h);
-    }
       break;
+    }
     case Wrap_MIRRORED_REPEAT: {
       x = CoordMod(x, 2 * w);
       y = CoordMod(y, 2 * h);
@@ -194,25 +194,25 @@ T BaseSampler<T>::PixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wr
 
       x = w - 1 - x;
       y = h - 1 - y;
-    }
       break;
+    }
     case Wrap_CLAMP_TO_EDGE: {
       if (x < 0) x = 0;
       if (y < 0) y = 0;
       if (x >= w) x = w - 1;
       if (y >= h) y = h - 1;
-    }
       break;
+    }
     case Wrap_CLAMP_TO_BORDER: {
       if (x < 0 || x >= w) return BORDER_COLOR;
       if (y < 0 || y >= h) return BORDER_COLOR;
-    }
       break;
+    }
     case Wrap_CLAMP_TO_ZERO: {
       if (x < 0 || x >= w) return T(0);
       if (y < 0 || y >= h) return T(0);
-    }
       break;
+    }
   }
 
   T *ptr = buffer->Get(x, y);
@@ -412,6 +412,7 @@ class Sampler2DSoft : public SamplerSoft {
 
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
     tex_ = dynamic_cast<Texture2DSoft<T> *>(tex.get());
+    tex_->GetBorderColor(sampler_.BORDER_COLOR);
     sampler_.SetFilterMode(tex_->GetSamplerDesc().filter_min);
     sampler_.SetWrapMode(tex_->GetSamplerDesc().wrap_s);
     sampler_.SetImage(&tex_->GetImage());
@@ -451,6 +452,7 @@ class SamplerCubeSoft : public SamplerSoft {
 
   void SetTexture(const std::shared_ptr<Texture> &tex) override {
     tex_ = dynamic_cast<TextureCubeSoft<T> *>(tex.get());
+    tex_->GetBorderColor(sampler_.BORDER_COLOR);
     sampler_.SetFilterMode(tex_->GetSamplerDesc().filter_min);
     sampler_.SetWrapMode(tex_->GetSamplerDesc().wrap_s);
     for (int i = 0; i < 6; i++) {
