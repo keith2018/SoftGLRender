@@ -17,9 +17,9 @@ by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.co
 
 - [render](src/render):
     - [soft](src/render/soft): software renderer implementation
-    - [opengl](src/render/opengl): opengl renderer implementation
+    - [opengl](src/render/opengl): OpenGL renderer implementation
 - [view](src/view): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel,
-  and render pass management.
+  and render pass management. You can switch between software renderer and OpenGL renderer in real time.
     - [shader/soft](src/view/shader/soft): simulate vertex shader & fragment shader using c++, several basic shaders are
       embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
     - [shader/opengl](src/view/shader/opengl): GLSL shader code
