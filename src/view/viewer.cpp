@@ -99,7 +99,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
     camera_ = camera_depth_.get();
 
     // draw scene
-    DrawScene(false);
+    DrawScene(false, false);
 
     // set back to main camera
     camera_ = &camera_main_;
@@ -122,7 +122,7 @@ void Viewer::DrawFrame(DemoScene &scene) {
   }
 
   // draw scene
-  DrawScene(config_.show_skybox);
+  DrawScene(config_.show_floor, config_.show_skybox);
 
   // FXAA
   if (config_.aa_type == AAType_FXAA) {
@@ -158,9 +158,9 @@ void Viewer::FXAADraw() {
   fxaa_filter_->Draw();
 }
 
-void Viewer::DrawScene(bool skybox) {
+void Viewer::DrawScene(bool floor, bool skybox) {
   // draw floor
-  if (config_.show_floor) {
+  if (floor) {
     glm::mat4 floor_matrix(1.0f);
     UpdateUniformModel(floor_matrix, camera_->ViewMatrix(), camera_->ProjectionMatrix());
     if (config_.wireframe) {
