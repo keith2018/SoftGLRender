@@ -38,7 +38,7 @@ class Viewer {
   void FXAASetup();
   void FXAADraw();
 
-  void DrawScene(bool skybox);
+  void DrawScene(bool floor, bool skybox);
 
   void DrawPoints(ModelPoints &points, glm::mat4 &transform);
   void DrawLines(ModelLines &lines, glm::mat4 &transform);
