@@ -14,7 +14,7 @@ namespace SoftGL {
 
 class OpenGLUtils {
  public:
-  static void CheckGLError_(const char *stmt, const char *file, int line) {
+  static void checkGLError_(const char *stmt, const char *file, int line) {
     const char *str;
     GLenum err = glGetError();
     switch (err) {
@@ -51,7 +51,7 @@ class OpenGLUtils {
 #ifdef DEBUG
 #define GL_CHECK(stmt) do { \
             stmt; \
-            OpenGLUtils::CheckGLError_(#stmt, __FILE__, __LINE__); \
+            OpenGLUtils::checkGLError_(#stmt, __FILE__, __LINE__); \
         } while (0)
 #else
 #define GL_CHECK(stmt) stmt

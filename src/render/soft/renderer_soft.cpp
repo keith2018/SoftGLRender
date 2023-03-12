@@ -21,12 +21,12 @@ namespace SoftGL {
 #define RASTER_MULTI_THREAD
 
 // framebuffer
-std::shared_ptr<FrameBuffer> RendererSoft::CreateFrameBuffer() {
+std::shared_ptr<FrameBuffer> RendererSoft::createFrameBuffer() {
   return std::make_shared<FrameBufferSoft>();
 }
 
 // texture
-std::shared_ptr<Texture> RendererSoft::CreateTexture(const TextureDesc &desc) {
+std::shared_ptr<Texture> RendererSoft::createTexture(const TextureDesc &desc) {
   switch (desc.type) {
     case TextureType_2D:
       switch (desc.format) {
@@ -43,195 +43,194 @@ std::shared_ptr<Texture> RendererSoft::CreateTexture(const TextureDesc &desc) {
 }
 
 // vertex
-std::shared_ptr<VertexArrayObject> RendererSoft::CreateVertexArrayObject(const VertexArray &vertex_array) {
-  return std::make_shared<VertexArrayObjectSoft>(vertex_array);
+std::shared_ptr<VertexArrayObject> RendererSoft::createVertexArrayObject(const VertexArray &vertexArray) {
+  return std::make_shared<VertexArrayObjectSoft>(vertexArray);
 }
 
 // shader program
-std::shared_ptr<ShaderProgram> RendererSoft::CreateShaderProgram() {
+std::shared_ptr<ShaderProgram> RendererSoft::createShaderProgram() {
   return std::make_shared<ShaderProgramSoft>();
 }
 
 // uniform
-std::shared_ptr<UniformBlock> RendererSoft::CreateUniformBlock(const std::string &name, int size) {
+std::shared_ptr<UniformBlock> RendererSoft::createUniformBlock(const std::string &name, int size) {
   return std::make_shared<UniformBlockSoft>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererSoft::CreateUniformSampler(const std::string &name,
-                                                                   TextureType type,
+std::shared_ptr<UniformSampler> RendererSoft::createUniformSampler(const std::string &name, TextureType type,
                                                                    TextureFormat format) {
   return std::make_shared<UniformSamplerSoft>(name, type, format);
 }
 
 // pipeline
-void RendererSoft::SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) {
-  fbo_ = dynamic_cast<FrameBufferSoft *>(frame_buffer.get());
+void RendererSoft::setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) {
+  fbo_ = dynamic_cast<FrameBufferSoft *>(frameBuffer.get());
 }
 
-void RendererSoft::SetViewPort(int x, int y, int width, int height) {
+void RendererSoft::setViewPort(int x, int y, int width, int height) {
   viewport_.x = (float) x;
   viewport_.y = (float) y;
   viewport_.width = (float) width;
   viewport_.height = (float) height;
 
-  viewport_.depth_near = 0.f;
-  viewport_.depth_far = 1.f;
+  viewport_.depthNear = 0.f;
+  viewport_.depthFar = 1.f;
 
-  if (reverse_z) {
-    std::swap(viewport_.depth_near, viewport_.depth_far);
+  if (reverseZ_) {
+    std::swap(viewport_.depthNear, viewport_.depthFar);
   }
 
-  viewport_.depth_min = std::min(viewport_.depth_near, viewport_.depth_far);
-  viewport_.depth_max = std::max(viewport_.depth_near, viewport_.depth_far);
+  viewport_.depthMin = std::min(viewport_.depthNear, viewport_.depthFar);
+  viewport_.depthMax = std::max(viewport_.depthNear, viewport_.depthFar);
 
-  viewport_.inner_o.x = viewport_.x + viewport_.width / 2.f;
-  viewport_.inner_o.y = viewport_.y + viewport_.height / 2.f;
-  viewport_.inner_o.z = viewport_.depth_near;
-  viewport_.inner_o.w = 0.f;
+  viewport_.innerO.x = viewport_.x + viewport_.width / 2.f;
+  viewport_.innerO.y = viewport_.y + viewport_.height / 2.f;
+  viewport_.innerO.z = viewport_.depthNear;
+  viewport_.innerO.w = 0.f;
 
-  viewport_.inner_p.x = viewport_.width / 2.f;    // divide by 2 in advance
-  viewport_.inner_p.y = viewport_.height / 2.f;   // divide by 2 in advance
-  viewport_.inner_p.z = viewport_.depth_far - viewport_.depth_near;
-  viewport_.inner_p.w = 1.f;
+  viewport_.innerP.x = viewport_.width / 2.f;    // divide by 2 in advance
+  viewport_.innerP.y = viewport_.height / 2.f;   // divide by 2 in advance
+  viewport_.innerP.z = viewport_.depthFar - viewport_.depthNear;
+  viewport_.innerP.w = 1.f;
 }
 
-void RendererSoft::Clear(const ClearState &state) {
+void RendererSoft::clear(const ClearState &state) {
   if (!fbo_) {
     return;
   }
 
-  fbo_color_ = fbo_->GetColorBuffer();
-  fbo_depth_ = fbo_->GetDepthBuffer();
+  fboColor_ = fbo_->getColorBuffer();
+  fboDepth_ = fbo_->getDepthBuffer();
 
-  if (state.color_flag && fbo_color_) {
-    RGBA color = RGBA(state.clear_color.r * 255,
-                      state.clear_color.g * 255,
-                      state.clear_color.b * 255,
-                      state.clear_color.a * 255);
-    if (fbo_color_->multi_sample) {
-      fbo_color_->buffer_ms4x->SetAll(glm::tvec4<RGBA>(color));
+  if (state.colorFlag && fboColor_) {
+    RGBA color = RGBA(state.clearColor.r * 255,
+                      state.clearColor.g * 255,
+                      state.clearColor.b * 255,
+                      state.clearColor.a * 255);
+    if (fboColor_->multiSample) {
+      fboColor_->bufferMs4x->setAll(glm::tvec4<RGBA>(color));
     } else {
-      fbo_color_->buffer->SetAll(color);
+      fboColor_->buffer->setAll(color);
     }
   }
 
-  if (state.depth_flag && fbo_depth_) {
-    float depth = viewport_.depth_far;
-    if (fbo_depth_->multi_sample) {
-      fbo_depth_->buffer_ms4x->SetAll(glm::tvec4<float>(depth));
+  if (state.depthFlag && fboDepth_) {
+    float depth = viewport_.depthFar;
+    if (fboDepth_->multiSample) {
+      fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(depth));
     } else {
-      fbo_depth_->buffer->SetAll(depth);
+      fboDepth_->buffer->setAll(depth);
     }
   }
 }
 
-void RendererSoft::SetRenderState(const RenderState &state) {
-  render_state_ = &state;
+void RendererSoft::setRenderState(const RenderState &state) {
+  renderState_ = &state;
 }
 
-void RendererSoft::SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
+void RendererSoft::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
   vao_ = dynamic_cast<VertexArrayObjectSoft *>(vao.get());
 }
 
-void RendererSoft::SetShaderProgram(std::shared_ptr<ShaderProgram> &program) {
-  shader_program_ = dynamic_cast<ShaderProgramSoft *>(program.get());
+void RendererSoft::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
+  shaderProgram_ = dynamic_cast<ShaderProgramSoft *>(program.get());
 }
 
-void RendererSoft::SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
+void RendererSoft::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
   if (!uniforms) {
     return;
   }
-  if (shader_program_) {
-    shader_program_->BindUniforms(*uniforms);
+  if (shaderProgram_) {
+    shaderProgram_->bindUniforms(*uniforms);
   }
 }
 
-void RendererSoft::Draw(PrimitiveType type) {
-  if (!fbo_ || !vao_ || !shader_program_) {
+void RendererSoft::draw(PrimitiveType type) {
+  if (!fbo_ || !vao_ || !shaderProgram_) {
     return;
   }
 
-  fbo_color_ = fbo_->GetColorBuffer();
-  fbo_depth_ = fbo_->GetDepthBuffer();
-  primitive_type_ = type;
+  fboColor_ = fbo_->getColorBuffer();
+  fboDepth_ = fbo_->getDepthBuffer();
+  primitiveType_ = type;
 
-  if (fbo_color_) {
-    raster_samples = fbo_color_->sample_cnt;
-  } else if (fbo_depth_) {
-    raster_samples = fbo_depth_->sample_cnt;
+  if (fboColor_) {
+    rasterSamples_ = fboColor_->sampleCnt;
+  } else if (fboDepth_) {
+    rasterSamples_ = fboDepth_->sampleCnt;
   } else {
-    raster_samples = 1;
+    rasterSamples_ = 1;
   }
 
-  ProcessVertexShader();
-  ProcessPrimitiveAssembly();
-  ProcessClipping();
-  ProcessPerspectiveDivide();
-  ProcessViewportTransform();
-  ProcessFaceCulling();
-  ProcessRasterization();
+  processVertexShader();
+  processPrimitiveAssembly();
+  processClipping();
+  processPerspectiveDivide();
+  processViewportTransform();
+  processFaceCulling();
+  processRasterization();
 
-  if (fbo_color_ && fbo_color_->multi_sample) {
-    MultiSampleResolve();
+  if (fboColor_ && fboColor_->multiSample) {
+    multiSampleResolve();
   }
 }
 
-void RendererSoft::ProcessVertexShader() {
+void RendererSoft::processVertexShader() {
   // init shader varyings
-  varyings_cnt_ = shader_program_->GetShaderVaryingsSize() / sizeof(float);
-  varyings_aligned_size_ = MemoryUtils::AlignedSize(varyings_cnt_ * sizeof(float));
-  varyings_aligned_cnt_ = varyings_aligned_size_ / sizeof(float);
+  varyingsCnt_ = shaderProgram_->getShaderVaryingsSize() / sizeof(float);
+  varyingsAlignedSize_ = MemoryUtils::alignedSize(varyingsCnt_ * sizeof(float));
+  varyingsAlignedCnt_ = varyingsAlignedSize_ / sizeof(float);
 
-  varyings_ = MemoryUtils::MakeAlignedBuffer<float>(vao_->vertex_cnt * varyings_aligned_cnt_);
-  float *varying_buffer = varyings_.get();
+  varyings_ = MemoryUtils::makeAlignedBuffer<float>(vao_->vertexCnt * varyingsAlignedCnt_);
+  float *varyingBuffer = varyings_.get();
 
-  uint8_t *vertex_ptr = vao_->vertexes.data();
-  vertexes_.resize(vao_->vertex_cnt);
-  for (int idx = 0; idx < vao_->vertex_cnt; idx++) {
+  uint8_t *vertexPtr = vao_->vertexes.data();
+  vertexes_.resize(vao_->vertexCnt);
+  for (int idx = 0; idx < vao_->vertexCnt; idx++) {
     VertexHolder &holder = vertexes_[idx];
     holder.discard = false;
     holder.index = idx;
-    holder.vertex = vertex_ptr;
-    holder.varyings = (varyings_aligned_size_ > 0) ? (varying_buffer + idx * varyings_aligned_cnt_) : nullptr;
-    VertexShaderImpl(holder);
-    vertex_ptr += vao_->vertex_stride;
+    holder.vertex = vertexPtr;
+    holder.varyings = (varyingsAlignedSize_ > 0) ? (varyingBuffer + idx * varyingsAlignedCnt_) : nullptr;
+    vertexShaderImpl(holder);
+    vertexPtr += vao_->vertexStride;
   }
 }
 
-void RendererSoft::ProcessPrimitiveAssembly() {
-  switch (primitive_type_) {
+void RendererSoft::processPrimitiveAssembly() {
+  switch (primitiveType_) {
     case Primitive_POINT:
-      ProcessPointAssembly();
+      processPointAssembly();
       break;
     case Primitive_LINE:
-      ProcessLineAssembly();
+      processLineAssembly();
       break;
     case Primitive_TRIANGLE:
-      ProcessPolygonAssembly();
+      processPolygonAssembly();
       break;
   }
 }
 
-void RendererSoft::ProcessClipping() {
-  size_t primitive_cnt = primitives_.size();
-  for (int i = 0; i < primitive_cnt; i++) {
+void RendererSoft::processClipping() {
+  size_t primitiveCnt = primitives_.size();
+  for (int i = 0; i < primitiveCnt; i++) {
     auto &primitive = primitives_[i];
     if (primitive.discard) {
       continue;
     }
-    switch (primitive_type_) {
+    switch (primitiveType_) {
       case Primitive_POINT:
-        ClippingPoint(primitive);
+        clippingPoint(primitive);
         break;
       case Primitive_LINE:
-        ClippingLine(primitive);
+        clippingLine(primitive);
         break;
       case Primitive_TRIANGLE:
         // skip clipping if draw triangles with point/line mode
-        if (render_state_->polygon_mode != PolygonMode_FILL) {
+        if (renderState_->polygonMode != PolygonMode_FILL) {
           continue;
         }
-        ClippingTriangle(primitive);
+        clippingTriangle(primitive);
         break;
     }
   }
@@ -246,7 +245,7 @@ void RendererSoft::ProcessClipping() {
     if (primitive.discard) {
       continue;
     }
-    switch (primitive_type_) {
+    switch (primitiveType_) {
       case Primitive_POINT:
         vertexes_[primitive.indices[0]].discard = false;
         break;
@@ -263,26 +262,26 @@ void RendererSoft::ProcessClipping() {
   }
 }
 
-void RendererSoft::ProcessPerspectiveDivide() {
+void RendererSoft::processPerspectiveDivide() {
   for (auto &vertex : vertexes_) {
     if (vertex.discard) {
       continue;
     }
-    PerspectiveDivideImpl(vertex);
+    perspectiveDivideImpl(vertex);
   }
 }
 
-void RendererSoft::ProcessViewportTransform() {
+void RendererSoft::processViewportTransform() {
   for (auto &vertex : vertexes_) {
     if (vertex.discard) {
       continue;
     }
-    ViewportTransformImpl(vertex);
+    viewportTransformImpl(vertex);
   }
 }
 
-void RendererSoft::ProcessFaceCulling() {
-  if (primitive_type_ != Primitive_TRIANGLE) {
+void RendererSoft::processFaceCulling() {
+  if (primitiveType_ != Primitive_TRIANGLE) {
     return;
   }
 
@@ -291,29 +290,29 @@ void RendererSoft::ProcessFaceCulling() {
       continue;
     }
 
-    glm::vec4 &v0 = vertexes_[triangle.indices[0]].frag_pos;
-    glm::vec4 &v1 = vertexes_[triangle.indices[1]].frag_pos;
-    glm::vec4 &v2 = vertexes_[triangle.indices[2]].frag_pos;
+    glm::vec4 &v0 = vertexes_[triangle.indices[0]].fragPos;
+    glm::vec4 &v1 = vertexes_[triangle.indices[1]].fragPos;
+    glm::vec4 &v2 = vertexes_[triangle.indices[2]].fragPos;
 
     glm::vec3 n = glm::cross(glm::vec3(v1 - v0), glm::vec3(v2 - v0));
     float area = glm::dot(n, glm::vec3(0, 0, 1));
-    triangle.front_facing = area > 0;
+    triangle.frontFacing = area > 0;
 
-    if (render_state_->cull_face) {
-      triangle.discard = !triangle.front_facing;  // discard back face
+    if (renderState_->cullFace) {
+      triangle.discard = !triangle.frontFacing;  // discard back face
     }
   }
 }
 
-void RendererSoft::ProcessRasterization() {
-  switch (primitive_type_) {
+void RendererSoft::processRasterization() {
+  switch (primitiveType_) {
     case Primitive_POINT:
       for (auto &primitive : primitives_) {
         if (primitive.discard) {
           continue;
         }
         auto *vert0 = &vertexes_[primitive.indices[0]];
-        RasterizationPoint(vert0, render_state_->point_size);
+        rasterizationPoint(vert0, renderState_->pointSize);
       }
       break;
     case Primitive_LINE:
@@ -323,98 +322,98 @@ void RendererSoft::ProcessRasterization() {
         }
         auto *vert0 = &vertexes_[primitive.indices[0]];
         auto *vert1 = &vertexes_[primitive.indices[1]];
-        RasterizationLine(vert0, vert1, render_state_->line_width);
+        rasterizationLine(vert0, vert1, renderState_->lineWidth);
       }
       break;
     case Primitive_TRIANGLE:
-      thread_quad_ctx_.resize(thread_pool_.GetThreadCnt());
-      for (auto &ctx : thread_quad_ctx_) {
-        ctx.SetVaryingsSize(varyings_aligned_cnt_);
-        ctx.shader_program = shader_program_->clone();
-        ctx.shader_program->PrepareFragmentShader();
+      threadQuadCtx_.resize(threadPool_.getThreadCnt());
+      for (auto &ctx : threadQuadCtx_) {
+        ctx.SetVaryingsSize(varyingsAlignedCnt_);
+        ctx.shaderProgram = shaderProgram_->clone();
+        ctx.shaderProgram->prepareFragmentShader();
 
         // setup derivative
-        DerivativeContext &df_ctx = ctx.shader_program->GetShaderBuiltin().df_ctx;
-        df_ctx.p0 = ctx.pixels[0].varyings_frag;
-        df_ctx.p1 = ctx.pixels[1].varyings_frag;
-        df_ctx.p2 = ctx.pixels[2].varyings_frag;
-        df_ctx.p3 = ctx.pixels[3].varyings_frag;
+        DerivativeContext &df_ctx = ctx.shaderProgram->getShaderBuiltin().dfCtx;
+        df_ctx.p0 = ctx.pixels[0].varyingsFrag;
+        df_ctx.p1 = ctx.pixels[1].varyingsFrag;
+        df_ctx.p2 = ctx.pixels[2].varyingsFrag;
+        df_ctx.p3 = ctx.pixels[3].varyingsFrag;
       }
-      RasterizationPolygons(primitives_);
-      thread_pool_.WaitTasksFinish();
+      rasterizationPolygons(primitives_);
+      threadPool_.waitTasksFinish();
       break;
   }
 }
 
-void RendererSoft::ProcessFragmentShader(glm::vec4 &screen_pos,
+void RendererSoft::processFragmentShader(glm::vec4 &screenPos,
                                          bool front_facing,
                                          void *varyings,
                                          ShaderProgramSoft *shader) {
-  if (!fbo_color_) {
+  if (!fboColor_) {
     return;
   }
 
-  auto &builtin = shader->GetShaderBuiltin();
-  builtin.FragCoord = screen_pos;
+  auto &builtin = shader->getShaderBuiltin();
+  builtin.FragCoord = screenPos;
   builtin.FrontFacing = front_facing;
 
-  shader->BindFragmentShaderVaryings(varyings);
-  shader->ExecFragmentShader();
+  shader->bindFragmentShaderVaryings(varyings);
+  shader->execFragmentShader();
 }
 
-void RendererSoft::ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample) {
+void RendererSoft::processPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample) {
   // depth test
-  if (!ProcessDepthTest(x, y, depth, sample, false)) {
+  if (!processDepthTest(x, y, depth, sample, false)) {
     return;
   }
 
-  if (!fbo_color_) {
+  if (!fboColor_) {
     return;
   }
 
   glm::vec4 color_clamp = glm::clamp(color, 0.f, 1.f);
 
   // color blending
-  ProcessColorBlending(x, y, color_clamp, sample);
+  processColorBlending(x, y, color_clamp, sample);
 
   // write final color to fbo
-  SetFrameColor(x, y, color_clamp * 255.f, sample);
+  setFrameColor(x, y, color_clamp * 255.f, sample);
 }
 
-bool RendererSoft::ProcessDepthTest(int x, int y, float depth, int sample, bool skip_write) {
-  if (!render_state_->depth_test || !fbo_depth_) {
+bool RendererSoft::processDepthTest(int x, int y, float depth, int sample, bool skipWrite) {
+  if (!renderState_->depthTest || !fboDepth_) {
     return true;
   }
 
   // depth clamping
-  depth = glm::clamp(depth, viewport_.depth_min, viewport_.depth_max);
+  depth = glm::clamp(depth, viewport_.depthMin, viewport_.depthMax);
 
   // depth comparison
-  float *z_ptr = GetFrameDepth(x, y, sample);
-  if (z_ptr && DepthTest(depth, *z_ptr, render_state_->depth_func)) {
+  float *zPtr = getFrameDepth(x, y, sample);
+  if (zPtr && DepthTest(depth, *zPtr, renderState_->depthFunc)) {
     // depth attachment writes
-    if (!skip_write && render_state_->depth_mask) {
-      *z_ptr = depth;
+    if (!skipWrite && renderState_->depthMask) {
+      *zPtr = depth;
     }
     return true;
   }
   return false;
 }
 
-void RendererSoft::ProcessColorBlending(int x, int y, glm::vec4 &color, int sample) {
-  if (render_state_->blend) {
-    glm::vec4 &src_color = color;
-    glm::vec4 dst_color = glm::vec4(0.f);
-    auto *ptr = GetFrameColor(x, y, sample);
+void RendererSoft::processColorBlending(int x, int y, glm::vec4 &color, int sample) {
+  if (renderState_->blend) {
+    glm::vec4 &srcColor = color;
+    glm::vec4 dstColor = glm::vec4(0.f);
+    auto *ptr = getFrameColor(x, y, sample);
     if (ptr) {
-      dst_color = glm::vec4(*ptr) / 255.f;
+      dstColor = glm::vec4(*ptr) / 255.f;
     }
-    color = CalcBlendColor(src_color, dst_color, render_state_->blend_parameters);
+    color = calcBlendColor(srcColor, dstColor, renderState_->blendParams);
   }
 }
 
-void RendererSoft::ProcessPointAssembly() {
-  primitives_.resize(vao_->indices_cnt);
+void RendererSoft::processPointAssembly() {
+  primitives_.resize(vao_->indicesCnt);
   for (int idx = 0; idx < primitives_.size(); idx++) {
     auto &point = primitives_[idx];
     point.indices[0] = vao_->indices[idx];
@@ -422,8 +421,8 @@ void RendererSoft::ProcessPointAssembly() {
   }
 }
 
-void RendererSoft::ProcessLineAssembly() {
-  primitives_.resize(vao_->indices_cnt / 2);
+void RendererSoft::processLineAssembly() {
+  primitives_.resize(vao_->indicesCnt / 2);
   for (int idx = 0; idx < primitives_.size(); idx++) {
     auto &line = primitives_[idx];
     line.indices[0] = vao_->indices[idx * 2];
@@ -432,8 +431,8 @@ void RendererSoft::ProcessLineAssembly() {
   }
 }
 
-void RendererSoft::ProcessPolygonAssembly() {
-  primitives_.resize(vao_->indices_cnt / 3);
+void RendererSoft::processPolygonAssembly() {
+  primitives_.resize(vao_->indicesCnt / 3);
   for (int idx = 0; idx < primitives_.size(); idx++) {
     auto &triangle = primitives_[idx];
     triangle.indices[0] = vao_->indices[idx * 3];
@@ -443,27 +442,27 @@ void RendererSoft::ProcessPolygonAssembly() {
   }
 }
 
-void RendererSoft::ClippingPoint(PrimitiveHolder &point) {
-  point.discard = (vertexes_[point.indices[0]].clip_mask != 0);
+void RendererSoft::clippingPoint(PrimitiveHolder &point) {
+  point.discard = (vertexes_[point.indices[0]].clipMask != 0);
 }
 
-void RendererSoft::ClippingLine(PrimitiveHolder &line, bool post_vertex_process) {
+void RendererSoft::clippingLine(PrimitiveHolder &line, bool postVertexProcess) {
   VertexHolder *v0 = &vertexes_[line.indices[0]];
   VertexHolder *v1 = &vertexes_[line.indices[1]];
 
-  bool full_clip = false;
+  bool fullClip = false;
   float t0 = 0.f;
   float t1 = 1.f;
 
-  int mask = v0->clip_mask | v1->clip_mask;
+  int mask = v0->clipMask | v1->clipMask;
   if (mask != 0) {
     for (int i = 0; i < 6; i++) {
       if (mask & FrustumClipMaskArray[i]) {
-        float d0 = glm::dot(FrustumClipPlane[i], v0->clip_pos);
-        float d1 = glm::dot(FrustumClipPlane[i], v1->clip_pos);
+        float d0 = glm::dot(FrustumClipPlane[i], v0->clipPos);
+        float d1 = glm::dot(FrustumClipPlane[i], v1->clipPos);
 
         if (d0 < 0 && d1 < 0) {
-          full_clip = true;
+          fullClip = true;
           break;
         } else if (d0 < 0) {
           float t = -d0 / (d1 - d0);
@@ -476,109 +475,109 @@ void RendererSoft::ClippingLine(PrimitiveHolder &line, bool post_vertex_process)
     }
   }
 
-  if (full_clip) {
+  if (fullClip) {
     line.discard = true;
     return;
   }
 
-  if (v0->clip_mask) {
-    auto &vert = ClippingNewVertex(line.indices[0], line.indices[1], t0, post_vertex_process);
+  if (v0->clipMask) {
+    auto &vert = clippingNewVertex(line.indices[0], line.indices[1], t0, postVertexProcess);
     line.indices[0] = vert.index;
   }
 
-  if (v1->clip_mask) {
-    auto &vert = ClippingNewVertex(line.indices[0], line.indices[1], t1, post_vertex_process);
+  if (v1->clipMask) {
+    auto &vert = clippingNewVertex(line.indices[0], line.indices[1], t1, postVertexProcess);
     line.indices[1] = vert.index;
   }
 }
 
-void RendererSoft::ClippingTriangle(PrimitiveHolder &triangle) {
+void RendererSoft::clippingTriangle(PrimitiveHolder &triangle) {
   auto *v0 = &vertexes_[triangle.indices[0]];
   auto *v1 = &vertexes_[triangle.indices[1]];
   auto *v2 = &vertexes_[triangle.indices[2]];
 
-  int mask = v0->clip_mask | v1->clip_mask | v2->clip_mask;
+  int mask = v0->clipMask | v1->clipMask | v2->clipMask;
   if (mask == 0) {
     return;
   }
 
-  bool full_clip = false;
-  std::vector<size_t> indices_in;
-  std::vector<size_t> indices_out;
+  bool fullClip = false;
+  std::vector<size_t> indicesIn;
+  std::vector<size_t> indicesOut;
 
-  indices_in.push_back(v0->index);
-  indices_in.push_back(v1->index);
-  indices_in.push_back(v2->index);
+  indicesIn.push_back(v0->index);
+  indicesIn.push_back(v1->index);
+  indicesIn.push_back(v2->index);
 
-  for (int plane_idx = 0; plane_idx < 6; plane_idx++) {
-    if (mask & FrustumClipMaskArray[plane_idx]) {
-      if (indices_in.size() < 3) {
-        full_clip = true;
+  for (int planeIdx = 0; planeIdx < 6; planeIdx++) {
+    if (mask & FrustumClipMaskArray[planeIdx]) {
+      if (indicesIn.size() < 3) {
+        fullClip = true;
         break;
       }
-      indices_out.clear();
-      size_t idx_pre = indices_in[0];
-      float d_pre = glm::dot(FrustumClipPlane[plane_idx], vertexes_[idx_pre].clip_pos);
+      indicesOut.clear();
+      size_t idxPre = indicesIn[0];
+      float dPre = glm::dot(FrustumClipPlane[planeIdx], vertexes_[idxPre].clipPos);
 
-      indices_in.push_back(idx_pre);
-      for (int i = 1; i < indices_in.size(); i++) {
-        size_t idx = indices_in[i];
-        float d = glm::dot(FrustumClipPlane[plane_idx], vertexes_[idx].clip_pos);
+      indicesIn.push_back(idxPre);
+      for (int i = 1; i < indicesIn.size(); i++) {
+        size_t idx = indicesIn[i];
+        float d = glm::dot(FrustumClipPlane[planeIdx], vertexes_[idx].clipPos);
 
-        if (d_pre >= 0) {
-          indices_out.push_back(idx_pre);
+        if (dPre >= 0) {
+          indicesOut.push_back(idxPre);
         }
 
-        if (std::signbit(d_pre) != std::signbit(d)) {
-          float t = d < 0 ? d_pre / (d_pre - d) : -d_pre / (d - d_pre);
+        if (std::signbit(dPre) != std::signbit(d)) {
+          float t = d < 0 ? dPre / (dPre - d) : -dPre / (d - dPre);
           // create new vertex
-          auto &vert = ClippingNewVertex(idx_pre, idx, t);
-          indices_out.push_back(vert.index);
+          auto &vert = clippingNewVertex(idxPre, idx, t);
+          indicesOut.push_back(vert.index);
         }
 
-        idx_pre = idx;
-        d_pre = d;
+        idxPre = idx;
+        dPre = d;
       }
 
-      std::swap(indices_in, indices_out);
+      std::swap(indicesIn, indicesOut);
     }
   }
 
-  if (full_clip || indices_in.empty()) {
+  if (fullClip || indicesIn.empty()) {
     triangle.discard = true;
     return;
   }
 
-  triangle.indices[0] = indices_in[0];
-  triangle.indices[1] = indices_in[1];
-  triangle.indices[2] = indices_in[2];
+  triangle.indices[0] = indicesIn[0];
+  triangle.indices[1] = indicesIn[1];
+  triangle.indices[2] = indicesIn[2];
 
-  for (int i = 3; i < indices_in.size(); i++) {
+  for (int i = 3; i < indicesIn.size(); i++) {
     primitives_.emplace_back();
     PrimitiveHolder &ph = primitives_.back();
     ph.discard = false;
-    ph.indices[0] = indices_in[0];
-    ph.indices[1] = indices_in[i - 1];
-    ph.indices[2] = indices_in[i];
-    ph.front_facing = triangle.front_facing;
+    ph.indices[0] = indicesIn[0];
+    ph.indices[1] = indicesIn[i - 1];
+    ph.indices[2] = indicesIn[i];
+    ph.frontFacing = triangle.frontFacing;
   }
 }
 
-void RendererSoft::RasterizationPolygons(std::vector<PrimitiveHolder> &primitives) {
-  switch (render_state_->polygon_mode) {
+void RendererSoft::rasterizationPolygons(std::vector<PrimitiveHolder> &primitives) {
+  switch (renderState_->polygonMode) {
     case PolygonMode_POINT:
-      RasterizationPolygonsPoint(primitives);
+      rasterizationPolygonsPoint(primitives);
       break;
     case PolygonMode_LINE:
-      RasterizationPolygonsLine(primitives);
+      rasterizationPolygonsLine(primitives);
       break;
     case PolygonMode_FILL:
-      RasterizationPolygonsTriangle(primitives);
+      rasterizationPolygonsTriangle(primitives);
       break;
   }
 }
 
-void RendererSoft::RasterizationPolygonsPoint(std::vector<PrimitiveHolder> &primitives) {
+void RendererSoft::rasterizationPolygonsPoint(std::vector<PrimitiveHolder> &primitives) {
   for (auto &triangle : primitives) {
     if (triangle.discard) {
       continue;
@@ -586,23 +585,23 @@ void RendererSoft::RasterizationPolygonsPoint(std::vector<PrimitiveHolder> &prim
     for (size_t idx : triangle.indices) {
       PrimitiveHolder point;
       point.discard = false;
-      point.front_facing = triangle.front_facing;
+      point.frontFacing = triangle.frontFacing;
       point.indices[0] = idx;
 
       // clipping
-      ClippingPoint(point);
+      clippingPoint(point);
       if (point.discard) {
         continue;
       }
 
       // rasterization
-      RasterizationPoint(&vertexes_[point.indices[0]],
-                         render_state_->point_size);
+      rasterizationPoint(&vertexes_[point.indices[0]],
+                         renderState_->pointSize);
     }
   }
 }
 
-void RendererSoft::RasterizationPolygonsLine(std::vector<PrimitiveHolder> &primitives) {
+void RendererSoft::rasterizationPolygonsLine(std::vector<PrimitiveHolder> &primitives) {
   for (auto &triangle : primitives) {
     if (triangle.discard) {
       continue;
@@ -610,73 +609,73 @@ void RendererSoft::RasterizationPolygonsLine(std::vector<PrimitiveHolder> &primi
     for (size_t i = 0; i < 3; i++) {
       PrimitiveHolder line;
       line.discard = false;
-      line.front_facing = triangle.front_facing;
+      line.frontFacing = triangle.frontFacing;
       line.indices[0] = triangle.indices[i];
       line.indices[1] = triangle.indices[(i + 1) % 3];
 
       // clipping
-      ClippingLine(line, true);
+      clippingLine(line, true);
       if (line.discard) {
         continue;
       }
 
       // rasterization
-      RasterizationLine(&vertexes_[line.indices[0]],
+      rasterizationLine(&vertexes_[line.indices[0]],
                         &vertexes_[line.indices[1]],
-                        render_state_->line_width);
+                        renderState_->lineWidth);
     }
   }
 }
 
-void RendererSoft::RasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives) {
+void RendererSoft::rasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives) {
   for (auto &triangle : primitives) {
     if (triangle.discard) {
       continue;
     }
-    RasterizationTriangle(&vertexes_[triangle.indices[0]],
+    rasterizationTriangle(&vertexes_[triangle.indices[0]],
                           &vertexes_[triangle.indices[1]],
                           &vertexes_[triangle.indices[2]],
-                          triangle.front_facing);
+                          triangle.frontFacing);
   }
 }
 
-void RendererSoft::RasterizationPoint(VertexHolder *v, float point_size) {
-  if (!fbo_color_) {
+void RendererSoft::rasterizationPoint(VertexHolder *v, float pointSize) {
+  if (!fboColor_) {
     return;
   }
 
-  float left = v->frag_pos.x - point_size / 2.f + 0.5f;
-  float right = left + point_size;
-  float top = v->frag_pos.y - point_size / 2.f + 0.5f;
-  float bottom = top + point_size;
+  float left = v->fragPos.x - pointSize / 2.f + 0.5f;
+  float right = left + pointSize;
+  float top = v->fragPos.y - pointSize / 2.f + 0.5f;
+  float bottom = top + pointSize;
 
-  glm::vec4 &screen_pos = v->frag_pos;
+  glm::vec4 &screenPos = v->fragPos;
   for (int x = (int) left; x < (int) right; x++) {
     for (int y = (int) top; y < (int) bottom; y++) {
-      screen_pos.x = (float) x;
-      screen_pos.y = (float) y;
-      ProcessFragmentShader(screen_pos, true, v->varyings, shader_program_);
-      auto &builtIn = shader_program_->GetShaderBuiltin();
+      screenPos.x = (float) x;
+      screenPos.y = (float) y;
+      processFragmentShader(screenPos, true, v->varyings, shaderProgram_);
+      auto &builtIn = shaderProgram_->getShaderBuiltin();
       if (!builtIn.discard) {
         // TODO MSAA
-        for (int idx = 0; idx < raster_samples; idx++) {
-          ProcessPerSampleOperations(x, y, screen_pos.z, builtIn.FragColor, idx);
+        for (int idx = 0; idx < rasterSamples_; idx++) {
+          processPerSampleOperations(x, y, screenPos.z, builtIn.FragColor, idx);
         }
       }
     }
   }
 }
 
-void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width) {
+void RendererSoft::rasterizationLine(VertexHolder *v0, VertexHolder *v1, float lineWidth) {
   // TODO diamond-exit rule
-  int x0 = (int) v0->frag_pos.x, y0 = (int) v0->frag_pos.y;
-  int x1 = (int) v1->frag_pos.x, y1 = (int) v1->frag_pos.y;
+  int x0 = (int) v0->fragPos.x, y0 = (int) v0->fragPos.y;
+  int x1 = (int) v1->fragPos.x, y1 = (int) v1->fragPos.y;
 
-  float z0 = v0->frag_pos.z;
-  float z1 = v1->frag_pos.z;
+  float z0 = v0->fragPos.z;
+  float z1 = v1->fragPos.z;
 
-  float w0 = v0->frag_pos.w;
-  float w1 = v1->frag_pos.w;
+  float w0 = v0->fragPos.w;
+  float w1 = v1->fragPos.w;
 
   bool steep = false;
   if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
@@ -685,14 +684,14 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
     steep = true;
   }
 
-  const float *varyings_in[2] = {v0->varyings, v1->varyings};
+  const float *varyingsIn[2] = {v0->varyings, v1->varyings};
 
   if (x0 > x1) {
     std::swap(x0, x1);
     std::swap(y0, y1);
     std::swap(z0, z1);
     std::swap(w0, w1);
-    std::swap(varyings_in[0], varyings_in[1]);
+    std::swap(varyingsIn[0], varyingsIn[1]);
   }
   int dx = x1 - x0;
   int dy = y1 - y0;
@@ -702,19 +701,19 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
 
   int y = y0;
 
-  auto varyings = MemoryUtils::MakeBuffer<float>(varyings_cnt_);
+  auto varyings = MemoryUtils::makeBuffer<float>(varyingsCnt_);
   VertexHolder pt{};
   pt.varyings = varyings.get();
 
   float t = 0;
   for (int x = x0; x <= x1; x++) {
     t = (float) (x - x0) / (float) dx;
-    pt.frag_pos = glm::vec4(x, y, glm::mix(z0, z1, t), glm::mix(w0, w1, t));
+    pt.fragPos = glm::vec4(x, y, glm::mix(z0, z1, t), glm::mix(w0, w1, t));
     if (steep) {
-      std::swap(pt.frag_pos.x, pt.frag_pos.y);
+      std::swap(pt.fragPos.x, pt.fragPos.y);
     }
-    InterpolateLinear(pt.varyings, varyings_in, varyings_cnt_, t);
-    RasterizationPoint(&pt, line_width);
+    interpolateLinear(pt.varyings, varyingsIn, varyingsCnt_, t);
+    rasterizationPoint(&pt, lineWidth);
 
     error += dError;
     if (error > dx) {
@@ -724,48 +723,48 @@ void RendererSoft::RasterizationLine(VertexHolder *v0, VertexHolder *v1, float l
   }
 }
 
-void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing) {
+void RendererSoft::rasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool frontFacing) {
   // TODO top-left rule
   VertexHolder *vert[3] = {v0, v1, v2};
-  glm::aligned_vec4 screen_pos[3] = {vert[0]->frag_pos, vert[1]->frag_pos, vert[2]->frag_pos};
-  BoundingBox bounds = TriangleBoundingBox(screen_pos, viewport_.width, viewport_.height);
+  glm::aligned_vec4 screenPos[3] = {vert[0]->fragPos, vert[1]->fragPos, vert[2]->fragPos};
+  BoundingBox bounds = triangleBoundingBox(screenPos, viewport_.width, viewport_.height);
   bounds.min -= 1.f;
 
-  auto block_size = raster_block_size_;
-  int block_cnt_x = (bounds.max.x - bounds.min.x + block_size - 1.f) / block_size;
-  int block_cnt_y = (bounds.max.y - bounds.min.y + block_size - 1.f) / block_size;
+  auto blockSize = rasterBlockSize_;
+  int blockCntX = (bounds.max.x - bounds.min.x + blockSize - 1.f) / blockSize;
+  int blockCntY = (bounds.max.y - bounds.min.y + blockSize - 1.f) / blockSize;
 
-  for (int block_y = 0; block_y < block_cnt_y; block_y++) {
-    for (int block_x = 0; block_x < block_cnt_x; block_x++) {
+  for (int blockY = 0; blockY < blockCntY; blockY++) {
+    for (int blockX = 0; blockX < blockCntX; blockX++) {
 #ifdef RASTER_MULTI_THREAD
-      thread_pool_.PushTask([&, vert, bounds, block_size, block_x, block_y](int thread_id) {
+      threadPool_.pushTask([&, vert, bounds, blockSize, blockX, blockY](int thread_id) {
         // init pixel quad
-        auto pixel_quad = thread_quad_ctx_[thread_id];
+        auto pixelQuad = threadQuadCtx_[thread_id];
 #else
-        auto pixel_quad = thread_quad_ctx_[0];
+        auto pixelQuad = threadQuadCtx_[0];
 #endif
-        pixel_quad.front_facing = front_facing;
+        pixelQuad.frontFacing = frontFacing;
 
         for (int i = 0; i < 3; i++) {
-          pixel_quad.vert_pos[i] = vert[i]->frag_pos;
-          pixel_quad.vert_z[i] = &vert[i]->frag_pos.z;
-          pixel_quad.vert_w[i] = vert[i]->frag_pos.w;
-          pixel_quad.vert_varyings[i] = vert[i]->varyings;
+          pixelQuad.vertPos[i] = vert[i]->fragPos;
+          pixelQuad.vertZ[i] = &vert[i]->fragPos.z;
+          pixelQuad.vertW[i] = vert[i]->fragPos.w;
+          pixelQuad.vertVaryings[i] = vert[i]->varyings;
         }
 
-        glm::aligned_vec4 *vert_pos = pixel_quad.vert_pos;
-        pixel_quad.vert_pos_flat[0] = {vert_pos[2].x, vert_pos[1].x, vert_pos[0].x, 0.f};
-        pixel_quad.vert_pos_flat[1] = {vert_pos[2].y, vert_pos[1].y, vert_pos[0].y, 0.f};
-        pixel_quad.vert_pos_flat[2] = {vert_pos[0].z, vert_pos[1].z, vert_pos[2].z, 0.f};
-        pixel_quad.vert_pos_flat[3] = {vert_pos[0].w, vert_pos[1].w, vert_pos[2].w, 0.f};
+        glm::aligned_vec4 *vertPos = pixelQuad.vertPos;
+        pixelQuad.vertPosFlat[0] = {vertPos[2].x, vertPos[1].x, vertPos[0].x, 0.f};
+        pixelQuad.vertPosFlat[1] = {vertPos[2].y, vertPos[1].y, vertPos[0].y, 0.f};
+        pixelQuad.vertPosFlat[2] = {vertPos[0].z, vertPos[1].z, vertPos[2].z, 0.f};
+        pixelQuad.vertPosFlat[3] = {vertPos[0].w, vertPos[1].w, vertPos[2].w, 0.f};
 
         // block rasterization
-        int block_start_x = bounds.min.x + block_x * block_size;
-        int block_start_y = bounds.min.y + block_y * block_size;
-        for (int y = block_start_y + 1; y < block_start_y + block_size && y <= bounds.max.y; y += 2) {
-          for (int x = block_start_x + 1; x < block_start_x + block_size && x <= bounds.max.x; x += 2) {
-            pixel_quad.Init((float) x, (float) y, raster_samples);
-            RasterizationPixelQuad(pixel_quad);
+        int blockStartX = bounds.min.x + blockX * blockSize;
+        int blockStartY = bounds.min.y + blockY * blockSize;
+        for (int y = blockStartY + 1; y < blockStartY + blockSize && y <= bounds.max.y; y += 2) {
+          for (int x = blockStartX + 1; x < blockStartX + blockSize && x <= bounds.max.x; x += 2) {
+            pixelQuad.Init((float) x, (float) y, rasterSamples_);
+            rasterizationPixelQuad(pixelQuad);
           }
         }
 #ifdef RASTER_MULTI_THREAD
@@ -775,14 +774,14 @@ void RendererSoft::RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, Ver
   }
 }
 
-void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
-  glm::aligned_vec4 *vert = quad.vert_pos_flat;
-  glm::aligned_vec4 &v0 = quad.vert_pos[0];
+void RendererSoft::rasterizationPixelQuad(PixelQuadContext &quad) {
+  glm::aligned_vec4 *vert = quad.vertPosFlat;
+  glm::aligned_vec4 &v0 = quad.vertPos[0];
 
   // barycentric
   for (auto &pixel : quad.pixels) {
     for (auto &sample : pixel.samples) {
-      sample.inside = Barycentric(vert, v0, sample.position, sample.barycentric);
+      sample.inside = barycentric(vert, v0, sample.position, sample.barycentric);
     }
     pixel.InitCoverage();
     pixel.InitShadingSample();
@@ -798,21 +797,21 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
       }
 
       // interpolate z, w
-      InterpolateBarycentric(&sample.position.z, quad.vert_z, 2, sample.barycentric);
+      interpolateBarycentric(&sample.position.z, quad.vertZ, 2, sample.barycentric);
 
       // depth clip
-      if (sample.position.z < viewport_.depth_min || sample.position.z > viewport_.depth_max) {
+      if (sample.position.z < viewport_.depthMin || sample.position.z > viewport_.depthMax) {
         sample.inside = false;
       }
 
       // barycentric correction
-      sample.barycentric *= (1.f / sample.position.w * quad.vert_w);
+      sample.barycentric *= (1.f / sample.position.w * quad.vertW);
     }
   }
 
   // early z
-  if (early_z && render_state_->depth_test) {
-    if (!EarlyZTest(quad)) {
+  if (earlyZ_ && renderState_->depthTest) {
+    if (!earlyZTest(quad)) {
       return;
     }
   }
@@ -820,10 +819,10 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
   // varying interpolate
   // note: all quad pixels should perform varying interpolate to enable varying partial derivative
   for (auto &pixel : quad.pixels) {
-    InterpolateBarycentric((float *) pixel.varyings_frag,
-                           quad.vert_varyings,
-                           varyings_cnt_,
-                           pixel.sample_shading->barycentric);
+    interpolateBarycentric((float *) pixel.varyingsFrag,
+                           quad.vertVaryings,
+                           varyingsCnt_,
+                           pixel.sampleShading->barycentric);
   }
 
   // pixel shading
@@ -833,79 +832,79 @@ void RendererSoft::RasterizationPixelQuad(PixelQuadContext &quad) {
     }
 
     // fragment shader
-    ProcessFragmentShader(pixel.sample_shading->position,
-                          quad.front_facing,
-                          pixel.varyings_frag,
-                          quad.shader_program.get());
+    processFragmentShader(pixel.sampleShading->position,
+                          quad.frontFacing,
+                          pixel.varyingsFrag,
+                          quad.shaderProgram.get());
 
     // sample coverage
-    auto &builtIn = quad.shader_program->GetShaderBuiltin();
+    auto &builtIn = quad.shaderProgram->getShaderBuiltin();
 
     // per-sample operations
-    if (pixel.sample_count > 1) {
-      for (int idx = 0; idx < pixel.sample_count; idx++) {
+    if (pixel.sampleCount > 1) {
+      for (int idx = 0; idx < pixel.sampleCount; idx++) {
         auto &sample = pixel.samples[idx];
         if (!sample.inside) {
           continue;
         }
-        ProcessPerSampleOperations(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, builtIn.FragColor, idx);
+        processPerSampleOperations(sample.fboCoord.x, sample.fboCoord.y, sample.position.z, builtIn.FragColor, idx);
       }
     } else {
-      auto &sample = *pixel.sample_shading;
-      ProcessPerSampleOperations(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, builtIn.FragColor, 0);
+      auto &sample = *pixel.sampleShading;
+      processPerSampleOperations(sample.fboCoord.x, sample.fboCoord.y, sample.position.z, builtIn.FragColor, 0);
     }
   }
 }
 
-bool RendererSoft::EarlyZTest(PixelQuadContext &quad) {
+bool RendererSoft::earlyZTest(PixelQuadContext &quad) {
   for (auto &pixel : quad.pixels) {
     if (!pixel.inside) {
       continue;
     }
-    if (pixel.sample_count > 1) {
+    if (pixel.sampleCount > 1) {
       bool inside = false;
-      for (int idx = 0; idx < pixel.sample_count; idx++) {
+      for (int idx = 0; idx < pixel.sampleCount; idx++) {
         auto &sample = pixel.samples[idx];
         if (!sample.inside) {
           continue;
         }
-        sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, idx, true);
+        sample.inside = processDepthTest(sample.fboCoord.x, sample.fboCoord.y, sample.position.z, idx, true);
         if (sample.inside) {
           inside = true;
         }
       }
       pixel.inside = inside;
     } else {
-      auto &sample = *pixel.sample_shading;
-      sample.inside = ProcessDepthTest(sample.fbo_coord.x, sample.fbo_coord.y, sample.position.z, 0, true);
+      auto &sample = *pixel.sampleShading;
+      sample.inside = processDepthTest(sample.fboCoord.x, sample.fboCoord.y, sample.position.z, 0, true);
       pixel.inside = sample.inside;
     }
   }
   return quad.CheckInside();
 }
 
-void RendererSoft::MultiSampleResolve() {
-  if (!fbo_color_->buffer) {
-    fbo_color_->buffer = Buffer<RGBA>::MakeDefault(fbo_color_->width, fbo_color_->height);
+void RendererSoft::multiSampleResolve() {
+  if (!fboColor_->buffer) {
+    fboColor_->buffer = Buffer<RGBA>::makeDefault(fboColor_->width, fboColor_->height);
   }
 
-  auto *src_ptr = fbo_color_->buffer_ms4x->GetRawDataPtr();
-  auto *dst_ptr = fbo_color_->buffer->GetRawDataPtr();
+  auto *srcPtr = fboColor_->bufferMs4x->getRawDataPtr();
+  auto *dstPtr = fboColor_->buffer->getRawDataPtr();
 
-  for (size_t row = 0; row < fbo_color_->height; row++) {
-    auto *row_src = src_ptr + row * fbo_color_->width;
-    auto *row_dst = dst_ptr + row * fbo_color_->width;
+  for (size_t row = 0; row < fboColor_->height; row++) {
+    auto *rowSrc = srcPtr + row * fboColor_->width;
+    auto *rowDst = dstPtr + row * fboColor_->width;
 #ifdef RASTER_MULTI_THREAD
-    thread_pool_.PushTask([&, row_src, row_dst](int thread_id) {
+    threadPool_.pushTask([&, rowSrc, rowDst](int thread_id) {
 #endif
-      auto *src = row_src;
-      auto *dst = row_dst;
-      for (size_t idx = 0; idx < fbo_color_->width; idx++) {
+      auto *src = rowSrc;
+      auto *dst = rowDst;
+      for (size_t idx = 0; idx < fboColor_->width; idx++) {
         glm::vec4 color(0.f);
-        for (int i = 0; i < fbo_color_->sample_cnt; i++) {
+        for (int i = 0; i < fboColor_->sampleCnt; i++) {
           color += (glm::vec4) (*src)[i];
         }
-        color /= fbo_color_->sample_cnt;
+        color /= fboColor_->sampleCnt;
         *dst = color;
         src++;
         dst++;
@@ -915,100 +914,100 @@ void RendererSoft::MultiSampleResolve() {
 #endif
   }
 
-  thread_pool_.WaitTasksFinish();
+  threadPool_.waitTasksFinish();
 }
 
-RGBA *RendererSoft::GetFrameColor(int x, int y, int sample) {
-  if (!fbo_color_) {
+RGBA *RendererSoft::getFrameColor(int x, int y, int sample) {
+  if (!fboColor_) {
     return nullptr;
   }
 
   RGBA *ptr = nullptr;
-  if (fbo_color_->multi_sample) {
-    auto *ptr_ms = fbo_color_->buffer_ms4x->Get(x, y);
-    if (ptr_ms) {
-      ptr = (RGBA *) ptr_ms + sample;
+  if (fboColor_->multiSample) {
+    auto *ptrMs = fboColor_->bufferMs4x->get(x, y);
+    if (ptrMs) {
+      ptr = (RGBA *) ptrMs + sample;
     }
   } else {
-    ptr = fbo_color_->buffer->Get(x, y);
+    ptr = fboColor_->buffer->get(x, y);
   }
 
   return ptr;
 }
 
-float *RendererSoft::GetFrameDepth(int x, int y, int sample) {
-  if (!fbo_depth_) {
+float *RendererSoft::getFrameDepth(int x, int y, int sample) {
+  if (!fboDepth_) {
     return nullptr;
   }
 
-  float *depth_ptr = nullptr;
-  if (fbo_depth_->multi_sample) {
-    auto *ptr = fbo_depth_->buffer_ms4x->Get(x, y);
+  float *depthPtr = nullptr;
+  if (fboDepth_->multiSample) {
+    auto *ptr = fboDepth_->bufferMs4x->get(x, y);
     if (ptr) {
-      depth_ptr = &ptr->x + sample;
+      depthPtr = &ptr->x + sample;
     }
   } else {
-    depth_ptr = fbo_depth_->buffer->Get(x, y);
+    depthPtr = fboDepth_->buffer->get(x, y);
   }
-  return depth_ptr;
+  return depthPtr;
 }
 
-void RendererSoft::SetFrameColor(int x, int y, const RGBA &color, int sample) {
-  RGBA *ptr = GetFrameColor(x, y, sample);
+void RendererSoft::setFrameColor(int x, int y, const RGBA &color, int sample) {
+  RGBA *ptr = getFrameColor(x, y, sample);
   if (ptr) {
     *ptr = color;
   }
 }
 
-VertexHolder &RendererSoft::ClippingNewVertex(size_t idx0, size_t idx1, float t, bool post_vertex_process) {
+VertexHolder &RendererSoft::clippingNewVertex(size_t idx0, size_t idx1, float t, bool postVertexProcess) {
   vertexes_.emplace_back();
   VertexHolder &vh = vertexes_.back();
   vh.discard = false;
   vh.index = vertexes_.size() - 1;
-  InterpolateVertex(vh, vertexes_[idx0], vertexes_[idx1], t);
+  interpolateVertex(vh, vertexes_[idx0], vertexes_[idx1], t);
 
-  if (post_vertex_process) {
-    PerspectiveDivideImpl(vh);
-    ViewportTransformImpl(vh);
+  if (postVertexProcess) {
+    perspectiveDivideImpl(vh);
+    viewportTransformImpl(vh);
   }
 
   return vh;
 }
 
-void RendererSoft::VertexShaderImpl(VertexHolder &vertex) {
-  shader_program_->BindVertexAttributes(vertex.vertex);
-  shader_program_->BindVertexShaderVaryings(vertex.varyings);
-  shader_program_->ExecVertexShader();
+void RendererSoft::vertexShaderImpl(VertexHolder &vertex) {
+  shaderProgram_->bindVertexAttributes(vertex.vertex);
+  shaderProgram_->bindVertexShaderVaryings(vertex.varyings);
+  shaderProgram_->execVertexShader();
 
-  vertex.clip_pos = shader_program_->GetShaderBuiltin().Position;
-  vertex.clip_mask = CountFrustumClipMask(vertex.clip_pos);
+  vertex.clipPos = shaderProgram_->getShaderBuiltin().Position;
+  vertex.clipMask = countFrustumClipMask(vertex.clipPos);
 }
 
-void RendererSoft::PerspectiveDivideImpl(VertexHolder &vertex) {
-  vertex.frag_pos = vertex.clip_pos;
-  auto &pos = vertex.frag_pos;
-  float inv_w = 1.f / pos.w;
-  pos *= inv_w;
-  pos.w = inv_w;
+void RendererSoft::perspectiveDivideImpl(VertexHolder &vertex) {
+  vertex.fragPos = vertex.clipPos;
+  auto &pos = vertex.fragPos;
+  float invW = 1.f / pos.w;
+  pos *= invW;
+  pos.w = invW;
 }
 
-void RendererSoft::ViewportTransformImpl(VertexHolder &vertex) {
-  vertex.frag_pos *= viewport_.inner_p;
-  vertex.frag_pos += viewport_.inner_o;
+void RendererSoft::viewportTransformImpl(VertexHolder &vertex) {
+  vertex.fragPos *= viewport_.innerP;
+  vertex.fragPos += viewport_.innerO;
 }
 
-int RendererSoft::CountFrustumClipMask(glm::vec4 &clip_pos) {
+int RendererSoft::countFrustumClipMask(glm::vec4 &clipPos) {
   int mask = 0;
-  if (clip_pos.w < clip_pos.x) mask |= FrustumClipMask::POSITIVE_X;
-  if (clip_pos.w < -clip_pos.x) mask |= FrustumClipMask::NEGATIVE_X;
-  if (clip_pos.w < clip_pos.y) mask |= FrustumClipMask::POSITIVE_Y;
-  if (clip_pos.w < -clip_pos.y) mask |= FrustumClipMask::NEGATIVE_Y;
-  if (clip_pos.w < clip_pos.z) mask |= FrustumClipMask::POSITIVE_Z;
-  if (clip_pos.w < -clip_pos.z) mask |= FrustumClipMask::NEGATIVE_Z;
+  if (clipPos.w < clipPos.x) mask |= FrustumClipMask::POSITIVE_X;
+  if (clipPos.w < -clipPos.x) mask |= FrustumClipMask::NEGATIVE_X;
+  if (clipPos.w < clipPos.y) mask |= FrustumClipMask::POSITIVE_Y;
+  if (clipPos.w < -clipPos.y) mask |= FrustumClipMask::NEGATIVE_Y;
+  if (clipPos.w < clipPos.z) mask |= FrustumClipMask::POSITIVE_Z;
+  if (clipPos.w < -clipPos.z) mask |= FrustumClipMask::NEGATIVE_Z;
   return mask;
 }
 
-BoundingBox RendererSoft::TriangleBoundingBox(glm::vec4 *vert, float width, float height) {
+BoundingBox RendererSoft::triangleBoundingBox(glm::vec4 *vert, float width, float height) {
   float minX = std::min(std::min(vert[0].x, vert[1].x), vert[2].x);
   float minY = std::min(std::min(vert[0].y, vert[1].y), vert[2].y);
   float maxX = std::max(std::max(vert[0].x, vert[1].x), vert[2].x);
@@ -1024,9 +1023,7 @@ BoundingBox RendererSoft::TriangleBoundingBox(glm::vec4 *vert, float width, floa
   return {min, max};
 }
 
-bool RendererSoft::Barycentric(glm::aligned_vec4 *vert,
-                               glm::aligned_vec4 &v0,
-                               glm::aligned_vec4 &p,
+bool RendererSoft::barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p,
                                glm::aligned_vec4 &bc) {
 #ifdef SOFTGL_SIMD_OPT
   // Ref: https://geometrian.com/programming/tutorials/cross-product/index.php
@@ -1063,112 +1060,109 @@ bool RendererSoft::Barycentric(glm::aligned_vec4 *vert,
   return true;
 }
 
-void RendererSoft::InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t) {
-  out.vertex_holder = MemoryUtils::MakeBuffer<uint8_t>(vao_->vertex_stride);
-  out.vertex = out.vertex_holder.get();
-  out.varyings_holder = MemoryUtils::MakeAlignedBuffer<float>(varyings_aligned_cnt_);
-  out.varyings = out.varyings_holder.get();
+void RendererSoft::interpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t) {
+  out.vertexHolder = MemoryUtils::makeBuffer<uint8_t>(vao_->vertexStride);
+  out.vertex = out.vertexHolder.get();
+  out.varyingsHolder = MemoryUtils::makeAlignedBuffer<float>(varyingsAlignedCnt_);
+  out.varyings = out.varyingsHolder.get();
 
   // interpolate vertex (only support float element right now)
-  const float *vertex_in[2] = {(float *) v0.vertex, (float *) v1.vertex};
-  InterpolateLinear((float *) out.vertex, vertex_in, vao_->vertex_stride / sizeof(float), t);
+  const float *vertexIn[2] = {(float *) v0.vertex, (float *) v1.vertex};
+  interpolateLinear((float *) out.vertex, vertexIn, vao_->vertexStride / sizeof(float), t);
 
   // vertex shader
-  VertexShaderImpl(out);
+  vertexShaderImpl(out);
 }
 
-void RendererSoft::InterpolateLinear(float *vars_out,
-                                     const float *vars_in[2],
-                                     size_t elem_cnt,
-                                     float t) {
-  const float *in_var0 = vars_in[0];
-  const float *in_var1 = vars_in[1];
+void RendererSoft::interpolateLinear(float *varsOut, const float *varsIn[2], size_t elemCnt, float t) {
+  const float *inVar0 = varsIn[0];
+  const float *inVar1 = varsIn[1];
 
-  if (in_var0 == nullptr || in_var1 == nullptr) {
+  if (inVar0 == nullptr || inVar1 == nullptr) {
     return;
   }
 
-  for (int i = 0; i < elem_cnt; i++) {
-    vars_out[i] = glm::mix(*(in_var0 + i), *(in_var1 + i), t);
+  for (int i = 0; i < elemCnt; i++) {
+    varsOut[i] = glm::mix(*(inVar0 + i), *(inVar1 + i), t);
   }
 }
 
-void RendererSoft::InterpolateBarycentric(float *vars_out,
-                                          const float *vars_in[3],
-                                          size_t elem_cnt,
+void RendererSoft::interpolateBarycentric(float *varsOut,
+                                          const float *varsIn[3],
+                                          size_t elemCnt,
                                           glm::aligned_vec4 &bc) {
-  const float *in_var0 = vars_in[0];
-  const float *in_var1 = vars_in[1];
-  const float *in_var2 = vars_in[2];
+  const float *inVar0 = varsIn[0];
+  const float *inVar1 = varsIn[1];
+  const float *inVar2 = varsIn[2];
 
-  if (in_var0 == nullptr || in_var1 == nullptr || in_var2 == nullptr) {
+  if (inVar0 == nullptr || inVar1 == nullptr || inVar2 == nullptr) {
     return;
   }
 
   bool simd_enabled = false;
 #ifdef SOFTGL_SIMD_OPT
-  if ((PTR_ADDR(in_var0) % SOFTGL_ALIGNMENT == 0) &&
-      (PTR_ADDR(in_var1) % SOFTGL_ALIGNMENT == 0) &&
-      (PTR_ADDR(in_var2) % SOFTGL_ALIGNMENT == 0) &&
-      (PTR_ADDR(vars_out) % SOFTGL_ALIGNMENT == 0)) {
+  if ((PTR_ADDR(inVar0) % SOFTGL_ALIGNMENT == 0) &&
+      (PTR_ADDR(inVar1) % SOFTGL_ALIGNMENT == 0) &&
+      (PTR_ADDR(inVar2) % SOFTGL_ALIGNMENT == 0) &&
+      (PTR_ADDR(varsOut) % SOFTGL_ALIGNMENT == 0)) {
     simd_enabled = true;
   }
 #endif
 
   if (simd_enabled) {
-    InterpolateBarycentricSIMD(vars_out, vars_in, elem_cnt, bc);
+    interpolateBarycentricSIMD(varsOut, varsIn, elemCnt, bc);
   } else {
-    for (int i = 0; i < elem_cnt; i++) {
-      vars_out[i] = glm::dot(bc, glm::vec4(*(in_var0 + i), *(in_var1 + i), *(in_var2 + i), 0.f));
+    for (int i = 0; i < elemCnt; i++) {
+      varsOut[i] = glm::dot(bc, glm::vec4(*(inVar0 + i), *(inVar1 + i), *(inVar2 + i), 0.f));
     }
   }
 }
 
-void RendererSoft::InterpolateBarycentricSIMD(float *vars_out,
-                                              const float *vars_in[3],
-                                              size_t elem_cnt,
+void RendererSoft::interpolateBarycentricSIMD(float *varsOut,
+                                              const float *varsIn[3],
+                                              size_t elemCnt,
                                               glm::aligned_vec4 &bc) {
 #ifdef SOFTGL_SIMD_OPT
-  const float *in_var0 = vars_in[0];
-  const float *in_var1 = vars_in[1];
-  const float *in_var2 = vars_in[2];
+  const float *inVar0 = varsIn[0];
+  const float *inVar1 = varsIn[1];
+  const float *inVar2 = varsIn[2];
 
   uint32_t idx = 0;
   uint32_t end;
 
-  end = elem_cnt & (~7);
+  end = elemCnt & (~7);
   if (end > 0) {
     __m256 bc0 = _mm256_set1_ps(bc[0]);
     __m256 bc1 = _mm256_set1_ps(bc[1]);
     __m256 bc2 = _mm256_set1_ps(bc[2]);
 
     for (; idx < end; idx += 8) {
-      __m256 sum = _mm256_mul_ps(_mm256_load_ps(in_var0 + idx), bc0);
-      sum = _mm256_fmadd_ps(_mm256_load_ps(in_var1 + idx), bc1, sum);
-      sum = _mm256_fmadd_ps(_mm256_load_ps(in_var2 + idx), bc2, sum);
-      _mm256_store_ps(vars_out + idx, sum);
+      __m256 sum = _mm256_mul_ps(_mm256_load_ps(inVar0 + idx), bc0);
+      sum = _mm256_fmadd_ps(_mm256_load_ps(inVar1 + idx), bc1, sum);
+      sum = _mm256_fmadd_ps(_mm256_load_ps(inVar2 + idx), bc2, sum);
+      _mm256_store_ps(varsOut + idx, sum);
     }
   }
 
-  end = (elem_cnt - idx) & (~3);
+  end = (elemCnt - idx) & (~3);
   if (end > 0) {
     __m128 bc0 = _mm_set1_ps(bc[0]);
     __m128 bc1 = _mm_set1_ps(bc[1]);
     __m128 bc2 = _mm_set1_ps(bc[2]);
 
     for (; idx < end; idx += 4) {
-      __m128 sum = _mm_mul_ps(_mm_load_ps(in_var0 + idx), bc0);
-      sum = _mm_fmadd_ps(_mm_load_ps(in_var1 + idx), bc1, sum);
-      sum = _mm_fmadd_ps(_mm_load_ps(in_var2 + idx), bc2, sum);
-      _mm_store_ps(vars_out + idx, sum);
+      __m128 sum = _mm_mul_ps(_mm_load_ps(inVar0 + idx), bc0);
+      sum = _mm_fmadd_ps(_mm_load_ps(inVar1 + idx), bc1, sum);
+      sum = _mm_fmadd_ps(_mm_load_ps(inVar2 + idx), bc2, sum);
+      _mm_store_ps(varsOut + idx, sum);
     }
   }
 
-  for (; idx < elem_cnt; idx++) {
-    vars_out[idx] = 0;
-    vars_out[idx] += *(in_var0 + idx) * bc[0];
-    vars_out[idx] += *(in_var1 + idx) * bc[1];
-    vars_out[idx] += *(in_var2 + idx) * bc[2];
+  for (; idx < elemCnt; idx++) {
+    varsOut[idx] = 0;
+    varsOut[idx] += *(inVar0 + idx) * bc[0];
+    varsOut[idx] += *(inVar1 + idx) * bc[1];
+    varsOut[idx] += *(inVar2 + idx) * bc[2];
   }
 #endif
 }

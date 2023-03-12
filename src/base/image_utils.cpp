@@ -16,19 +16,19 @@
 
 namespace SoftGL {
 
-std::shared_ptr<Buffer<RGBA>> ImageUtils::ReadImageRGBA(const std::string &path) {
+std::shared_ptr<Buffer<RGBA>> ImageUtils::readImageRGBA(const std::string &path) {
   int iw = 0, ih = 0, n = 0;
   unsigned char *data = stbi_load(path.c_str(), &iw, &ih, &n, STBI_default);
   if (data == nullptr) {
-    LOGD("ImageUtils::ReadImage failed, path: %s", path.c_str());
+    LOGD("ImageUtils::readImage failed, path: %s", path.c_str());
     return nullptr;
   }
-  auto buffer = Buffer<RGBA>::MakeDefault(iw, ih);
+  auto buffer = Buffer<RGBA>::makeDefault(iw, ih);
 
   // convert to rgba
   for (size_t y = 0; y < ih; y++) {
     for (size_t x = 0; x < iw; x++) {
-      auto &to = *buffer->Get(x, y);
+      auto &to = *buffer->get(x, y);
       size_t idx = x + y * iw;
 
       switch (n) {
@@ -69,41 +69,36 @@ std::shared_ptr<Buffer<RGBA>> ImageUtils::ReadImageRGBA(const std::string &path)
   return buffer;
 }
 
-void ImageUtils::WriteImage(char const *filename,
-                            int w,
-                            int h,
-                            int comp,
-                            const void *data,
-                            int stride_in_bytes,
-                            bool flip_y) {
-  stbi_flip_vertically_on_write(flip_y);
-  stbi_write_png(filename, w, h, comp, data, stride_in_bytes);
+void ImageUtils::writeImage(char const *filename, int w, int h, int comp, const void *data, int strideInBytes,
+                            bool flipY) {
+  stbi_flip_vertically_on_write(flipY);
+  stbi_write_png(filename, w, h, comp, data, strideInBytes);
 }
 
-void ImageUtils::ConvertFloatImage(RGBA *dst, float *src, int width, int height) {
-  float *src_pixel = src;
+void ImageUtils::convertFloatImage(RGBA *dst, float *src, int width, int height) {
+  float *srcPixel = src;
 
-  float depth_min = FLT_MAX;
-  float depth_max = FLT_MIN;
+  float depthMin = FLT_MAX;
+  float depthMax = FLT_MIN;
   for (int i = 0; i < width * height; i++) {
-    float depth = *src_pixel;
-    depth_min = std::min(depth_min, depth);
-    depth_max = std::max(depth_max, depth);
-    src_pixel++;
+    float depth = *srcPixel;
+    depthMin = std::min(depthMin, depth);
+    depthMax = std::max(depthMax, depth);
+    srcPixel++;
   }
 
-  src_pixel = src;
-  RGBA *dst_pixel = dst;
+  srcPixel = src;
+  RGBA *dstPixel = dst;
   for (int i = 0; i < width * height; i++) {
-    float depth = *src_pixel;
-    depth = (depth - depth_min) / (depth_max - depth_min);
-    dst_pixel->r = glm::clamp((int) (depth * 255.f), 0, 255);
-    dst_pixel->g = dst_pixel->r;
-    dst_pixel->b = dst_pixel->r;
-    dst_pixel->a = 255;
+    float depth = *srcPixel;
+    depth = (depth - depthMin) / (depthMax - depthMin);
+    dstPixel->r = glm::clamp((int) (depth * 255.f), 0, 255);
+    dstPixel->g = dstPixel->r;
+    dstPixel->b = dstPixel->r;
+    dstPixel->a = 255;
 
-    src_pixel++;
-    dst_pixel++;
+    srcPixel++;
+    dstPixel++;
   }
 }
 

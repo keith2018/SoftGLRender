@@ -18,74 +18,73 @@ namespace View {
 
 class Viewer {
  public:
-  Viewer(Config &config, Camera &camera) : config_(config), camera_main_(camera) {}
+  Viewer(Config &config, Camera &camera) : config_(config), cameraMain_(camera) {}
 
-  virtual void Create(int width, int height, int outTexId);
+  virtual void create(int width, int height, int outTexId);
 
-  virtual void ConfigRenderer();
+  virtual void configRenderer();
 
-  virtual void DrawFrame(DemoScene &scene);
+  virtual void drawFrame(DemoScene &scene);
 
-  virtual void SwapBuffer() = 0;
+  virtual void swapBuffer() = 0;
 
-  virtual void Destroy();
+  virtual void destroy();
 
  protected:
-  virtual std::shared_ptr<Renderer> CreateRenderer() = 0;
-  virtual bool LoadShaders(ShaderProgram &program, ShadingModel shading) = 0;
+  virtual std::shared_ptr<Renderer> createRenderer() = 0;
+  virtual bool loadShaders(ShaderProgram &program, ShadingModel shading) = 0;
 
  private:
-  void FXAASetup();
-  void FXAADraw();
+  void processFXAASetup();
+  void processFXAADraw();
 
-  void DrawScene(bool floor, bool skybox);
+  void drawScene(bool floor, bool skybox);
 
-  void DrawPoints(ModelPoints &points, glm::mat4 &transform);
-  void DrawLines(ModelLines &lines, glm::mat4 &transform);
-  void DrawMeshBaseColor(ModelMesh &mesh, bool wireframe);
-  void DrawMeshTextured(ModelMesh &mesh, float specular);
-  void DrawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
-  void DrawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
+  void drawPoints(ModelPoints &points, glm::mat4 &transform);
+  void drawLines(ModelLines &lines, glm::mat4 &transform);
+  void drawMeshBaseColor(ModelMesh &mesh, bool wireframe);
+  void drawMeshTextured(ModelMesh &mesh, float specular);
+  void drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
+  void drawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
 
-  void PipelineSetup(ModelVertexes &vertexes,
-                     Material &material,
-                     const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks,
-                     const std::function<void(RenderState &rs)> &extra_states = nullptr);
-  void PipelineDraw(ModelVertexes &vertexes, Material &material);
+  void pipelineSetup(ModelVertexes &vertexes, Material &material,
+                     const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks,
+                     const std::function<void(RenderState &rs)> &extraStates = nullptr);
+  void pipelineDraw(ModelVertexes &vertexes, Material &material);
 
-  void SetupMainBuffers();
-  void SetupShowMapBuffers();
-  void SetupMainColorBuffer(bool multi_sample);
-  void SetupMainDepthBuffer(bool multi_sample);
+  void setupMainBuffers();
+  void setupShowMapBuffers();
+  void setupMainColorBuffer(bool multiSample);
+  void setupMainDepthBuffer(bool multiSample);
 
-  void SetupVertexArray(ModelVertexes &vertexes);
-  void SetupRenderStates(RenderState &rs, bool blend) const;
-  bool SetupShaderProgram(Material &material);
-  void SetupTextures(Material &material);
-  void SetupSamplerUniforms(Material &material);
-  void SetupMaterial(Material &material, const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniform_blocks);
+  void setupVertexArray(ModelVertexes &vertexes);
+  void setupRenderStates(RenderState &rs, bool blend) const;
+  bool setupShaderProgram(Material &material);
+  void setupTextures(Material &material);
+  void setupSamplerUniforms(Material &material);
+  void setupMaterial(Material &material, const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks);
 
-  void UpdateUniformScene();
-  void UpdateUniformModel(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj);
-  void UpdateUniformMaterial(const glm::vec4 &color, float specular = 1.f);
+  void updateUniformScene();
+  void updateUniformModel(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj);
+  void updateUniformMaterial(const glm::vec4 &color, float specular = 1.f);
 
-  bool InitSkyboxIBL(ModelSkybox &skybox);
-  bool IBLEnabled();
-  void UpdateIBLTextures(Material &material);
-  void UpdateShadowTextures(Material &material);
+  bool initSkyboxIBL(ModelSkybox &skybox);
+  bool iBLEnabled();
+  void updateIBLTextures(Material &material);
+  void updateShadowTextures(Material &material);
 
-  static std::set<std::string> GenerateShaderDefines(Material &material);
-  static size_t GetShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
+  static std::set<std::string> generateShaderDefines(Material &material);
+  static size_t getShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
 
-  std::shared_ptr<Texture> CreateTextureCubeDefault(int width, int height, bool mipmaps = false);
-  std::shared_ptr<Texture> CreateTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps = false);
-  bool CheckMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
+  std::shared_ptr<Texture> createTextureCubeDefault(int width, int height, bool mipmaps = false);
+  std::shared_ptr<Texture> createTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps = false);
+  bool checkMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
 
  protected:
   Config &config_;
 
-  Camera &camera_main_;
-  std::shared_ptr<Camera> camera_depth_ = nullptr;
+  Camera &cameraMain_;
+  std::shared_ptr<Camera> cameraDepth_ = nullptr;
   Camera *camera_ = nullptr;
 
   DemoScene *scene_ = nullptr;
@@ -94,34 +93,35 @@ class Viewer {
   int height_ = 0;
   int outTexId_ = 0;
 
-  UniformsScene uniforms_scene_{};
-  UniformsModel uniforms_model_{};
-  UniformsMaterial uniforms_material_{};
+  UniformsScene uniformsScene_{};
+  UniformsModel uniformsModel_{};
+  UniformsMaterial uniformsMaterial_{};
 
   std::shared_ptr<Renderer> renderer_ = nullptr;
 
   // main fbo
-  std::shared_ptr<FrameBuffer> fbo_main_ = nullptr;
-  std::shared_ptr<Texture> tex_color_main_ = nullptr;
-  std::shared_ptr<Texture> tex_depth_main_ = nullptr;
+  std::shared_ptr<FrameBuffer> fboMain_ = nullptr;
+  std::shared_ptr<Texture> texColorMain_ = nullptr;
+  std::shared_ptr<Texture> texDepthMain_ = nullptr;
 
   // shadow map
-  std::shared_ptr<FrameBuffer> fbo_shadow_ = nullptr;
-  std::shared_ptr<Texture> tex_depth_shadow_ = nullptr;
-  std::shared_ptr<Texture> shadow_placeholder_ = nullptr;
+  std::shared_ptr<FrameBuffer> fboShadow_ = nullptr;
+  std::shared_ptr<Texture> texDepthShadow_ = nullptr;
+  std::shared_ptr<Texture> shadowPlaceholder_ = nullptr;
 
   // fxaa
-  std::shared_ptr<QuadFilter> fxaa_filter_ = nullptr;
-  std::shared_ptr<Texture> tex_color_fxaa_ = nullptr;
+  std::shared_ptr<QuadFilter> fxaaFilter_ = nullptr;
+  std::shared_ptr<Texture> texColorFxaa_ = nullptr;
 
   // ibl
-  std::shared_ptr<Texture> ibl_placeholder_ = nullptr;
+  std::shared_ptr<Texture> iblPlaceholder_ = nullptr;
 
-  std::shared_ptr<UniformBlock> uniform_block_scene_;
-  std::shared_ptr<UniformBlock> uniforms_block_model_;
-  std::shared_ptr<UniformBlock> uniforms_block_material_;
+  std::shared_ptr<UniformBlock> uniformBlockScene_;
+  std::shared_ptr<UniformBlock> uniformsBlockModel_;
+  std::shared_ptr<UniformBlock> uniformsBlockMaterial_;
 
-  std::unordered_map<size_t, std::shared_ptr<ShaderProgram>> program_cache_;
+  // program cache
+  std::unordered_map<size_t, std::shared_ptr<ShaderProgram>> programCache_;
 };
 
 }

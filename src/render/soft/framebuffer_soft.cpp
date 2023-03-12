@@ -9,6 +9,6 @@
 
 namespace SoftGL {
 
-int FrameBufferSoft::uuid_counter_ = 0;
+int FrameBufferSoft::uuidCounter_ = 0;
 
 }

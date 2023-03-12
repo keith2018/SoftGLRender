@@ -23,39 +23,35 @@ struct CubeRenderContext {
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<FrameBuffer> fbo;
   Camera camera;
-  ModelSkybox model_skybox;
-  std::shared_ptr<UniformBlock> uniforms_block_model;
+  ModelSkybox modelSkybox;
+  std::shared_ptr<UniformBlock> uniformsBlockModel;
 };
 
 class Environment {
  public:
-  static bool ConvertEquirectangular(const std::shared_ptr<Renderer> &renderer,
-                                     const std::function<bool(ShaderProgram &program)> &shader_func,
-                                     const std::shared_ptr<Texture> &tex_in,
-                                     std::shared_ptr<Texture> &tex_out);
+  static bool convertEquirectangular(const std::shared_ptr<Renderer> &renderer,
+                                     const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                     const std::shared_ptr<Texture> &texIn,
+                                     std::shared_ptr<Texture> &texOut);
 
-  static bool GenerateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
-                                    const std::function<bool(ShaderProgram &program)> &shader_func,
-                                    const std::shared_ptr<Texture> &tex_in,
-                                    std::shared_ptr<Texture> &tex_out);
+  static bool generateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
+                                    const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                    const std::shared_ptr<Texture> &texIn,
+                                    std::shared_ptr<Texture> &texOut);
 
-  static bool GeneratePrefilterMap(const std::shared_ptr<Renderer> &renderer,
-                                   const std::function<bool(ShaderProgram &program)> &shader_func,
-                                   const std::shared_ptr<Texture> &tex_in,
-                                   std::shared_ptr<Texture> &tex_out);
+  static bool generatePrefilterMap(const std::shared_ptr<Renderer> &renderer,
+                                   const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                   const std::shared_ptr<Texture> &texIn,
+                                   std::shared_ptr<Texture> &texOut);
 
  private:
-  static bool CreateCubeRenderContext(CubeRenderContext &context,
-                                      const std::function<bool(ShaderProgram &program)> &shader_func,
-                                      const std::shared_ptr<Texture> &tex_in,
-                                      TextureUsage tex_usage);
+  static bool createCubeRenderContext(CubeRenderContext &context,
+                                      const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                      const std::shared_ptr<Texture> &texIn,
+                                      TextureUsage texUsage);
 
-  static void DrawCubeFaces(CubeRenderContext &context,
-                            int width,
-                            int height,
-                            std::shared_ptr<Texture> &tex_out,
-                            int tex_out_level = 0,
-                            const std::function<void()> &before_draw = nullptr);
+  static void drawCubeFaces(CubeRenderContext &context, int width, int height, std::shared_ptr<Texture> &texOut,
+                            int texOutLevel = 0, const std::function<void()> &beforeDraw = nullptr);
 };
 
 }

@@ -19,47 +19,47 @@ class Plane {
     Intersects_Back = 3
   };
 
-  void Set(const glm::vec3 &n, const glm::vec3 &pt) {
+  void set(const glm::vec3 &n, const glm::vec3 &pt) {
     normal_ = glm::normalize(n);
-    D_ = -(glm::dot(normal_, pt));
+    d_ = -(glm::dot(normal_, pt));
   }
 
-  float Distance(const glm::vec3 &pt) const {
-    return glm::dot(normal_, pt) + D_;
+  float distance(const glm::vec3 &pt) const {
+    return glm::dot(normal_, pt) + d_;
   }
 
-  inline const glm::vec3 &GetNormal() const {
+  inline const glm::vec3 &getNormal() const {
     return normal_;
   }
 
-  Plane::PlaneIntersects Intersects(const BoundingBox &box) const;
+  Plane::PlaneIntersects intersects(const BoundingBox &box) const;
 
   // check intersect with point (world space)
-  Plane::PlaneIntersects Intersects(const glm::vec3 &p0) const;
+  Plane::PlaneIntersects intersects(const glm::vec3 &p0) const;
 
   // check intersect with line segment (world space)
-  Plane::PlaneIntersects Intersects(const glm::vec3 &p0, const glm::vec3 &p1) const;
+  Plane::PlaneIntersects intersects(const glm::vec3 &p0, const glm::vec3 &p1) const;
 
   // check intersect with triangle (world space)
-  Plane::PlaneIntersects Intersects(const glm::vec3 &p0, const glm::vec3 &p1, const glm::vec3 &p2) const;
+  Plane::PlaneIntersects intersects(const glm::vec3 &p0, const glm::vec3 &p1, const glm::vec3 &p2) const;
 
  private:
   glm::vec3 normal_;
-  float D_ = 0;
+  float d_ = 0;
 };
 
 struct Frustum {
  public:
-  bool Intersects(const BoundingBox &box) const;
+  bool intersects(const BoundingBox &box) const;
 
   // check intersect with point (world space)
-  bool Intersects(const glm::vec3 &p0) const;
+  bool intersects(const glm::vec3 &p0) const;
 
   // check intersect with line segment (world space)
-  bool Intersects(const glm::vec3 &p0, const glm::vec3 &p1) const;
+  bool intersects(const glm::vec3 &p0, const glm::vec3 &p1) const;
 
   // check intersect with triangle (world space)
-  bool Intersects(const glm::vec3 &p0, const glm::vec3 &p1, const glm::vec3 &p2) const;
+  bool intersects(const glm::vec3 &p0, const glm::vec3 &p1, const glm::vec3 &p2) const;
 
  public:
   /**

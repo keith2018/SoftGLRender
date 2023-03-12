@@ -14,102 +14,102 @@ namespace SoftGL {
 
 class ShaderProgramSoft : public ShaderProgram {
  public:
-  ShaderProgramSoft() : uuid_(uuid_counter_++) {}
+  ShaderProgramSoft() : uuid_(uuidCounter_++) {}
 
-  int GetId() const override {
+  int getId() const override {
     return uuid_;
   }
 
-  void AddDefine(const std::string &def) override {
+  void addDefine(const std::string &def) override {
     defines_.emplace_back(def);
   }
 
   bool SetShaders(std::shared_ptr<ShaderSoft> vs, std::shared_ptr<ShaderSoft> fs) {
-    vertex_shader_ = std::move(vs);
-    fragment_shader_ = std::move(fs);
+    vertexShader_ = std::move(vs);
+    fragmentShader_ = std::move(fs);
 
     // defines
-    auto &define_desc = vertex_shader_->GetDefines();
-    defines_buffer_ = MemoryUtils::MakeBuffer<uint8_t>(define_desc.size());
-    vertex_shader_->BindDefines(defines_buffer_.get());
-    fragment_shader_->BindDefines(defines_buffer_.get());
+    auto &defineDesc = vertexShader_->getDefines();
+    definesBuffer_ = MemoryUtils::makeBuffer<uint8_t>(defineDesc.size());
+    vertexShader_->bindDefines(definesBuffer_.get());
+    fragmentShader_->bindDefines(definesBuffer_.get());
 
-    memset(defines_buffer_.get(), 0, sizeof(uint8_t) * define_desc.size());
+    memset(definesBuffer_.get(), 0, sizeof(uint8_t) * defineDesc.size());
     for (auto &name : defines_) {
-      for (int i = 0; i < define_desc.size(); i++) {
-        if (define_desc[i] == name) {
-          defines_buffer_.get()[i] = 1;
+      for (int i = 0; i < defineDesc.size(); i++) {
+        if (defineDesc[i] == name) {
+          definesBuffer_.get()[i] = 1;
         }
       }
     }
 
     // builtin
-    vertex_shader_->BindBuiltin(&builtin_);
-    fragment_shader_->BindBuiltin(&builtin_);
+    vertexShader_->bindBuiltin(&builtin_);
+    fragmentShader_->bindBuiltin(&builtin_);
 
     // uniforms
-    uniform_buffer_ = MemoryUtils::MakeBuffer<uint8_t>(vertex_shader_->GetShaderUniformsSize());
-    vertex_shader_->BindShaderUniforms(uniform_buffer_.get());
-    fragment_shader_->BindShaderUniforms(uniform_buffer_.get());
+    uniformBuffer_ = MemoryUtils::makeBuffer<uint8_t>(vertexShader_->getShaderUniformsSize());
+    vertexShader_->bindShaderUniforms(uniformBuffer_.get());
+    fragmentShader_->bindShaderUniforms(uniformBuffer_.get());
 
     return true;
   }
 
-  inline void BindVertexAttributes(void *ptr) {
-    vertex_shader_->BindShaderAttributes(ptr);
+  inline void bindVertexAttributes(void *ptr) {
+    vertexShader_->bindShaderAttributes(ptr);
   }
 
-  inline void BindUniformBlockBuffer(void *data, size_t len, int location) {
-    int offset = vertex_shader_->GetUniformOffset(location);
-    memcpy(uniform_buffer_.get() + offset, data, len);
+  inline void bindUniformBlockBuffer(void *data, size_t len, int location) {
+    int offset = vertexShader_->GetUniformOffset(location);
+    memcpy(uniformBuffer_.get() + offset, data, len);
   }
 
-  inline void BindUniformSampler(std::shared_ptr<SamplerSoft> &sampler, int location) {
-    int offset = vertex_shader_->GetUniformOffset(location);
-    auto **ptr = reinterpret_cast<SamplerSoft **>(uniform_buffer_.get() + offset);
+  inline void bindUniformSampler(std::shared_ptr<SamplerSoft> &sampler, int location) {
+    int offset = vertexShader_->GetUniformOffset(location);
+    auto **ptr = reinterpret_cast<SamplerSoft **>(uniformBuffer_.get() + offset);
     *ptr = sampler.get();
   }
 
-  inline void BindVertexShaderVaryings(void *ptr) {
-    vertex_shader_->BindShaderVaryings(ptr);
+  inline void bindVertexShaderVaryings(void *ptr) {
+    vertexShader_->bindShaderVaryings(ptr);
   }
 
-  inline void BindFragmentShaderVaryings(void *ptr) {
-    fragment_shader_->BindShaderVaryings(ptr);
+  inline void bindFragmentShaderVaryings(void *ptr) {
+    fragmentShader_->bindShaderVaryings(ptr);
   }
 
-  inline size_t GetShaderVaryingsSize() {
-    return vertex_shader_->GetShaderVaryingsSize();
+  inline size_t getShaderVaryingsSize() {
+    return vertexShader_->getShaderVaryingsSize();
   }
 
-  inline int GetUniformLocation(const std::string &name) {
-    return vertex_shader_->GetUniformLocation(name);
+  inline int getUniformLocation(const std::string &name) {
+    return vertexShader_->getUniformLocation(name);
   }
 
-  inline ShaderBuiltin &GetShaderBuiltin() {
+  inline ShaderBuiltin &getShaderBuiltin() {
     return builtin_;
   }
 
-  inline void ExecVertexShader() {
-    vertex_shader_->ShaderMain();
+  inline void execVertexShader() {
+    vertexShader_->shaderMain();
   }
 
-  inline void PrepareFragmentShader() {
-    fragment_shader_->PrepareExecMain();
+  inline void prepareFragmentShader() {
+    fragmentShader_->prepareExecMain();
   }
 
-  inline void ExecFragmentShader() {
-    fragment_shader_->SetupSamplerDerivative();
-    fragment_shader_->ShaderMain();
+  inline void execFragmentShader() {
+    fragmentShader_->setupSamplerDerivative();
+    fragmentShader_->shaderMain();
   }
 
   inline std::shared_ptr<ShaderProgramSoft> clone() const {
     auto ret = std::make_shared<ShaderProgramSoft>(*this);
 
-    ret->vertex_shader_ = vertex_shader_->clone();
-    ret->fragment_shader_ = fragment_shader_->clone();
-    ret->vertex_shader_->BindBuiltin(&ret->builtin_);
-    ret->fragment_shader_->BindBuiltin(&ret->builtin_);
+    ret->vertexShader_ = vertexShader_->clone();
+    ret->fragmentShader_ = fragmentShader_->clone();
+    ret->vertexShader_->bindBuiltin(&ret->builtin_);
+    ret->fragmentShader_->bindBuiltin(&ret->builtin_);
 
     return ret;
   }
@@ -118,15 +118,15 @@ class ShaderProgramSoft : public ShaderProgram {
   ShaderBuiltin builtin_;
   std::vector<std::string> defines_;
 
-  std::shared_ptr<ShaderSoft> vertex_shader_;
-  std::shared_ptr<ShaderSoft> fragment_shader_;
+  std::shared_ptr<ShaderSoft> vertexShader_;
+  std::shared_ptr<ShaderSoft> fragmentShader_;
 
-  std::shared_ptr<uint8_t> defines_buffer_;  // 0->false; 1->true
-  std::shared_ptr<uint8_t> uniform_buffer_;
+  std::shared_ptr<uint8_t> definesBuffer_;  // 0->false; 1->true
+  std::shared_ptr<uint8_t> uniformBuffer_;
 
  private:
   int uuid_ = -1;
-  static int uuid_counter_;
+  static int uuidCounter_;
 };
 
 }

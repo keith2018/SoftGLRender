@@ -11,8 +11,8 @@ namespace View {
 
 class Cube {
  public:
-  static const float *GetCubeVertexes() {
-    static float cube_vertexes[] = {
+  static const float *getCubeVertexes() {
+    static float cubeVertexes[] = {
         // positions
         -1.0f, 1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
@@ -56,7 +56,7 @@ class Cube {
         -1.0f, -1.0f, 1.0f,
         1.0f, -1.0f, 1.0f
     };
-    return cube_vertexes;
+    return cubeVertexes;
   };
 };
 

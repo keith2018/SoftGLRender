@@ -51,10 +51,10 @@ class Texture2DOpenGL : public TextureOpenGL {
 
     type = TextureType_2D;
     format = desc.format;
-    multi_sample = desc.multi_sample;
-    target_ = multi_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+    multiSample = desc.multiSample;
+    target_ = multiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
-    gl_desc_ = GetOpenGLDesc(format);
+    glDesc_ = GetOpenGLDesc(format);
     GL_CHECK(glGenTextures(1, &texId_));
   }
 
@@ -62,50 +62,50 @@ class Texture2DOpenGL : public TextureOpenGL {
     GL_CHECK(glDeleteTextures(1, &texId_));
   }
 
-  int GetId() const override {
+  int getId() const override {
     return (int) texId_;
   }
 
-  void SetSamplerDesc(SamplerDesc &sampler) override {
-    if (multi_sample) {
+  void setSamplerDesc(SamplerDesc &sampler) override {
+    if (multiSample) {
       return;
     }
 
-    auto &sampler_2d = dynamic_cast<Sampler2DDesc &>(sampler);
+    auto &sampler2d = dynamic_cast<Sampler2DDesc &>(sampler);
     GL_CHECK(glBindTexture(target_, texId_));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler_2d.wrap_s)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler_2d.wrap_t)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler_2d.filter_min)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler_2d.filter_mag)));
-    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler_2d.border_color[0]));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler2d.wrapS)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler2d.wrapT)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler2d.filterMin)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler2d.filterMag)));
+    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler2d.borderColor[0]));
 
-    use_mipmaps = sampler_2d.use_mipmaps;
+    useMipmaps = sampler2d.useMipmaps;
   }
 
-  void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
-    if (multi_sample) {
-      LOGE("SetImageData not support: multi sample texture");
+  void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
+    if (multiSample) {
+      LOGE("setImageData not support: multi sample texture");
       return;
     }
 
     if (format != TextureFormat_RGBA8) {
-      LOGE("SetImageData error: format not match");
+      LOGE("setImageData error: format not match");
       return;
     }
 
-    width = (int) buffers[0]->GetWidth();
-    height = (int) buffers[0]->GetHeight();
+    width = (int) buffers[0]->getWidth();
+    height = (int) buffers[0]->getHeight();
 
     GL_CHECK(glBindTexture(target_, texId_));
-    GL_CHECK(glTexImage2D(target_, 0, gl_desc_.internalformat, width, height, 0, gl_desc_.format, gl_desc_.type,
-                          buffers[0]->GetRawDataPtr()));
+    GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, width, height, 0, glDesc_.format, glDesc_.type,
+                          buffers[0]->getRawDataPtr()));
 
-    if (use_mipmaps) {
+    if (useMipmaps) {
       GL_CHECK(glGenerateMipmap(target_));
     }
   }
 
-  void InitImageData(int w, int h) override {
+  void initImageData(int w, int h) override {
     if (width == w && height == h) {
       return;
     }
@@ -113,19 +113,19 @@ class Texture2DOpenGL : public TextureOpenGL {
     height = h;
 
     GL_CHECK(glBindTexture(target_, texId_));
-    if (multi_sample) {
-      GL_CHECK(glTexImage2DMultisample(target_, 4, gl_desc_.internalformat, w, h, GL_TRUE));
+    if (multiSample) {
+      GL_CHECK(glTexImage2DMultisample(target_, 4, glDesc_.internalformat, w, h, GL_TRUE));
     } else {
-      GL_CHECK(glTexImage2D(target_, 0, gl_desc_.internalformat, w, h, 0, gl_desc_.format, gl_desc_.type, nullptr));
+      GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, w, h, 0, glDesc_.format, glDesc_.type, nullptr));
 
-      if (use_mipmaps) {
+      if (useMipmaps) {
         GL_CHECK(glGenerateMipmap(target_));
       }
     }
   }
 
-  void DumpImage(const char *path) override {
-    if (multi_sample) {
+  void dumpImage(const char *path) override {
+    if (multiSample) {
       return;
     }
 
@@ -137,27 +137,25 @@ class Texture2DOpenGL : public TextureOpenGL {
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texId_, 0));
 
     auto *pixels = new uint8_t[width * height * 4];
-    GL_CHECK(glReadPixels(0, 0, width, height, gl_desc_.format, gl_desc_.type, pixels));
+    GL_CHECK(glReadPixels(0, 0, width, height, glDesc_.format, glDesc_.type, pixels));
 
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     GL_CHECK(glDeleteFramebuffers(1, &fbo));
 
     // convert float to rgba
     if (format == TextureFormat_DEPTH) {
-      ImageUtils::ConvertFloatImage(reinterpret_cast<RGBA *>(pixels),
-                                    reinterpret_cast<float *>(pixels),
-                                    width,
-                                    height);
+      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels),
+                                    width, height);
     }
-    ImageUtils::WriteImage(path, width, height, 4, pixels, width * 4, true);
+    ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
     delete[] pixels;
   }
 
  private:
   GLuint texId_ = 0;
   GLenum target_ = 0;
-  bool use_mipmaps = false;
-  TextureOpenGLDesc gl_desc_{};
+  bool useMipmaps = false;
+  TextureOpenGLDesc glDesc_{};
 };
 
 class TextureCubeOpenGL : public TextureOpenGL {
@@ -167,9 +165,9 @@ class TextureCubeOpenGL : public TextureOpenGL {
 
     type = TextureType_CUBE;
     format = desc.format;
-    multi_sample = desc.multi_sample;
+    multiSample = desc.multiSample;
 
-    gl_desc_ = GetOpenGLDesc(format);
+    glDesc_ = GetOpenGLDesc(format);
     GL_CHECK(glGenTextures(1, &texId_));
   }
 
@@ -177,53 +175,53 @@ class TextureCubeOpenGL : public TextureOpenGL {
     GL_CHECK(glDeleteTextures(1, &texId_));
   }
 
-  int GetId() const override {
+  int getId() const override {
     return (int) texId_;
   }
 
-  void SetSamplerDesc(SamplerDesc &sampler) override {
-    if (multi_sample) {
+  void setSamplerDesc(SamplerDesc &sampler) override {
+    if (multiSample) {
       return;
     }
 
-    auto &sampler_cube = dynamic_cast<SamplerCubeDesc &>(sampler);
+    auto &samplerCube = dynamic_cast<SamplerCubeDesc &>(sampler);
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler_cube.wrap_s)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler_cube.wrap_t)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::ConvertWrap(sampler_cube.wrap_r)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(samplerCube.wrapS)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(samplerCube.wrapT)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::ConvertWrap(samplerCube.wrapR)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
-                             OpenGL::ConvertFilter(sampler_cube.filter_min)));
+                             OpenGL::ConvertFilter(samplerCube.filterMin)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
-                             OpenGL::ConvertFilter(sampler_cube.filter_mag)));
-    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &sampler_cube.border_color[0]));
+                             OpenGL::ConvertFilter(samplerCube.filterMag)));
+    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &samplerCube.borderColor[0]));
 
-    use_mipmaps = sampler_cube.use_mipmaps;
+    useMipmaps = samplerCube.useMipmaps;
   }
 
-  void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
-    if (multi_sample) {
+  void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
+    if (multiSample) {
       return;
     }
 
     if (format != TextureFormat_RGBA8) {
-      LOGE("SetImageData error: format not match");
+      LOGE("setImageData error: format not match");
       return;
     }
 
-    width = (int) buffers[0]->GetWidth();
-    height = (int) buffers[0]->GetHeight();
+    width = (int) buffers[0]->getWidth();
+    height = (int) buffers[0]->getHeight();
 
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
     for (int i = 0; i < 6; i++) {
-      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl_desc_.internalformat, width, height, 0,
-                            gl_desc_.format, gl_desc_.type, buffers[i]->GetRawDataPtr()));
+      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glDesc_.internalformat, width, height, 0,
+                            glDesc_.format, glDesc_.type, buffers[i]->getRawDataPtr()));
     }
-    if (use_mipmaps) {
+    if (useMipmaps) {
       GL_CHECK(glGenerateMipmap(GL_TEXTURE_CUBE_MAP));
     }
   }
 
-  void InitImageData(int w, int h) override {
+  void initImageData(int w, int h) override {
     if (width == w && height == h) {
       return;
     }
@@ -232,19 +230,19 @@ class TextureCubeOpenGL : public TextureOpenGL {
 
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
     for (int i = 0; i < 6; i++) {
-      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl_desc_.internalformat, w, h, 0,
-                            gl_desc_.format, gl_desc_.type, nullptr));
+      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glDesc_.internalformat, w, h, 0,
+                            glDesc_.format, glDesc_.type, nullptr));
     }
 
-    if (use_mipmaps) {
+    if (useMipmaps) {
       GL_CHECK(glGenerateMipmap(GL_TEXTURE_CUBE_MAP));
     }
   }
 
  private:
   GLuint texId_ = 0;
-  bool use_mipmaps = false;
-  TextureOpenGLDesc gl_desc_{};
+  bool useMipmaps = false;
+  TextureOpenGLDesc glDesc_{};
 };
 
 }

@@ -18,59 +18,59 @@ const std::string ASSETS_DIR = "./assets/";
 class ConfigPanel {
  public:
   explicit ConfigPanel(Config &config) : config_(config) {}
-  ~ConfigPanel() { Destroy(); };
+  ~ConfigPanel() { destroy(); };
 
-  bool Init(void *window, int width, int height);
-  void OnDraw();
+  bool init(void *window, int width, int height);
+  void onDraw();
 
-  void Update();
-  void UpdateSize(int width, int height);
+  void update();
+  void updateSize(int width, int height);
 
-  bool WantCaptureKeyboard();
-  bool WantCaptureMouse();
+  bool wantCaptureKeyboard();
+  bool wantCaptureMouse();
 
-  inline void SetReloadModelFunc(const std::function<bool(const std::string &)> &func) {
-    reload_model_func_ = func;
+  inline void setReloadModelFunc(const std::function<bool(const std::string &)> &func) {
+    reloadModelFunc_ = func;
   }
-  inline void SetReloadSkyboxFunc(const std::function<bool(const std::string &)> &func) {
-    reload_skybox_func_ = func;
+  inline void setReloadSkyboxFunc(const std::function<bool(const std::string &)> &func) {
+    reloadSkyboxFunc_ = func;
   }
-  inline void SetUpdateLightFunc(const std::function<void(glm::vec3 &, glm::vec3 &)> &func) {
-    update_light_func_ = func;
+  inline void setUpdateLightFunc(const std::function<void(glm::vec3 &, glm::vec3 &)> &func) {
+    updateLightFunc_ = func;
   }
-  inline void SetResetCameraFunc(const std::function<void(void)> &func) {
-    reset_camera_func_ = func;
+  inline void setResetCameraFunc(const std::function<void(void)> &func) {
+    resetCameraFunc_ = func;
   }
-  inline void SetResetMipmapsFunc(const std::function<void(void)> &func) {
-    reset_mipmaps_func_ = func;
+  inline void setResetMipmapsFunc(const std::function<void(void)> &func) {
+    resetMipmapsFunc_ = func;
   }
 
  private:
-  bool LoadConfig();
+  bool loadConfig();
 
-  bool ReloadModel(const std::string &name);
-  bool ReloadSkybox(const std::string &name);
-  void ResetCamera();
+  bool reloadModel(const std::string &name);
+  bool reloadSkybox(const std::string &name);
+  void resetCamera();
 
-  void DrawSettings();
-  void Destroy();
+  void drawSettings();
+  void destroy();
 
  private:
   Config &config_;
 
-  int frame_width_ = 0;
-  int frame_height_ = 0;
+  int frameWidth_ = 0;
+  int frameHeight_ = 0;
 
-  float light_position_angle_ = glm::radians(235.f);
+  float lightPositionAngle_ = glm::radians(235.f);
 
-  std::unordered_map<std::string, std::string> model_paths_;
-  std::unordered_map<std::string, std::string> skybox_paths_;
+  std::unordered_map<std::string, std::string> modelPaths_;
+  std::unordered_map<std::string, std::string> skyboxPaths_;
 
-  std::function<bool(const std::string &path)> reload_model_func_;
-  std::function<bool(const std::string &path)> reload_skybox_func_;
-  std::function<void(glm::vec3 &position, glm::vec3 &color)> update_light_func_;
-  std::function<void(void)> reset_camera_func_;
-  std::function<void(void)> reset_mipmaps_func_;
+  std::function<bool(const std::string &path)> reloadModelFunc_;
+  std::function<bool(const std::string &path)> reloadSkyboxFunc_;
+  std::function<void(glm::vec3 &position, glm::vec3 &color)> updateLightFunc_;
+  std::function<void(void)> resetCameraFunc_;
+  std::function<void(void)> resetMipmapsFunc_;
 };
 
 }

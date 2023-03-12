@@ -9,7 +9,7 @@
 
 namespace SoftGL {
 
-void BoundingBox::GetCorners(glm::vec3 *dst) const {
+void BoundingBox::getCorners(glm::vec3 *dst) const {
   dst[0] = glm::vec3(min.x, max.y, max.z);
   dst[1] = glm::vec3(min.x, min.y, max.z);
   dst[2] = glm::vec3(max.x, min.y, max.z);
@@ -21,7 +21,7 @@ void BoundingBox::GetCorners(glm::vec3 *dst) const {
   dst[7] = glm::vec3(min.x, max.y, min.z);
 }
 
-static void UpdateMinMax(glm::vec3 *point, glm::vec3 *min, glm::vec3 *max) {
+void BoundingBox::updateMinMax(glm::vec3 *point, glm::vec3 *min, glm::vec3 *max) {
   if (point->x < min->x) {
     min->x = point->x;
   }
@@ -47,27 +47,27 @@ static void UpdateMinMax(glm::vec3 *point, glm::vec3 *min, glm::vec3 *max) {
   }
 }
 
-BoundingBox BoundingBox::Transform(const glm::mat4 &matrix) const {
+BoundingBox BoundingBox::transform(const glm::mat4 &matrix) const {
   glm::vec3 corners[8];
-  GetCorners(corners);
+  getCorners(corners);
 
   corners[0] = matrix * glm::vec4(corners[0], 1.f);
   glm::vec3 newMin = corners[0];
   glm::vec3 newMax = corners[0];
   for (int i = 1; i < 8; i++) {
     corners[i] = matrix * glm::vec4(corners[i], 1.f);
-    UpdateMinMax(&corners[i], &newMin, &newMax);
+    updateMinMax(&corners[i], &newMin, &newMax);
   }
   return {newMin, newMax};
 }
 
-bool BoundingBox::Intersects(const BoundingBox &box) const {
+bool BoundingBox::intersects(const BoundingBox &box) const {
   return ((min.x >= box.min.x && min.x <= box.max.x) || (box.min.x >= min.x && box.min.x <= max.x)) &&
       ((min.y >= box.min.y && min.y <= box.max.y) || (box.min.y >= min.y && box.min.y <= max.y)) &&
       ((min.z >= box.min.z && min.z <= box.max.z) || (box.min.z >= min.z && box.min.z <= max.z));
 }
 
-void BoundingBox::Merge(const BoundingBox &box) {
+void BoundingBox::merge(const BoundingBox &box) {
   min.x = std::min(min.x, box.min.x);
   min.y = std::min(min.y, box.min.y);
   min.z = std::min(min.z, box.min.z);

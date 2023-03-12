@@ -17,12 +17,12 @@
 namespace SoftGL {
 
 // framebuffer
-std::shared_ptr<FrameBuffer> RendererOpenGL::CreateFrameBuffer() {
+std::shared_ptr<FrameBuffer> RendererOpenGL::createFrameBuffer() {
   return std::make_shared<FrameBufferOpenGL>();
 }
 
 // texture
-std::shared_ptr<Texture> RendererOpenGL::CreateTexture(const TextureDesc &desc) {
+std::shared_ptr<Texture> RendererOpenGL::createTexture(const TextureDesc &desc) {
   switch (desc.type) {
     case TextureType_2D:    return std::make_shared<Texture2DOpenGL>(desc);
     case TextureType_CUBE:  return std::make_shared<TextureCubeOpenGL>(desc);
@@ -31,101 +31,97 @@ std::shared_ptr<Texture> RendererOpenGL::CreateTexture(const TextureDesc &desc) 
 }
 
 // vertex
-std::shared_ptr<VertexArrayObject> RendererOpenGL::CreateVertexArrayObject(const VertexArray &vertex_array) {
-  return std::make_shared<VertexArrayObjectOpenGL>(vertex_array);
+std::shared_ptr<VertexArrayObject> RendererOpenGL::createVertexArrayObject(const VertexArray &vertexArray) {
+  return std::make_shared<VertexArrayObjectOpenGL>(vertexArray);
 }
 
 // shader program
-std::shared_ptr<ShaderProgram> RendererOpenGL::CreateShaderProgram() {
+std::shared_ptr<ShaderProgram> RendererOpenGL::createShaderProgram() {
   return std::make_shared<ShaderProgramOpenGL>();
 }
 
 // uniform
-std::shared_ptr<UniformBlock> RendererOpenGL::CreateUniformBlock(const std::string &name, int size) {
+std::shared_ptr<UniformBlock> RendererOpenGL::createUniformBlock(const std::string &name, int size) {
   return std::make_shared<UniformBlockOpenGL>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererOpenGL::CreateUniformSampler(const std::string &name,
-                                                                     TextureType type,
+std::shared_ptr<UniformSampler> RendererOpenGL::createUniformSampler(const std::string &name, TextureType type,
                                                                      TextureFormat format) {
   return std::make_shared<UniformSamplerOpenGL>(name, type, format);
 }
 
 // pipeline
-void RendererOpenGL::SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) {
-  auto *fbo = dynamic_cast<FrameBufferOpenGL *>(frame_buffer.get());
-  fbo->Bind();
+void RendererOpenGL::setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) {
+  auto *fbo = dynamic_cast<FrameBufferOpenGL *>(frameBuffer.get());
+  fbo->bind();
 }
 
-void RendererOpenGL::SetViewPort(int x, int y, int width, int height) {
+void RendererOpenGL::setViewPort(int x, int y, int width, int height) {
   GL_CHECK(glViewport(x, y, width, height));
 }
 
-void RendererOpenGL::Clear(const ClearState &state) {
-  GL_CHECK(glClearColor(state.clear_color.r,
-                        state.clear_color.g,
-                        state.clear_color.b,
-                        state.clear_color.a));
-  GLbitfield clear_bit = 0;
-  if (state.color_flag) {
-    clear_bit = clear_bit | GL_COLOR_BUFFER_BIT;
+void RendererOpenGL::clear(const ClearState &state) {
+  GL_CHECK(glClearColor(state.clearColor.r, state.clearColor.g, state.clearColor.b, state.clearColor.a));
+  GLbitfield clearBit = 0;
+  if (state.colorFlag) {
+    clearBit = clearBit | GL_COLOR_BUFFER_BIT;
   }
-  if (state.depth_flag) {
-    clear_bit = clear_bit | GL_DEPTH_BUFFER_BIT;
+  if (state.depthFlag) {
+    clearBit = clearBit | GL_DEPTH_BUFFER_BIT;
   }
-  GL_CHECK(glClear(clear_bit));
+  GL_CHECK(glClear(clearBit));
 }
 
-void RendererOpenGL::SetRenderState(const RenderState &state) {
+void RendererOpenGL::setRenderState(const RenderState &state) {
   // blend
   GL_STATE_SET(state.blend, GL_BLEND)
-  GL_CHECK(glBlendEquationSeparate(OpenGL::ConvertBlendFunction(state.blend_parameters.blend_func_rgb),
-                                   OpenGL::ConvertBlendFunction(state.blend_parameters.blend_func_alpha)));
-  GL_CHECK(glBlendFuncSeparate(OpenGL::ConvertBlendFactor(state.blend_parameters.blend_src_rgb),
-                               OpenGL::ConvertBlendFactor(state.blend_parameters.blend_dst_rgb),
-                               OpenGL::ConvertBlendFactor(state.blend_parameters.blend_src_alpha),
-                               OpenGL::ConvertBlendFactor(state.blend_parameters.blend_dst_alpha)));
+  GL_CHECK(glBlendEquationSeparate(OpenGL::convertBlendFunction(state.blendParams.blendFuncRgb),
+                                   OpenGL::convertBlendFunction(state.blendParams.blendFuncAlpha)));
+  GL_CHECK(glBlendFuncSeparate(OpenGL::convertBlendFactor(state.blendParams.blendSrcRgb),
+                               OpenGL::convertBlendFactor(state.blendParams.blendDstRgb),
+                               OpenGL::convertBlendFactor(state.blendParams.blendSrcAlpha),
+                               OpenGL::convertBlendFactor(state.blendParams.blendDstAlpha)));
 
   // depth
-  GL_STATE_SET(state.depth_test, GL_DEPTH_TEST)
-  GL_CHECK(glDepthMask(state.depth_mask));
-  GL_CHECK(glDepthFunc(OpenGL::ConvertDepthFunc(state.depth_func)));
+  GL_STATE_SET(state.depthTest, GL_DEPTH_TEST)
+  GL_CHECK(glDepthMask(state.depthMask));
+  GL_CHECK(glDepthFunc(OpenGL::convertDepthFunc(state.depthFunc)));
 
-  GL_STATE_SET(state.cull_face, GL_CULL_FACE)
-  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::ConvertPolygonMode(state.polygon_mode)));
+  GL_STATE_SET(state.cullFace, GL_CULL_FACE)
+  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::convertPolygonMode(state.polygonMode)));
 
-  GL_CHECK(glLineWidth(state.line_width));
-  GL_CHECK(glPointSize(state.point_size));
+  GL_CHECK(glLineWidth(state.lineWidth));
+  GL_CHECK(glPointSize(state.pointSize));
 }
 
-void RendererOpenGL::SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
+void RendererOpenGL::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
   if (!vao) {
     return;
   }
   vao_ = dynamic_cast<VertexArrayObjectOpenGL *>(vao.get());
-  vao_->Bind();
+  vao_->bind();
 }
 
-void RendererOpenGL::SetShaderProgram(std::shared_ptr<ShaderProgram> &program) {
+void RendererOpenGL::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
   if (!program) {
     return;
   }
-  shader_program_ = dynamic_cast<ShaderProgramOpenGL *>(program.get());
-  shader_program_->Use();
+  shaderProgram_ = dynamic_cast<ShaderProgramOpenGL *>(program.get());
+  shaderProgram_->Use();
 }
 
-void RendererOpenGL::SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
+void RendererOpenGL::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
   if (!uniforms) {
     return;
   }
-  if (shader_program_) {
-    shader_program_->BindUniforms(*uniforms);
+  if (shaderProgram_) {
+    shaderProgram_->bindUniforms(*uniforms);
   }
 }
 
-void RendererOpenGL::Draw(PrimitiveType type) {
-  GLenum mode = OpenGL::ConvertDrawMode(type);
-  GL_CHECK(glDrawElements(mode, (GLsizei) vao_->GetIndicesCnt(), GL_UNSIGNED_INT, nullptr));
+void RendererOpenGL::draw(PrimitiveType type) {
+  GLenum mode = OpenGL::convertDrawMode(type);
+  GL_CHECK(glDrawElements(mode, (GLsizei) vao_->getIndicesCnt(), GL_UNSIGNED_INT, nullptr));
 }
 
 }

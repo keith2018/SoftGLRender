@@ -10,74 +10,73 @@ namespace SoftGL {
 namespace View {
 
 QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
-                       const std::function<bool(ShaderProgram &program)> &shader_func) {
+                       const std::function<bool(ShaderProgram &program)> &shaderFunc) {
   // quad mesh
-  quad_mesh_.primitive_type = Primitive_TRIANGLE;
-  quad_mesh_.primitive_cnt = 2;
-  quad_mesh_.vertexes.push_back({{1.f, -1.f, 0.f}, {1.f, 0.f}});
-  quad_mesh_.vertexes.push_back({{-1.f, -1.f, 0.f}, {0.f, 0.f}});
-  quad_mesh_.vertexes.push_back({{1.f, 1.f, 0.f}, {1.f, 1.f}});
-  quad_mesh_.vertexes.push_back({{-1.f, 1.f, 0.f}, {0.f, 1.f}});
-  quad_mesh_.indices = {0, 1, 2, 1, 2, 3};
-  quad_mesh_.InitVertexes();
+  quadMesh_.primitiveType = Primitive_TRIANGLE;
+  quadMesh_.primitiveCnt = 2;
+  quadMesh_.vertexes.push_back({{1.f, -1.f, 0.f}, {1.f, 0.f}});
+  quadMesh_.vertexes.push_back({{-1.f, -1.f, 0.f}, {0.f, 0.f}});
+  quadMesh_.vertexes.push_back({{1.f, 1.f, 0.f}, {1.f, 1.f}});
+  quadMesh_.vertexes.push_back({{-1.f, 1.f, 0.f}, {0.f, 1.f}});
+  quadMesh_.indices = {0, 1, 2, 1, 2, 3};
+  quadMesh_.InitVertexes();
 
   // renderer
   renderer_ = renderer;
 
   // fbo
-  fbo_ = renderer_->CreateFrameBuffer();
+  fbo_ = renderer_->createFrameBuffer();
 
   // vao
-  quad_mesh_.vao = renderer_->CreateVertexArrayObject(quad_mesh_);
+  quadMesh_.vao = renderer_->createVertexArrayObject(quadMesh_);
 
   // program
-  auto program = renderer_->CreateShaderProgram();
-  bool success = shader_func(*program);
+  auto program = renderer_->createShaderProgram();
+  bool success = shaderFunc(*program);
   if (!success) {
     LOGE("create shader program failed");
     return;
   }
-  quad_mesh_.material_textured.shader_program = program;
-  quad_mesh_.material_textured.shader_uniforms = std::make_shared<ShaderUniforms>();
+  quadMesh_.materialTextured.shaderProgram = program;
+  quadMesh_.materialTextured.shaderUniforms = std::make_shared<ShaderUniforms>();
 
   // uniforms
   TextureUsage usage = TextureUsage_QUAD_FILTER;
-  const char *sampler_name = Material::SamplerName(usage);
-  uniform_tex_in_ = renderer_->CreateUniformSampler(sampler_name, TextureType_2D, TextureFormat_RGBA8);
-  quad_mesh_.material_textured.shader_uniforms->samplers[usage] = uniform_tex_in_;
+  const char *samplerName = Material::samplerName(usage);
+  uniformTexIn_ = renderer_->createUniformSampler(samplerName, TextureType_2D, TextureFormat_RGBA8);
+  quadMesh_.materialTextured.shaderUniforms->samplers[usage] = uniformTexIn_;
 
-  uniform_block_filter_ = renderer_->CreateUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
-  uniform_block_filter_->SetData(&uniform_filter_, sizeof(UniformsQuadFilter));
-  quad_mesh_.material_textured.shader_uniforms->blocks[UniformBlock_QuadFilter] = uniform_block_filter_;
+  uniformBlockFilter_ = renderer_->createUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
+  uniformBlockFilter_->setData(&uniformFilter_, sizeof(UniformsQuadFilter));
+  quadMesh_.materialTextured.shaderUniforms->blocks[UniformBlock_QuadFilter] = uniformBlockFilter_;
 
-  init_ready_ = true;
+  initReady_ = true;
 }
 
-void QuadFilter::SetTextures(std::shared_ptr<Texture> &tex_in,
-                             std::shared_ptr<Texture> &tex_out) {
-  width_ = tex_out->width;
-  height_ = tex_out->height;
-  uniform_filter_.u_screenSize = glm::vec2(width_, height_);
-  uniform_block_filter_->SetData(&uniform_filter_, sizeof(UniformsQuadFilter));
+void QuadFilter::setTextures(std::shared_ptr<Texture> &texIn, std::shared_ptr<Texture> &texOut) {
+  width_ = texOut->width;
+  height_ = texOut->height;
+  uniformFilter_.u_screenSize = glm::vec2(width_, height_);
+  uniformBlockFilter_->setData(&uniformFilter_, sizeof(UniformsQuadFilter));
 
-  uniform_tex_in_->SetTexture(tex_in);
-  fbo_->SetColorAttachment(tex_out, 0);
+  uniformTexIn_->setTexture(texIn);
+  fbo_->setColorAttachment(texOut, 0);
 }
 
-void QuadFilter::Draw() {
-  if (!init_ready_) {
+void QuadFilter::draw() {
+  if (!initReady_) {
     return;
   }
 
-  renderer_->SetFrameBuffer(fbo_);
-  renderer_->SetViewPort(0, 0, width_, height_);
+  renderer_->setFrameBuffer(fbo_);
+  renderer_->setViewPort(0, 0, width_, height_);
 
-  renderer_->Clear({});
-  renderer_->SetVertexArrayObject(quad_mesh_.vao);
-  renderer_->SetRenderState(quad_mesh_.material_textured.render_state);
-  renderer_->SetShaderProgram(quad_mesh_.material_textured.shader_program);
-  renderer_->SetShaderUniforms(quad_mesh_.material_textured.shader_uniforms);
-  renderer_->Draw(quad_mesh_.primitive_type);
+  renderer_->clear({});
+  renderer_->setVertexArrayObject(quadMesh_.vao);
+  renderer_->setRenderState(quadMesh_.materialTextured.renderState);
+  renderer_->setShaderProgram(quadMesh_.materialTextured.shaderProgram);
+  renderer_->setShaderUniforms(quadMesh_.materialTextured.shaderUniforms);
+  renderer_->draw(quadMesh_.primitiveType);
 }
 
 }

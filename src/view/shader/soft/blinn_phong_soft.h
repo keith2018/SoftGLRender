@@ -70,7 +70,7 @@ class ShaderBlinnPhong : public ShaderSoft {
  public:
   CREATE_SHADER_OVERRIDE
 
-  std::vector<std::string> &GetDefines() override {
+  std::vector<std::string> &getDefines() override {
     static std::vector<std::string> defines = {
         "ALBEDO_MAP",
         "NORMAL_MAP",
@@ -80,7 +80,7 @@ class ShaderBlinnPhong : public ShaderSoft {
     return defines;
   }
 
-  std::vector<UniformDesc> &GetUniformsDesc() override {
+  std::vector<UniformDesc> &getUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
         {"UniformsModel", offsetof(ShaderUniforms, u_reverseZ)},
         {"UniformsScene", offsetof(ShaderUniforms, u_ambientColor)},
@@ -99,7 +99,7 @@ class VS : public ShaderBlinnPhong {
  public:
   CREATE_SHADER_CLONE(VS)
 
-  void ShaderMain() override {
+  void shaderMain() override {
     glm::vec4 position = glm::vec4(a->a_position, 1.0);
     gl->Position = u->u_modelViewProjectionMatrix * position;
     v->v_texCoord = a->a_texCoord;
@@ -124,22 +124,22 @@ class FS : public ShaderBlinnPhong {
  public:
   CREATE_SHADER_CLONE(FS)
 
-  size_t GetSamplerDerivativeOffset(BaseSampler<RGBA> *sampler) const override {
+  size_t getSamplerDerivativeOffset(BaseSampler<RGBA> *sampler) const override {
     return offsetof(ShaderVaryings, v_texCoord);
   }
 
-  void SetupSamplerDerivative() override {
+  void setupSamplerDerivative() override {
     if (def->ALBEDO_MAP) {
-      u->u_albedoMap->SetLodFunc(&tex_lod_func);
+      u->u_albedoMap->setLodFunc(&texLodFunc);
     }
     if (def->NORMAL_MAP) {
-      u->u_normalMap->SetLodFunc(&tex_lod_func);
+      u->u_normalMap->setLodFunc(&texLodFunc);
     }
     if (def->EMISSIVE_MAP) {
-      u->u_emissiveMap->SetLodFunc(&tex_lod_func);
+      u->u_emissiveMap->setLodFunc(&texLodFunc);
     }
     if (def->AO_MAP) {
-      u->u_aoMap->SetLodFunc(&tex_lod_func);
+      u->u_aoMap->setLodFunc(&texLodFunc);
     }
   }
 
@@ -184,7 +184,7 @@ class FS : public ShaderBlinnPhong {
     return shadow;
   }
 
-  void ShaderMain() override {
+  void shaderMain() override {
     const static float pointLightRangeInverse = 1.0f / 5.f;
     const static float specularExponent = 128.f;
 

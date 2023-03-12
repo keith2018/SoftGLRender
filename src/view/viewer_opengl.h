@@ -17,7 +17,7 @@ namespace SoftGL {
 namespace View {
 
 #define CASE_CREATE_SHADER_GL(shading, source) case shading: \
-  return program_gl->CompileAndLink(source##_VS, source##_FS)
+  return programGL->CompileAndLink(source##_VS, source##_FS)
 
 class ViewerOpenGL : public Viewer {
  public:
@@ -26,21 +26,21 @@ class ViewerOpenGL : public Viewer {
     GL_CHECK(glGenFramebuffers(1, &fbo_out_));
   }
 
-  void ConfigRenderer() override {
+  void configRenderer() override {
     // disabled
-    config_.reverse_z = false;
-    config_.early_z = false;
+    config_.reverseZ = false;
+    config_.earlyZ = false;
   }
 
-  void SwapBuffer() override {
-    int width = tex_color_main_->width;
-    int height = tex_color_main_->height;
+  void swapBuffer() override {
+    int width = texColorMain_->width;
+    int height = texColorMain_->height;
 
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_in_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
-                                    tex_color_main_->multi_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
-                                    tex_color_main_->GetId(),
+                                    texColorMain_->multiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
+                                    texColorMain_->getId(),
                                     0));
 
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
@@ -57,17 +57,17 @@ class ViewerOpenGL : public Viewer {
                                GL_NEAREST));
   }
 
-  void Destroy() override {
+  void destroy() override {
     GL_CHECK(glDeleteFramebuffers(1, &fbo_in_));
     GL_CHECK(glDeleteFramebuffers(1, &fbo_out_));
   }
 
-  std::shared_ptr<Renderer> CreateRenderer() override {
+  std::shared_ptr<Renderer> createRenderer() override {
     return std::make_shared<RendererOpenGL>();
   }
 
-  bool LoadShaders(ShaderProgram &program, ShadingModel shading) override {
-    auto *program_gl = dynamic_cast<ShaderProgramOpenGL *>(&program);
+  bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
+    auto *programGL = dynamic_cast<ShaderProgramOpenGL *>(&program);
     switch (shading) {
       CASE_CREATE_SHADER_GL(Shading_BaseColor, BASIC);
       CASE_CREATE_SHADER_GL(Shading_BlinnPhong, BLINN_PHONG);

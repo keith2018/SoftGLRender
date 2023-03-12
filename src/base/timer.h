@@ -15,15 +15,9 @@ namespace SoftGL {
 
 class Timer {
  public:
-  Timer() {}
-
-  ~Timer() {}
-
-  void Start();
-
-  void Stop();
-
-  int64_t ElapseMillis() const;
+  void start();
+  void stop();
+  int64_t elapseMillis() const;
 
  private:
   std::chrono::time_point<std::chrono::steady_clock> start_;
@@ -32,18 +26,16 @@ class Timer {
 
 class ScopedTimer {
  public:
-
-  ScopedTimer(const char *str)
-      : tag_(str) {
-    timer_.Start();
+  explicit ScopedTimer(const char *str) : tag_(str) {
+    timer_.start();
   }
 
   ~ScopedTimer() {
-    timer_.Stop();
-    LOGD("%s: %lld ms\n", tag_.c_str(), timer_.ElapseMillis());
+    timer_.stop();
+    LOGD("%s: %lld ms\n", tag_.c_str(), timer_.elapseMillis());
   }
 
-  operator bool() {
+  explicit operator bool() {
     return true;
   }
 

@@ -9,6 +9,6 @@
 
 namespace SoftGL {
 
-int VertexArrayObjectSoft::uuid_counter_ = 0;
+int VertexArrayObjectSoft::uuidCounter_ = 0;
 
 }

@@ -16,16 +16,16 @@ class ShaderGLSL {
   explicit ShaderGLSL(GLenum type) : type_(type) {
     header_ = "#version 330 core\n";
   };
-  ~ShaderGLSL() { Destroy(); }
+  ~ShaderGLSL() { destroy(); }
 
-  void SetHeader(const std::string &header);
-  void AddDefines(const std::string &def);
-  bool LoadSource(const std::string &source);
-  bool LoadFile(const std::string &path);
-  void Destroy();
+  void setHeader(const std::string &header);
+  void addDefines(const std::string &def);
+  bool loadSource(const std::string &source);
+  bool loadFile(const std::string &path);
+  void destroy();
 
-  inline bool Empty() const { return 0 == id_; };
-  inline GLuint GetId() const { return id_; };
+  inline bool empty() const { return 0 == id_; };
+  inline GLuint getId() const { return id_; };
 
  private:
   GLenum type_;
@@ -36,19 +36,19 @@ class ShaderGLSL {
 
 class ProgramGLSL {
  public:
-  ~ProgramGLSL() { Destroy(); }
+  ~ProgramGLSL() { destroy(); }
 
-  void AddDefine(const std::string &def);
-  bool LoadSource(const std::string &vsSource, const std::string &fsSource);
-  bool LoadFile(const std::string &vsPath, const std::string &fsPath);
-  void Use();
-  void Destroy();
+  void addDefine(const std::string &def);
+  bool loadSource(const std::string &vsSource, const std::string &fsSource);
+  bool loadFile(const std::string &vsPath, const std::string &fsPath);
+  void use() const;
+  void destroy();
 
-  inline bool Empty() const { return 0 == id_; };
-  inline GLuint GetId() const { return id_; };
+  inline bool empty() const { return 0 == id_; };
+  inline GLuint getId() const { return id_; };
 
  private:
-  bool LoadShader(ShaderGLSL &vs, ShaderGLSL &fs);
+  bool loadShader(ShaderGLSL &vs, ShaderGLSL &fs);
 
  private:
   GLuint id_ = 0;

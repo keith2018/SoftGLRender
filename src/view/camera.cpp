@@ -10,20 +10,20 @@
 namespace SoftGL {
 namespace View {
 
-void Camera::SetPerspective(float fov, float aspect, float near, float far) {
+void Camera::setPerspective(float fov, float aspect, float near, float far) {
   fov_ = fov;
   aspect_ = aspect;
   near_ = near;
   far_ = far;
 }
 
-void Camera::LookAt(const glm::vec3 &eye, const glm::vec3 &center, const glm::vec3 &up) {
+void Camera::lookAt(const glm::vec3 &eye, const glm::vec3 &center, const glm::vec3 &up) {
   eye_ = eye;
   center_ = center;
   up_ = up;
 }
 
-glm::mat4 Camera::ProjectionMatrix() const {
+glm::mat4 Camera::projectionMatrix() const {
   float tanHalfFovInverse = 1.f / std::tan((fov_ * 0.5f));
 
   glm::mat4 projection(0.f);
@@ -36,7 +36,7 @@ glm::mat4 Camera::ProjectionMatrix() const {
   return projection;
 }
 
-glm::mat4 Camera::ViewMatrix() const {
+glm::mat4 Camera::viewMatrix() const {
   glm::vec3 forward(glm::normalize(center_ - eye_));
   glm::vec3 side(glm::normalize(cross(forward, up_)));
   glm::vec3 up(glm::cross(side, forward));
@@ -61,70 +61,70 @@ glm::mat4 Camera::ViewMatrix() const {
   return view;
 }
 
-glm::vec3 Camera::GetWorldPositionFromView(glm::vec3 pos) const {
-  glm::mat4 proj, view, proj_inv, view_inv;
-  proj = ProjectionMatrix();
-  view = ViewMatrix();
+glm::vec3 Camera::getWorldPositionFromView(glm::vec3 pos) const {
+  glm::mat4 proj, view, projInv, viewInv;
+  proj = projectionMatrix();
+  view = viewMatrix();
 
-  proj_inv = glm::inverse(proj);
-  view_inv = glm::inverse(view);
+  projInv = glm::inverse(proj);
+  viewInv = glm::inverse(view);
 
-  glm::vec4 pos_world = view_inv * proj_inv * glm::vec4(pos, 1);
+  glm::vec4 pos_world = viewInv * projInv * glm::vec4(pos, 1);
   pos_world /= pos_world.w;
 
   return glm::vec3{pos_world};
 }
 
-void Camera::Update() {
+void Camera::update() {
   glm::vec3 forward(glm::normalize(center_ - eye_));
   glm::vec3 side(glm::normalize(cross(forward, up_)));
   glm::vec3 up(glm::cross(side, forward));
 
-  float near_height_half = near_ * std::tan(fov_ / 2.f);
-  float far_height_half = far_ * std::tan(fov_ / 2.f);
-  float near_width_half = near_height_half * aspect_;
-  float far_width_half = far_height_half * aspect_;
+  float nearHeightHalf = near_ * std::tan(fov_ / 2.f);
+  float farHeightHalf = far_ * std::tan(fov_ / 2.f);
+  float nearWidthHalf = nearHeightHalf * aspect_;
+  float farWidthHalf = farHeightHalf * aspect_;
 
   // near plane
-  glm::vec3 near_center = eye_ + forward * near_;
-  glm::vec3 near_normal = forward;
-  frustum_.planes[0].Set(near_normal, near_center);
+  glm::vec3 nearCenter = eye_ + forward * near_;
+  glm::vec3 nearNormal = forward;
+  frustum_.planes[0].set(nearNormal, nearCenter);
 
   // far plane
-  glm::vec3 far_center = eye_ + forward * far_;
-  glm::vec3 far_normal = -forward;
-  frustum_.planes[1].Set(far_normal, far_center);
+  glm::vec3 farCenter = eye_ + forward * far_;
+  glm::vec3 farNormal = -forward;
+  frustum_.planes[1].set(farNormal, farCenter);
 
   // top plane
-  glm::vec3 top_center = near_center + up * near_height_half;
-  glm::vec3 top_normal = glm::cross(glm::normalize(top_center - eye_), side);
-  frustum_.planes[2].Set(top_normal, top_center);
+  glm::vec3 topCenter = nearCenter + up * nearHeightHalf;
+  glm::vec3 topNormal = glm::cross(glm::normalize(topCenter - eye_), side);
+  frustum_.planes[2].set(topNormal, topCenter);
 
   // bottom plane
-  glm::vec3 bottom_center = near_center - up * near_height_half;
-  glm::vec3 bottom_normal = glm::cross(side, glm::normalize(bottom_center - eye_));
-  frustum_.planes[3].Set(bottom_normal, bottom_center);
+  glm::vec3 bottomCenter = nearCenter - up * nearHeightHalf;
+  glm::vec3 bottomNormal = glm::cross(side, glm::normalize(bottomCenter - eye_));
+  frustum_.planes[3].set(bottomNormal, bottomCenter);
 
   // left plane
-  glm::vec3 left_center = near_center - side * near_width_half;
-  glm::vec3 left_normal = glm::cross(glm::normalize(left_center - eye_), up);
-  frustum_.planes[4].Set(left_normal, left_center);
+  glm::vec3 leftCenter = nearCenter - side * nearWidthHalf;
+  glm::vec3 leftNormal = glm::cross(glm::normalize(leftCenter - eye_), up);
+  frustum_.planes[4].set(leftNormal, leftCenter);
 
   // right plane
-  glm::vec3 right_center = near_center + side * near_width_half;
-  glm::vec3 right_normal = glm::cross(up, glm::normalize(right_center - eye_));
-  frustum_.planes[5].Set(right_normal, right_center);
+  glm::vec3 rightCenter = nearCenter + side * nearWidthHalf;
+  glm::vec3 rightNormal = glm::cross(up, glm::normalize(rightCenter - eye_));
+  frustum_.planes[5].set(rightNormal, rightCenter);
 
   // 8 corners
-  glm::vec3 nearTopLeft = near_center + up * near_height_half - side * near_width_half;
-  glm::vec3 nearTopRight = near_center + up * near_height_half + side * near_width_half;
-  glm::vec3 nearBottomLeft = near_center - up * near_height_half - side * near_width_half;
-  glm::vec3 nearBottomRight = near_center - up * near_height_half + side * near_width_half;
+  glm::vec3 nearTopLeft = nearCenter + up * nearHeightHalf - side * nearWidthHalf;
+  glm::vec3 nearTopRight = nearCenter + up * nearHeightHalf + side * nearWidthHalf;
+  glm::vec3 nearBottomLeft = nearCenter - up * nearHeightHalf - side * nearWidthHalf;
+  glm::vec3 nearBottomRight = nearCenter - up * nearHeightHalf + side * nearWidthHalf;
 
-  glm::vec3 farTopLeft = far_center + up * far_height_half - side * far_width_half;
-  glm::vec3 farTopRight = far_center + up * far_height_half + side * far_width_half;
-  glm::vec3 farBottomLeft = far_center - up * far_height_half - side * far_width_half;
-  glm::vec3 farBottomRight = far_center - up * far_height_half + side * far_width_half;
+  glm::vec3 farTopLeft = farCenter + up * farHeightHalf - side * farWidthHalf;
+  glm::vec3 farTopRight = farCenter + up * farHeightHalf + side * farWidthHalf;
+  glm::vec3 farBottomLeft = farCenter - up * farHeightHalf - side * farWidthHalf;
+  glm::vec3 farBottomRight = farCenter - up * farHeightHalf + side * farWidthHalf;
 
   frustum_.corners[0] = nearTopLeft;
   frustum_.corners[1] = nearTopRight;

@@ -17,27 +17,27 @@ constexpr float CAMERA_FAR = 100.f;
 
 class Camera {
  public:
-  void Update();
+  void update();
 
-  void SetPerspective(float fov, float aspect, float near, float far);
+  void setPerspective(float fov, float aspect, float near, float far);
 
-  void LookAt(const glm::vec3 &eye, const glm::vec3 &center, const glm::vec3 &up);
+  void lookAt(const glm::vec3 &eye, const glm::vec3 &center, const glm::vec3 &up);
 
-  glm::mat4 ProjectionMatrix() const;
-  glm::mat4 ViewMatrix() const;
+  glm::mat4 projectionMatrix() const;
+  glm::mat4 viewMatrix() const;
 
-  glm::vec3 GetWorldPositionFromView(glm::vec3 pos) const;
+  glm::vec3 getWorldPositionFromView(glm::vec3 pos) const;
 
-  inline const Frustum &GetFrustum() const { return frustum_; }
+  inline const Frustum &getFrustum() const { return frustum_; }
 
-  inline const float &Fov() const { return fov_; }
-  inline const float &Aspect() const { return aspect_; }
-  inline const float &Near() const { return near_; }
-  inline const float &Far() const { return far_; }
+  inline const float &fov() const { return fov_; }
+  inline const float &aspect() const { return aspect_; }
+  inline const float &near() const { return near_; }
+  inline const float &far() const { return far_; }
 
-  inline const glm::vec3 &Eye() const { return eye_; }
-  inline const glm::vec3 &Center() const { return center_; }
-  inline const glm::vec3 &Up() const { return up_; }
+  inline const glm::vec3 &eye() const { return eye_; }
+  inline const glm::vec3 &center() const { return center_; }
+  inline const glm::vec3 &up() const { return up_; }
 
  private:
   float fov_ = glm::radians(60.f);

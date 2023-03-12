@@ -13,32 +13,30 @@ namespace SoftGL {
 
 class FrameBufferSoft : public FrameBuffer {
  public:
-  FrameBufferSoft() : uuid_(uuid_counter_++) {
+  FrameBufferSoft() : uuid_(uuidCounter_++) {
   }
 
-  ~FrameBufferSoft() = default;
-
-  int GetId() const override {
+  int getId() const override {
     return uuid_;
   }
 
-  bool IsValid() override {
-    return color_ready || depth_ready;
+  bool isValid() override {
+    return colorReady || depthReady;
   }
 
-  std::shared_ptr<ImageBufferSoft<RGBA>> GetColorBuffer() const {
-    if (!color_ready) {
+  std::shared_ptr<ImageBufferSoft<RGBA>> getColorBuffer() const {
+    if (!colorReady) {
       return nullptr;
     }
 
-    switch (color_tex_type) {
+    switch (colorTexType) {
       case TextureType_2D: {
-        auto *color_2d = dynamic_cast<Texture2DSoft<RGBA> *>(color_attachment_2d.tex.get());
-        return color_2d->GetImage().GetBuffer(color_attachment_2d.level);
+        auto *color2d = dynamic_cast<Texture2DSoft<RGBA> *>(colorAttachment2d.tex.get());
+        return color2d->getImage().getBuffer(colorAttachment2d.level);
       }
       case TextureType_CUBE: {
-        auto *color_cube = dynamic_cast<TextureCubeSoft<RGBA> *>(color_attachment_cube.tex.get());
-        return color_cube->GetImage(color_attachment_cube.face).GetBuffer(color_attachment_cube.level);
+        auto *colorCube = dynamic_cast<TextureCubeSoft<RGBA> *>(colorAttachmentCube.tex.get());
+        return colorCube->getImage(colorAttachmentCube.face).getBuffer(colorAttachmentCube.level);
       }
       default:
         break;
@@ -47,17 +45,17 @@ class FrameBufferSoft : public FrameBuffer {
     return nullptr;
   };
 
-  std::shared_ptr<ImageBufferSoft<float>> GetDepthBuffer() const {
-    if (!depth_ready) {
+  std::shared_ptr<ImageBufferSoft<float>> getDepthBuffer() const {
+    if (!depthReady) {
       return nullptr;
     }
-    auto *depth_tex = dynamic_cast<Texture2DSoft<float> *>(depth_attachment.get());
-    return depth_tex->GetImage().GetBuffer();
+    auto *depthTex = dynamic_cast<Texture2DSoft<float> *>(depthAttachment.get());
+    return depthTex->getImage().getBuffer();
   };
 
  private:
   int uuid_ = -1;
-  static int uuid_counter_;
+  static int uuidCounter_;
 };
 
 }

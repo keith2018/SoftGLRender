@@ -18,23 +18,21 @@ class UniformBlockSoft : public UniformBlock {
     buffer_.resize(size);
   }
 
-  ~UniformBlockSoft() = default;
-
-  int GetLocation(ShaderProgram &program) override {
-    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
-    return program_soft->GetUniformLocation(name);
+  int getLocation(ShaderProgram &program) override {
+    auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
+    return programSoft->getUniformLocation(name);
   }
 
-  void BindProgram(ShaderProgram &program, int location) override {
-    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
-    program_soft->BindUniformBlockBuffer(buffer_.data(), buffer_.size(), location);
+  void bindProgram(ShaderProgram &program, int location) override {
+    auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
+    programSoft->bindUniformBlockBuffer(buffer_.data(), buffer_.size(), location);
   }
 
-  void SetSubData(void *data, int len, int offset) override {
+  void setSubData(void *data, int len, int offset) override {
     memcpy(buffer_.data() + offset, data, len);
   }
 
-  void SetData(void *data, int len) override {
+  void setData(void *data, int len) override {
     memcpy(buffer_.data(), data, len);
   }
 
@@ -73,20 +71,18 @@ class UniformSamplerSoft : public UniformSampler {
     }
   }
 
-  ~UniformSamplerSoft() = default;
-
-  int GetLocation(ShaderProgram &program) override {
-    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
-    return program_soft->GetUniformLocation(name);
+  int getLocation(ShaderProgram &program) override {
+    auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
+    return programSoft->getUniformLocation(name);
   }
 
-  void BindProgram(ShaderProgram &program, int location) override {
-    auto program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
-    program_soft->BindUniformSampler(sampler_, location);
+  void bindProgram(ShaderProgram &program, int location) override {
+    auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
+    programSoft->bindUniformSampler(sampler_, location);
   }
 
-  void SetTexture(const std::shared_ptr<Texture> &tex) override {
-    sampler_->SetTexture(tex);
+  void setTexture(const std::shared_ptr<Texture> &tex) override {
+    sampler_->setTexture(tex);
   }
 
  private:

@@ -15,47 +15,47 @@ namespace SoftGL {
 
 class ShaderProgram {
  public:
-  virtual int GetId() const = 0;
+  virtual int getId() const = 0;
 
-  virtual void AddDefine(const std::string &def) = 0;
+  virtual void addDefine(const std::string &def) = 0;
 
-  virtual void AddDefines(const std::set<std::string> &defs) {
+  virtual void addDefines(const std::set<std::string> &defs) {
     for (auto &str : defs) {
-      AddDefine(str);
+      addDefine(str);
     }
   }
 
-  virtual void BindUniforms(ShaderUniforms &uniforms) {
+  virtual void bindUniforms(ShaderUniforms &uniforms) {
     for (auto &kv : uniforms.blocks) {
-      BindUniform(*kv.second);
+      bindUniform(*kv.second);
     }
 
     for (auto &kv : uniforms.samplers) {
-      BindUniform(*kv.second);
+      bindUniform(*kv.second);
     }
   }
 
  protected:
-  virtual bool BindUniform(Uniform &uniform) {
-    int hash = uniform.GetHash();
+  virtual bool bindUniform(Uniform &uniform) {
+    int hash = uniform.getHash();
     int loc = -1;
-    if (uniform_locations_.find(hash) == uniform_locations_.end()) {
-      loc = uniform.GetLocation(*this);
-      uniform_locations_[hash] = loc;
+    if (uniformLocations_.find(hash) == uniformLocations_.end()) {
+      loc = uniform.getLocation(*this);
+      uniformLocations_[hash] = loc;
     } else {
-      loc = uniform_locations_[hash];
+      loc = uniformLocations_[hash];
     }
 
     if (loc < 0) {
       return false;
     }
 
-    uniform.BindProgram(*this, loc);
+    uniform.bindProgram(*this, loc);
     return true;
   };
 
  protected:
-  std::unordered_map<int, int> uniform_locations_;
+  std::unordered_map<int, int> uniformLocations_;
 };
 
 }

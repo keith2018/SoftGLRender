@@ -20,8 +20,8 @@ enum PrimitiveType {
 
 class VertexArrayObject {
  public:
-  virtual int GetId() const = 0;
-  virtual void UpdateVertexData(void *data, size_t length) = 0;
+  virtual int getId() const = 0;
+  virtual void updateVertexData(void *data, size_t length) = 0;
 };
 
 // only support float type attributes
@@ -32,12 +32,12 @@ struct VertexAttributeDesc {
 };
 
 struct VertexArray {
-  std::vector<VertexAttributeDesc> vertexes_desc;
-  uint8_t *vertexes_buffer = nullptr;
-  size_t vertexes_buffer_length = 0;
+  std::vector<VertexAttributeDesc> vertexesDesc;
+  uint8_t *vertexesBuffer = nullptr;
+  size_t vertexesBufferLength = 0;
 
-  int32_t *indices_buffer = nullptr;
-  size_t indices_buffer_length = 0;
+  int32_t *indicesBuffer = nullptr;
+  size_t indicesBufferLength = 0;
 };
 
 }

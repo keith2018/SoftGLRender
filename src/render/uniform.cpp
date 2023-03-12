@@ -9,6 +9,6 @@
 
 namespace SoftGL {
 
-int Uniform::uuid_counter_ = 0;
+int Uniform::uuidCounter_ = 0;
 
 }

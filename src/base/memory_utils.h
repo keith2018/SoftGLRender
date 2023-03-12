@@ -17,7 +17,7 @@ namespace SoftGL {
 class MemoryUtils {
  public:
 
-  static void *AlignedMalloc(size_t size, size_t alignment = SOFTGL_ALIGNMENT) {
+  static void *alignedMalloc(size_t size, size_t alignment = SOFTGL_ALIGNMENT) {
     if ((alignment & (alignment - 1)) != 0) {
       LOGE("failed to malloc, invalid alignment: %d", alignment);
       return nullptr;
@@ -30,18 +30,18 @@ class MemoryUtils {
       return nullptr;
     }
     size_t addr = (size_t) data + extra;
-    void *aligned_ptr = (void *) (addr - (addr % alignment));
-    *((void **) aligned_ptr - 1) = data;
-    return aligned_ptr;
+    void *alignedPtr = (void *) (addr - (addr % alignment));
+    *((void **) alignedPtr - 1) = data;
+    return alignedPtr;
   }
 
-  static void AlignedFree(void *ptr) {
+  static void alignedFree(void *ptr) {
     if (ptr) {
       free(((void **) ptr)[-1]);
     }
   }
 
-  static size_t AlignedSize(size_t size) {
+  static size_t alignedSize(size_t size) {
     if (size == 0) {
       return 0;
     }
@@ -49,23 +49,23 @@ class MemoryUtils {
   }
 
   template<typename T>
-  static std::shared_ptr<T> MakeAlignedBuffer(size_t elem_cnt) {
-    if (elem_cnt == 0) {
+  static std::shared_ptr<T> makeAlignedBuffer(size_t elemCnt) {
+    if (elemCnt == 0) {
       return nullptr;
     }
-    return std::shared_ptr<T>((T *) MemoryUtils::AlignedMalloc(elem_cnt * sizeof(T)),
-                              [](const T *ptr) { MemoryUtils::AlignedFree((void *) ptr); });
+    return std::shared_ptr<T>((T *) MemoryUtils::alignedMalloc(elemCnt * sizeof(T)),
+                              [](const T *ptr) { MemoryUtils::alignedFree((void *) ptr); });
   }
 
   template<typename T>
-  static std::shared_ptr<T> MakeBuffer(size_t elem_cnt, const uint8_t *data = nullptr) {
-    if (elem_cnt == 0) {
+  static std::shared_ptr<T> makeBuffer(size_t elemCnt, const uint8_t *data = nullptr) {
+    if (elemCnt == 0) {
       return nullptr;
     }
     if (data != nullptr) {
       return std::shared_ptr<T>((T *) data, [](const T *ptr) {});
     } else {
-      return std::shared_ptr<T>(new T[elem_cnt], [](const T *ptr) { delete[] ptr; });
+      return std::shared_ptr<T>(new T[elemCnt], [](const T *ptr) { delete[] ptr; });
     }
   }
 };

@@ -43,14 +43,14 @@ class ShaderSkybox : public ShaderSoft {
  public:
   CREATE_SHADER_OVERRIDE
 
-  std::vector<std::string> &GetDefines() override {
+  std::vector<std::string> &getDefines() override {
     static std::vector<std::string> defines = {
         "EQUIRECTANGULAR_MAP",
     };
     return defines;
   }
 
-  std::vector<UniformDesc> &GetUniformsDesc() override {
+  std::vector<UniformDesc> &getUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
         {"UniformsModel", offsetof(ShaderUniforms, u_reverseZ)},
         {"u_equirectangularMap", offsetof(ShaderUniforms, u_equirectangularMap)},
@@ -64,7 +64,7 @@ class VS : public ShaderSkybox {
  public:
   CREATE_SHADER_CLONE(VS)
 
-  void ShaderMain() override {
+  void shaderMain() override {
     glm::vec4 pos = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0);
     gl->Position = pos;
     gl->Position.z = pos.w;
@@ -83,7 +83,7 @@ class FS : public ShaderSkybox {
     return uv;
   }
 
-  void ShaderMain() override {
+  void shaderMain() override {
     if (def->EQUIRECTANGULAR_MAP) {
       glm::vec2 uv = SampleSphericalMap(normalize(v->v_worldPos));
       gl->FragColor = texture(u->u_equirectangularMap, uv);

@@ -100,103 +100,103 @@ struct UniformsIBLPrefilter {
 
 struct TextureData {
   std::vector<std::shared_ptr<Buffer<RGBA>>> data;
-  WrapMode wrap_mode = Wrap_REPEAT;
+  WrapMode wrapMode = Wrap_REPEAT;
 };
 
 class Material {
  public:
-  static const char *ShadingModelStr(ShadingModel model);
-  static const char *TextureUsageStr(TextureUsage usage);
-  static const char *SamplerDefine(TextureUsage usage);
-  static const char *SamplerName(TextureUsage usage);
+  static const char *shadingModelStr(ShadingModel model);
+  static const char *textureUsageStr(TextureUsage usage);
+  static const char *samplerDefine(TextureUsage usage);
+  static const char *samplerName(TextureUsage usage);
 
-  virtual MaterialType Type() const = 0;
+  virtual MaterialType type() const = 0;
 
-  virtual void Reset() {
+  virtual void reset() {
     shading = Shading_BaseColor;
-    texture_data.clear();
-    ResetRuntimeStates();
+    textureData.clear();
+    resetRuntimeStates();
   }
 
-  virtual void ResetRuntimeStates() {
-    render_state = RenderState();
-    ResetProgram();
-    ResetTextures();
+  virtual void resetRuntimeStates() {
+    renderState = RenderState();
+    resetProgram();
+    resetTextures();
   }
 
-  void ResetProgram() {
-    shader_program = nullptr;
-    shader_uniforms = nullptr;
-    program_dirty_ = true;
+  void resetProgram() {
+    shaderProgram = nullptr;
+    shaderUniforms = nullptr;
+    programDirty_ = true;
   }
 
-  void ResetTextures() {
+  void resetTextures() {
     textures.clear();
-    textures_dirty_ = true;
+    texturesDirty_ = true;
   }
 
-  void CreateProgram(const std::function<void()> &func) {
-    if (program_dirty_) {
+  void createProgram(const std::function<void()> &func) {
+    if (programDirty_) {
       func();
-      program_dirty_ = false;
+      programDirty_ = false;
     }
   }
 
-  void CreateTextures(const std::function<void()> &func) {
-    if (textures_dirty_) {
+  void createTextures(const std::function<void()> &func) {
+    if (texturesDirty_) {
       func();
-      textures_dirty_ = false;
+      texturesDirty_ = false;
     }
   }
 
  public:
   ShadingModel shading;
-  AlphaMode alpha_mode = Alpha_Opaque;
-  bool double_sided = false;
-  std::unordered_map<int, TextureData> texture_data;
+  AlphaMode alphaMode = Alpha_Opaque;
+  bool doubleSided = false;
+  std::unordered_map<int, TextureData> textureData;
 
-  RenderState render_state;
-  std::shared_ptr<ShaderProgram> shader_program;
-  std::shared_ptr<ShaderUniforms> shader_uniforms;
+  RenderState renderState;
+  std::shared_ptr<ShaderProgram> shaderProgram;
+  std::shared_ptr<ShaderUniforms> shaderUniforms;
   std::unordered_map<int, std::shared_ptr<Texture>> textures;
 
  private:
-  bool program_dirty_ = false;
-  bool textures_dirty_ = false;
+  bool programDirty_ = false;
+  bool texturesDirty_ = false;
 };
 
 class BaseColorMaterial : public Material {
  public:
-  MaterialType Type() const override {
+  MaterialType type() const override {
     return Material_BaseColor;
   }
 
  public:
-  glm::vec4 base_color;
+  glm::vec4 baseColor;
 };
 
 class TexturedMaterial : public Material {
  public:
-  MaterialType Type() const override {
+  MaterialType type() const override {
     return Material_Textured;
   }
 };
 
 class SkyboxMaterial : public Material {
  public:
-  MaterialType Type() const override {
+  MaterialType type() const override {
     return Material_Skybox;
   }
 
-  void ResetRuntimeStates() override {
-    Material::ResetRuntimeStates();
-    ibl_ready = false;
-    ibl_error = false;
+  void resetRuntimeStates() override {
+    Material::resetRuntimeStates();
+    iblReady = false;
+    iblError = false;
   }
 
  public:
-  bool ibl_ready = false;
-  bool ibl_error = false;
+  bool iblReady = false;
+  bool iblError = false;
 };
 
 }

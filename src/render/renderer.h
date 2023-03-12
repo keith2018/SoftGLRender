@@ -18,40 +18,39 @@ namespace SoftGL {
 class Renderer {
  public:
   // config reverse z
-  virtual void SetReverseZ(bool enable) {};
-  virtual bool GetReverseZ() { return false; };
+  virtual void setReverseZ(bool enable) {};
+  virtual bool getReverseZ() { return false; };
 
   // config early z
-  virtual void SetEarlyZ(bool enable) {};
-  virtual bool GetEarlyZ() { return false; };
+  virtual void setEarlyZ(bool enable) {};
+  virtual bool getEarlyZ() { return false; };
 
   // framebuffer
-  virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
+  virtual std::shared_ptr<FrameBuffer> createFrameBuffer() = 0;
 
   // texture
-  virtual std::shared_ptr<Texture> CreateTexture(const TextureDesc &desc) = 0;
+  virtual std::shared_ptr<Texture> createTexture(const TextureDesc &desc) = 0;
 
   // vertex
-  virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) = 0;
+  virtual std::shared_ptr<VertexArrayObject> createVertexArrayObject(const VertexArray &vertexArray) = 0;
 
   // shader program
-  virtual std::shared_ptr<ShaderProgram> CreateShaderProgram() = 0;
+  virtual std::shared_ptr<ShaderProgram> createShaderProgram() = 0;
 
   // uniform
-  virtual std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) = 0;
-  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name,
-                                                               TextureType type,
+  virtual std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) = 0;
+  virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
                                                                TextureFormat format) = 0;
 
   // pipeline
-  virtual void SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) = 0;
-  virtual void SetViewPort(int x, int y, int width, int height) = 0;
-  virtual void Clear(const ClearState &state) = 0;
-  virtual void SetRenderState(const RenderState &state) = 0;
-  virtual void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
-  virtual void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
-  virtual void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
-  virtual void Draw(PrimitiveType type) = 0;
+  virtual void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) = 0;
+  virtual void setViewPort(int x, int y, int width, int height) = 0;
+  virtual void clear(const ClearState &state) = 0;
+  virtual void setRenderState(const RenderState &state) = 0;
+  virtual void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
+  virtual void setShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
+  virtual void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
+  virtual void draw(PrimitiveType type) = 0;
 };
 
 }

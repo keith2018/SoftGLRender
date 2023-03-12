@@ -20,23 +20,23 @@ enum BufferLayout {
 template<typename T>
 class Buffer {
  public:
-  static std::shared_ptr<Buffer<T>> MakeDefault(size_t w, size_t h);
-  static std::shared_ptr<Buffer<T>> MakeLayout(size_t w, size_t h, BufferLayout layout);
+  static std::shared_ptr<Buffer<T>> makeDefault(size_t w, size_t h);
+  static std::shared_ptr<Buffer<T>> makeLayout(size_t w, size_t h, BufferLayout layout);
 
-  virtual void InitLayout() {
-    inner_width_ = width_;
-    inner_height_ = height_;
+  virtual void initLayout() {
+    innerWidth_ = width_;
+    innerHeight_ = height_;
   }
 
-  virtual inline size_t ConvertIndex(size_t x, size_t y) const {
-    return x + y * inner_width_;
+  virtual inline size_t convertIndex(size_t x, size_t y) const {
+    return x + y * innerWidth_;
   }
 
-  virtual BufferLayout GetLayout() const {
+  virtual BufferLayout getLayout() const {
     return Layout_Linear;
   }
 
-  void Create(size_t w, size_t h, const uint8_t *data = nullptr) {
+  void create(size_t w, size_t h, const uint8_t *data = nullptr) {
     if (w > 0 && h > 0) {
       if (width_ == w && height_ == h) {
         return;
@@ -44,82 +44,81 @@ class Buffer {
       width_ = w;
       height_ = h;
 
-      InitLayout();
-      data_size_ = inner_width_ * inner_height_;
-      data_ = MemoryUtils::MakeBuffer<T>(data_size_, data);
+      initLayout();
+      dataSize_ = innerWidth_ * innerHeight_;
+      data_ = MemoryUtils::makeBuffer<T>(dataSize_, data);
     }
   }
 
-  virtual void Destroy() {
+  virtual void destroy() {
     width_ = 0;
     height_ = 0;
-    inner_width_ = 0;
-    inner_height_ = 0;
-    data_size_ = 0;
+    innerWidth_ = 0;
+    innerHeight_ = 0;
+    dataSize_ = 0;
     data_ = nullptr;
   }
 
-  inline T *GetRawDataPtr() const {
+  inline T *getRawDataPtr() const {
     return data_.get();
   }
 
-  inline size_t GetRawDataSize() const {
-    return data_size_;
+  inline size_t getRawDataSize() const {
+    return dataSize_;
   }
 
-  inline bool Empty() const {
+  inline bool empty() const {
     return data_ == nullptr;
   }
 
-  inline size_t GetWidth() const {
+  inline size_t getWidth() const {
     return width_;
   }
 
-  inline size_t GetHeight() const {
+  inline size_t getHeight() const {
     return height_;
   }
 
-  inline T *Get(size_t x, size_t y) {
+  inline T *get(size_t x, size_t y) {
     T *ptr = data_.get();
     if (ptr != nullptr && x < width_ && y < height_) {
-      return &ptr[ConvertIndex(x, y)];
+      return &ptr[convertIndex(x, y)];
     }
     return nullptr;
   }
 
-  inline void Set(size_t x, size_t y, const T &pixel) {
+  inline void set(size_t x, size_t y, const T &pixel) {
     T *ptr = data_.get();
     if (ptr != nullptr && x < width_ && y < height_) {
-      ptr[ConvertIndex(x, y)] = pixel;
+      ptr[convertIndex(x, y)] = pixel;
     }
   }
 
-  void CopyRawDataTo(T *out, bool flip_y = false) const {
+  void copyRawDataTo(T *out, bool flip_y = false) const {
     T *ptr = data_.get();
     if (ptr != nullptr) {
       if (!flip_y) {
-        memcpy(out, ptr, data_size_ * sizeof(T));
+        memcpy(out, ptr, dataSize_ * sizeof(T));
       } else {
-        for (int i = 0; i < inner_height_; i++) {
-          memcpy(out + inner_width_ * i,
-                 ptr + inner_width_ * (inner_height_ - 1 - i),
-                 inner_width_ * sizeof(T));
+        for (int i = 0; i < innerHeight_; i++) {
+          memcpy(out + innerWidth_ * i, ptr + innerWidth_ * (innerHeight_ - 1 - i),
+                 innerWidth_ * sizeof(T));
         }
       }
     }
   }
 
-  inline void Clear() const {
+  inline void clear() const {
     T *ptr = data_.get();
     if (ptr != nullptr) {
-      memset(ptr, 0, data_size_ * sizeof(T));
+      memset(ptr, 0, dataSize_ * sizeof(T));
     }
   }
 
-  inline void SetAll(T val) const {
+  inline void setAll(T val) const {
     T *ptr = data_.get();
     if (ptr != nullptr) {
-      for (int i = 0; i < data_size_; i++) {
+      for (int i = 0; i < dataSize_; i++) {
         ptr[i] = val;
       }
     }
@@ -128,54 +127,52 @@ class Buffer {
  protected:
   size_t width_ = 0;
   size_t height_ = 0;
-  size_t inner_width_ = 0;
-  size_t inner_height_ = 0;
+  size_t innerWidth_ = 0;
+  size_t innerHeight_ = 0;
   std::shared_ptr<T> data_ = nullptr;
-  size_t data_size_ = 0;
+  size_t dataSize_ = 0;
 };
 
 template<typename T>
 class TiledBuffer : public Buffer<T> {
  public:
 
-  void InitLayout() override {
-    tile_width_ = (this->width_ + tile_size_ - 1) / tile_size_;
-    tile_height_ = (this->height_ + tile_size_ - 1) / tile_size_;
-    this->inner_width_ = tile_width_ * tile_size_;
-    this->inner_height_ = tile_height_ * tile_size_;
+  void initLayout() override {
+    tileWidth_ = (this->width_ + tileSize_ - 1) / tileSize_;
+    tileHeight_ = (this->height_ + tileSize_ - 1) / tileSize_;
+    this->innerWidth_ = tileWidth_ * tileSize_;
+    this->innerHeight_ = tileHeight_ * tileSize_;
   }
 
-  inline size_t ConvertIndex(size_t x, size_t y) const override {
-    uint16_t tileX = x >> bits_;              // x / tile_size_
-    uint16_t tileY = y >> bits_;              // y / tile_size_
-    uint16_t inTileX = x & (tile_size_ - 1);  // x % tile_size_
-    uint16_t inTileY = y & (tile_size_ - 1);  // y % tile_size_
+  inline size_t convertIndex(size_t x, size_t y) const override {
+    uint16_t tileX = x >> bits_;              // x / tileSize_
+    uint16_t tileY = y >> bits_;              // y / tileSize_
+    uint16_t inTileX = x & (tileSize_ - 1);   // x % tileSize_
+    uint16_t inTileY = y & (tileSize_ - 1);   // y % tileSize_
 
-    return ((tileY * tile_width_ + tileX) << bits_ << bits_)
-        + (inTileY << bits_)
-        + inTileX;
+    return ((tileY * tileWidth_ + tileX) << bits_ << bits_) + (inTileY << bits_) + inTileX;
   }
 
-  BufferLayout GetLayout() const override {
+  BufferLayout getLayout() const override {
     return Layout_Tiled;
   }
 
  private:
-  const static int tile_size_ = 4;   // 4 x 4
-  const static int bits_ = 2;        // tile_size_ = 2^bits_
-  size_t tile_width_ = 0;
-  size_t tile_height_ = 0;
+  const static int tileSize_ = 4;   // 4 x 4
+  const static int bits_ = 2;       // tileSize_ = 2^bits_
+  size_t tileWidth_ = 0;
+  size_t tileHeight_ = 0;
 };
 
 template<typename T>
 class MortonBuffer : public Buffer<T> {
  public:
 
-  void InitLayout() override {
-    tile_width_ = (this->width_ + tile_size_ - 1) / tile_size_;
-    tile_height_ = (this->height_ + tile_size_ - 1) / tile_size_;
-    this->inner_width_ = tile_width_ * tile_size_;
-    this->inner_height_ = tile_height_ * tile_size_;
+  void initLayout() override {
+    tileWidth_ = (this->width_ + tileSize_ - 1) / tileSize_;
+    tileHeight_ = (this->height_ + tileSize_ - 1) / tileSize_;
+    this->innerWidth_ = tileWidth_ * tileSize_;
+    this->innerHeight_ = tileHeight_ * tileSize_;
   }
 
   /**
@@ -189,31 +186,30 @@ class MortonBuffer : public Buffer<T> {
     return uint16_t(res | (res >> 15));
   }
 
-  inline size_t ConvertIndex(size_t x, size_t y) const override {
-    uint16_t tileX = x >> bits_;              // x / tile_size_
-    uint16_t tileY = y >> bits_;              // y / tile_size_
-    uint16_t inTileX = x & (tile_size_ - 1);  // x % tile_size_
-    uint16_t inTileY = y & (tile_size_ - 1);  // y % tile_size_
+  inline size_t convertIndex(size_t x, size_t y) const override {
+    uint16_t tileX = x >> bits_;              // x / tileSize_
+    uint16_t tileY = y >> bits_;              // y / tileSize_
+    uint16_t inTileX = x & (tileSize_ - 1);   // x % tileSize_
+    uint16_t inTileY = y & (tileSize_ - 1);   // y % tileSize_
 
     uint16_t mortonIndex = encode16_morton2(inTileX, inTileY);
 
-    return ((tileY * tile_width_ + tileX) << bits_ << bits_)
-        + mortonIndex;
+    return ((tileY * tileWidth_ + tileX) << bits_ << bits_) + mortonIndex;
   }
 
-  BufferLayout GetLayout() const override {
+  BufferLayout getLayout() const override {
     return Layout_Morton;
   }
 
  private:
-  const static int tile_size_ = 32; // 32 x 32
-  const static int bits_ = 5;       // tile_size_ = 2^bits_
-  size_t tile_width_ = 0;
-  size_t tile_height_ = 0;
+  const static int tileSize_ = 32;  // 32 x 32
+  const static int bits_ = 5;       // tileSize_ = 2^bits_
+  size_t tileWidth_ = 0;
+  size_t tileHeight_ = 0;
 };
 
 template<typename T>
-std::shared_ptr<Buffer<T>> Buffer<T>::MakeDefault(size_t w, size_t h) {
+std::shared_ptr<Buffer<T>> Buffer<T>::makeDefault(size_t w, size_t h) {
   std::shared_ptr<Buffer<T>> ret = nullptr;
 #if SOFTGL_TEXTURE_TILED
   ret = std::make_shared<TiledBuffer<T>>();
@@ -222,12 +218,12 @@ std::shared_ptr<Buffer<T>> Buffer<T>::MakeDefault(size_t w, size_t h) {
 #else
   ret = std::make_shared<Buffer<T>>();
 #endif
-  ret->Create(w, h);
+  ret->create(w, h);
   return ret;
 }
 
 template<typename T>
-std::shared_ptr<Buffer<T>> Buffer<T>::MakeLayout(size_t w, size_t h, BufferLayout layout) {
+std::shared_ptr<Buffer<T>> Buffer<T>::makeLayout(size_t w, size_t h, BufferLayout layout) {
   std::shared_ptr<Buffer<T>> ret = nullptr;
   switch (layout) {
     case Layout_Tiled: {
@@ -242,7 +238,7 @@ std::shared_ptr<Buffer<T>> Buffer<T>::MakeLayout(size_t w, size_t h, BufferLayou
     }
   }
 
-  ret->Create(w, h);
+  ret->create(w, h);
   return ret;
 }
 

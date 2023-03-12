@@ -16,41 +16,41 @@ namespace SoftGL {
 namespace View {
 
 #define CASE_CREATE_SHADER_SOFT(shading, source) case shading: \
-  return program_soft->SetShaders(std::make_shared<source::VS>(), std::make_shared<source::FS>())
+  return programSoft->SetShaders(std::make_shared<source::VS>(), std::make_shared<source::FS>())
 
 class ViewerSoft : public Viewer {
  public:
   ViewerSoft(Config &config, Camera &camera) : Viewer(config, camera) {}
 
-  void ConfigRenderer() override {
-    if (renderer_->GetReverseZ() != config_.reverse_z) {
-      tex_depth_shadow_ = nullptr;
+  void configRenderer() override {
+    if (renderer_->getReverseZ() != config_.reverseZ) {
+      texDepthShadow_ = nullptr;
     }
-    renderer_->SetReverseZ(config_.reverse_z);
-    renderer_->SetEarlyZ(config_.early_z);
+    renderer_->setReverseZ(config_.reverseZ);
+    renderer_->setEarlyZ(config_.earlyZ);
   }
 
-  void SwapBuffer() override {
-    auto *tex_out = dynamic_cast<Texture2DSoft<RGBA> *>(tex_color_main_.get());
-    auto buffer = tex_out->GetImage().GetBuffer()->buffer;
+  void swapBuffer() override {
+    auto *texOut = dynamic_cast<Texture2DSoft<RGBA> *>(texColorMain_.get());
+    auto buffer = texOut->getImage().getBuffer()->buffer;
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
     GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
                           0,
                           GL_RGBA,
-                          (int) buffer->GetWidth(),
-                          (int) buffer->GetHeight(),
+                          (int) buffer->getWidth(),
+                          (int) buffer->getHeight(),
                           0,
                           GL_RGBA,
                           GL_UNSIGNED_BYTE,
-                          buffer->GetRawDataPtr()));
+                          buffer->getRawDataPtr()));
   }
 
-  std::shared_ptr<Renderer> CreateRenderer() override {
+  std::shared_ptr<Renderer> createRenderer() override {
     return std::make_shared<RendererSoft>();
   }
 
-  bool LoadShaders(ShaderProgram &program, ShadingModel shading) override {
-    auto *program_soft = dynamic_cast<ShaderProgramSoft *>(&program);
+  bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
+    auto *programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
     switch (shading) {
       CASE_CREATE_SHADER_SOFT(Shading_BaseColor, ShaderBasic);
       CASE_CREATE_SHADER_SOFT(Shading_BlinnPhong, ShaderBlinnPhong);

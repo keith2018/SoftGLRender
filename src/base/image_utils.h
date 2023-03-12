@@ -12,17 +12,11 @@ namespace SoftGL {
 
 class ImageUtils {
  public:
-  static std::shared_ptr<Buffer<RGBA>> ReadImageRGBA(const std::string &path);
+  static std::shared_ptr<Buffer<RGBA>> readImageRGBA(const std::string &path);
+  static void writeImage(char const *filename, int w, int h, int comp, const void *data, int strideInBytes,
+                         bool flipY);
 
-  static void WriteImage(char const *filename,
-                         int w,
-                         int h,
-                         int comp,
-                         const void *data,
-                         int stride_in_bytes,
-                         bool flip_y);
-
-  static void ConvertFloatImage(RGBA *dst, float *src, int width, int height);
+  static void convertFloatImage(RGBA *dst, float *src, int width, int height);
 };
 
 }

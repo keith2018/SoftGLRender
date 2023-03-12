@@ -18,7 +18,7 @@ namespace View {
 
 class ViewerManager {
  public:
-  bool Create(void *window, int width, int height, int outTexId) {
+  bool create(void *window, int width, int height, int outTexId) {
     window_ = window;
     width_ = width;
     height_ = height;
@@ -26,19 +26,19 @@ class ViewerManager {
 
     // camera
     camera_ = std::make_shared<Camera>();
-    camera_->SetPerspective(glm::radians(CAMERA_FOV), (float) width / (float) height, CAMERA_NEAR, CAMERA_FAR);
+    camera_->setPerspective(glm::radians(CAMERA_FOV), (float) width / (float) height, CAMERA_NEAR, CAMERA_FAR);
 
     // orbit controller
-    orbit_controller_ = std::make_shared<SmoothOrbitController>(std::make_shared<OrbitController>(*camera_));
+    orbitController_ = std::make_shared<SmoothOrbitController>(std::make_shared<OrbitController>(*camera_));
 
     // config
     config_ = std::make_shared<Config>();
-    config_panel_ = std::make_shared<ConfigPanel>(*config_);
-    config_panel_->SetResetCameraFunc([&]() -> void {
-      orbit_controller_->Reset();
+    configPanel_ = std::make_shared<ConfigPanel>(*config_);
+    configPanel_->setResetCameraFunc([&]() -> void {
+      orbitController_->reset();
     });
-    config_panel_->SetResetMipmapsFunc([&]() -> void {
-      model_loader_->GetScene().ResetModelTextures();
+    configPanel_->setResetMipmapsFunc([&]() -> void {
+      modelLoader_->getScene().resetModelTextures();
     });
 
     // viewer soft
@@ -50,74 +50,74 @@ class ViewerManager {
     viewers_[Renderer_OPENGL] = std::move(viewer_opengl);
 
     // model loader
-    model_loader_ = std::make_shared<ModelLoader>(*config_, *config_panel_);
+    modelLoader_ = std::make_shared<ModelLoader>(*config_, *configPanel_);
 
     // init config
-    return config_panel_->Init(window, width, height);
+    return configPanel_->init(window, width, height);
   }
 
-  void DrawFrame() {
-    orbit_controller_->Update();
-    camera_->Update();
-    config_panel_->Update();
+  void drawFrame() {
+    orbitController_->update();
+    camera_->update();
+    configPanel_->update();
 
     // update triangle count
-    config_->triangle_count_ = model_loader_->GetModelPrimitiveCnt();
+    config_->triangleCount_ = modelLoader_->getModelPrimitiveCnt();
 
-    auto &viewer = viewers_[config_->renderer_type];
-    if (renderer_type_ != config_->renderer_type) {
-      renderer_type_ = config_->renderer_type;
-      model_loader_->GetScene().ResetAllStates();
-      viewer->Create(width_, height_, outTexId_);
+    auto &viewer = viewers_[config_->rendererType];
+    if (rendererType_ != config_->rendererType) {
+      rendererType_ = config_->rendererType;
+      modelLoader_->getScene().resetAllStates();
+      viewer->create(width_, height_, outTexId_);
     }
-    viewer->ConfigRenderer();
-    viewer->DrawFrame(model_loader_->GetScene());
-    viewer->SwapBuffer();
+    viewer->configRenderer();
+    viewer->drawFrame(modelLoader_->getScene());
+    viewer->swapBuffer();
   }
 
-  inline void Destroy() {
+  inline void destroy() {
     for (auto &it : viewers_) {
-      it.second->Destroy();
+      it.second->destroy();
     }
   }
 
-  inline void DrawPanel() {
-    if (show_config_panel_) {
-      config_panel_->OnDraw();
+  inline void drawPanel() {
+    if (showConfigPanel_) {
+      configPanel_->onDraw();
     }
   }
 
-  inline void TogglePanelState() {
-    show_config_panel_ = !show_config_panel_;
+  inline void togglePanelState() {
+    showConfigPanel_ = !showConfigPanel_;
   }
 
-  inline void UpdateSize(int width, int height) {
+  inline void updateSize(int width, int height) {
     width_ = width;
     height_ = height;
-    config_panel_->UpdateSize(width, height);
+    configPanel_->updateSize(width, height);
   }
 
-  inline void UpdateGestureZoom(float x, float y) {
-    orbit_controller_->zoomX = x;
-    orbit_controller_->zoomY = y;
+  inline void updateGestureZoom(float x, float y) {
+    orbitController_->zoomX = x;
+    orbitController_->zoomY = y;
   }
 
-  inline void UpdateGestureRotate(float x, float y) {
-    orbit_controller_->rotateX = x;
-    orbit_controller_->rotateY = y;
+  inline void updateGestureRotate(float x, float y) {
+    orbitController_->rotateX = x;
+    orbitController_->rotateY = y;
   }
 
-  inline void UpdateGesturePan(float x, float y) {
-    orbit_controller_->panX = x;
-    orbit_controller_->panY = y;
+  inline void updateGesturePan(float x, float y) {
+    orbitController_->panX = x;
+    orbitController_->panY = y;
   }
 
-  inline bool WantCaptureKeyboard() {
-    return config_panel_->WantCaptureKeyboard();
+  inline bool wantCaptureKeyboard() {
+    return configPanel_->wantCaptureKeyboard();
   }
 
-  inline bool WantCaptureMouse() {
-    return config_panel_->WantCaptureMouse();
+  inline bool wantCaptureMouse() {
+    return configPanel_->wantCaptureMouse();
   }
 
  private:
@@ -127,15 +127,15 @@ class ViewerManager {
   int outTexId_ = 0;
 
   std::shared_ptr<Config> config_;
-  std::shared_ptr<ConfigPanel> config_panel_;
+  std::shared_ptr<ConfigPanel> configPanel_;
   std::shared_ptr<Camera> camera_;
-  std::shared_ptr<SmoothOrbitController> orbit_controller_;
-  std::shared_ptr<ModelLoader> model_loader_;
+  std::shared_ptr<SmoothOrbitController> orbitController_;
+  std::shared_ptr<ModelLoader> modelLoader_;
 
   std::unordered_map<int, std::shared_ptr<Viewer>> viewers_;
 
-  int renderer_type_ = -1;
-  bool show_config_panel_ = true;
+  int rendererType_ = -1;
+  bool showConfigPanel_ = true;
 };
 
 }

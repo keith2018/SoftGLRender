@@ -18,39 +18,39 @@ class ShaderProgram;
 
 class Uniform {
  public:
-  explicit Uniform(std::string name) : name(std::move(name)), uuid_(uuid_counter_++) {}
+  explicit Uniform(std::string name) : name(std::move(name)), uuid_(uuidCounter_++) {}
 
-  inline int GetHash() const {
+  inline int getHash() const {
     return uuid_;
   }
 
-  virtual int GetLocation(ShaderProgram &program) = 0;
-  virtual void BindProgram(ShaderProgram &program, int location) = 0;
+  virtual int getLocation(ShaderProgram &program) = 0;
+  virtual void bindProgram(ShaderProgram &program, int location) = 0;
 
  public:
   std::string name;
 
  private:
   int uuid_ = -1;
-  static int uuid_counter_;
+  static int uuidCounter_;
 };
 
 class UniformBlock : public Uniform {
  public:
-  UniformBlock(const std::string &name, int size) : Uniform(name), block_size(size) {}
+  UniformBlock(const std::string &name, int size) : Uniform(name), blockSize(size) {}
 
-  virtual void SetSubData(void *data, int len, int offset) = 0;
-  virtual void SetData(void *data, int len) = 0;
+  virtual void setSubData(void *data, int len, int offset) = 0;
+  virtual void setData(void *data, int len) = 0;
 
  protected:
-  int block_size;
+  int blockSize;
 };
 
 class UniformSampler : public Uniform {
  public:
   UniformSampler(const std::string &name, TextureType type, TextureFormat format)
       : Uniform(name), type(type), format(format) {}
-  virtual void SetTexture(const std::shared_ptr<Texture> &tex) = 0;
+  virtual void setTexture(const std::shared_ptr<Texture> &tex) = 0;
 
  protected:
   TextureType type;

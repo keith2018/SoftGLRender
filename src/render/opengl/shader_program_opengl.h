@@ -14,40 +14,40 @@ namespace SoftGL {
 
 class ShaderProgramOpenGL : public ShaderProgram {
  public:
-  int GetId() const override {
+  int getId() const override {
     return (int) programId_;
   }
 
-  void AddDefine(const std::string &def) override {
-    program_glsl_.AddDefine(def);
+  void addDefine(const std::string &def) override {
+    programGLSL_.addDefine(def);
   }
 
   bool CompileAndLink(const std::string &vsSource, const std::string &fsSource) {
-    bool ret = program_glsl_.LoadSource(vsSource, fsSource);
-    programId_ = program_glsl_.GetId();
+    bool ret = programGLSL_.loadSource(vsSource, fsSource);
+    programId_ = programGLSL_.getId();
     return ret;
   }
 
   inline void Use() {
-    program_glsl_.Use();
-    uniform_block_binding_ = 0;
-    uniform_sampler_binding_ = 0;
+    programGLSL_.use();
+    uniformBlockBinding_ = 0;
+    uniformSamplerBinding_ = 0;
   }
 
   inline int GetUniformBlockBinding() {
-    return uniform_block_binding_++;
+    return uniformBlockBinding_++;
   }
 
   inline int GetUniformSamplerBinding() {
-    return uniform_sampler_binding_++;
+    return uniformSamplerBinding_++;
   }
 
  private:
   GLuint programId_ = 0;
-  ProgramGLSL program_glsl_;
+  ProgramGLSL programGLSL_;
 
-  int uniform_block_binding_ = 0;
-  int uniform_sampler_binding_ = 0;
+  int uniformBlockBinding_ = 0;
+  int uniformSamplerBinding_ = 0;
 };
 
 }

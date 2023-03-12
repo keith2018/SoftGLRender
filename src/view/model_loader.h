@@ -22,46 +22,46 @@ class ModelLoader {
  public:
   explicit ModelLoader(Config &config, ConfigPanel &panel);
 
-  bool LoadModel(const std::string &filepath);
-  bool LoadSkybox(const std::string &filepath);
+  bool loadModel(const std::string &filepath);
+  bool loadSkybox(const std::string &filepath);
 
-  inline DemoScene &GetScene() { return scene_; }
+  inline DemoScene &getScene() { return scene_; }
 
-  inline size_t GetModelPrimitiveCnt() const {
+  inline size_t getModelPrimitiveCnt() const {
     if (scene_.model) {
-      return scene_.model->primitive_cnt;
+      return scene_.model->primitiveCnt;
     }
     return 0;
   }
 
-  static void LoadCubeMesh(ModelVertexes &mesh);
+  static void loadCubeMesh(ModelVertexes &mesh);
 
  private:
-  void LoadWorldAxis();
-  void LoadLights();
-  void LoadFloor();
+  void loadWorldAxis();
+  void loadLights();
+  void loadFloor();
 
-  bool ProcessNode(const aiNode *ai_node, const aiScene *ai_scene, ModelNode &out_node, glm::mat4 &transform);
-  bool ProcessMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &out_mesh);
-  void ProcessMaterial(const aiMaterial *ai_material, aiTextureType texture_type, TexturedMaterial &material);
+  bool processNode(const aiNode *ai_node, const aiScene *ai_scene, ModelNode &outNode, glm::mat4 &transform);
+  bool processMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &outMesh);
+  void processMaterial(const aiMaterial *ai_material, aiTextureType textureType, TexturedMaterial &material);
 
-  static glm::mat4 ConvertMatrix(const aiMatrix4x4 &m);
-  static BoundingBox ConvertBoundingBox(const aiAABB &aabb);
-  static glm::mat4 AdjustModelCenter(BoundingBox &bounds);
+  static glm::mat4 convertMatrix(const aiMatrix4x4 &m);
+  static BoundingBox convertBoundingBox(const aiAABB &aabb);
+  static glm::mat4 adjustModelCenter(BoundingBox &bounds);
 
-  void PreloadTextureFiles(const aiScene *scene, const std::string &res_dir);
-  std::shared_ptr<Buffer<RGBA>> LoadTextureFile(const std::string &path);
+  void preloadTextureFiles(const aiScene *scene, const std::string &resDir);
+  std::shared_ptr<Buffer<RGBA>> loadTextureFile(const std::string &path);
 
  private:
   Config &config_;
-  ConfigPanel &config_panel_;
+  ConfigPanel &configPanel_;
 
   DemoScene scene_;
-  std::unordered_map<std::string, std::shared_ptr<Model>> model_cache_;
-  std::unordered_map<std::string, std::shared_ptr<Buffer<RGBA>>> texture_cache_;
+  std::unordered_map<std::string, std::shared_ptr<Model>> modelCache_;
+  std::unordered_map<std::string, std::shared_ptr<Buffer<RGBA>>> textureCache_;
 
-  std::mutex load_mutex_;
-  std::mutex tex_cache_mutex_;
+  std::mutex loadMutex_;
+  std::mutex texCacheMutex_;
 };
 
 }

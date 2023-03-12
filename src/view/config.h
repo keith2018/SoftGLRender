@@ -25,38 +25,38 @@ enum RendererType {
 
 class Config {
  public:
-  std::string model_name;
-  std::string model_path;
-  std::string skybox_name;
-  std::string skybox_path;
+  std::string modelName;
+  std::string modelPath;
+  std::string skyboxName;
+  std::string skyboxPath;
 
-  size_t triangle_count_ = 0;
+  size_t triangleCount_ = 0;
 
   bool wireframe = false;
-  bool world_axis = true;
-  bool show_skybox = false;
+  bool worldAxis = true;
+  bool showSkybox = false;
 
-  bool show_floor = true;
-  bool shadow_map = true;
+  bool showFloor = true;
+  bool shadowMap = true;
 
-  bool pbr_ibl = false;
+  bool pbrIbl = false;
   bool mipmaps = false;
 
-  bool cull_face = true;
-  bool depth_test = true;
+  bool cullFace = true;
+  bool depthTest = true;
 
-  bool reverse_z = true;
-  bool early_z = false;
+  bool reverseZ = true;
+  bool earlyZ = false;
 
-  glm::vec4 clear_color = {0.f, 0.f, 0.f, 0.f};
-  glm::vec3 ambient_color = {0.5f, 0.5f, 0.5f};
+  glm::vec4 clearColor = {0.f, 0.f, 0.f, 0.f};
+  glm::vec3 ambientColor = {0.5f, 0.5f, 0.5f};
 
-  bool show_light = true;
-  glm::vec3 point_light_position = {0.f, 0.f, 0.f};
-  glm::vec3 point_light_color = {0.5f, 0.5f, 0.5f};
+  bool showLight = true;
+  glm::vec3 pointLightPosition = {0.f, 0.f, 0.f};
+  glm::vec3 pointLightColor = {0.5f, 0.5f, 0.5f};
 
-  int aa_type = AAType_NONE;
-  int renderer_type = Renderer_SOFT;
+  int aaType = AAType_NONE;
+  int rendererType = Renderer_SOFT;
 };
 
 }

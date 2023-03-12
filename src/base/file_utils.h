@@ -13,8 +13,7 @@ namespace SoftGL {
 
 class FileUtils {
  public:
-
-  static std::string ReadAll(const std::string &path) {
+  static std::string readAll(const std::string &path) {
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
       LOGE("failed to open file: %s", path.c_str());
@@ -31,7 +30,7 @@ class FileUtils {
     content.resize(size);
 
     file.seekg(0, std::ios::beg);
-    file.read(&content[0], size);
+    file.read(&content[0], (std::streamsize) size);
 
     return content;
   }

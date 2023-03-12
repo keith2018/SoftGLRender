@@ -40,36 +40,36 @@ enum CubeMapFace {
 };
 
 struct SamplerDesc {
-  bool use_mipmaps = false;
+  bool useMipmaps = false;
   virtual ~SamplerDesc() = default;
 };
 
 struct Sampler2DDesc : SamplerDesc {
-  WrapMode wrap_s;
-  WrapMode wrap_t;
-  FilterMode filter_min;
-  FilterMode filter_mag;
-  glm::vec4 border_color{0.f};
+  WrapMode wrapS;
+  WrapMode wrapT;
+  FilterMode filterMin;
+  FilterMode filterMag;
+  glm::vec4 borderColor{0.f};
 
   Sampler2DDesc() {
-    use_mipmaps = false;
-    wrap_s = Wrap_CLAMP_TO_EDGE;
-    wrap_t = Wrap_CLAMP_TO_EDGE;
-    filter_min = Filter_LINEAR;
-    filter_mag = Filter_LINEAR;
+    useMipmaps = false;
+    wrapS = Wrap_CLAMP_TO_EDGE;
+    wrapT = Wrap_CLAMP_TO_EDGE;
+    filterMin = Filter_LINEAR;
+    filterMag = Filter_LINEAR;
   }
 };
 
 struct SamplerCubeDesc : Sampler2DDesc {
-  WrapMode wrap_r;
+  WrapMode wrapR;
 
   SamplerCubeDesc() {
-    use_mipmaps = false;
-    wrap_s = Wrap_CLAMP_TO_EDGE;
-    wrap_t = Wrap_CLAMP_TO_EDGE;
-    wrap_r = Wrap_CLAMP_TO_EDGE;
-    filter_min = Filter_LINEAR;
-    filter_mag = Filter_LINEAR;
+    useMipmaps = false;
+    wrapS = Wrap_CLAMP_TO_EDGE;
+    wrapT = Wrap_CLAMP_TO_EDGE;
+    wrapR = Wrap_CLAMP_TO_EDGE;
+    filterMin = Filter_LINEAR;
+    filterMag = Filter_LINEAR;
   }
 };
 
@@ -84,27 +84,27 @@ enum TextureFormat {
 };
 
 struct TextureDesc {
-  TextureDesc(TextureType type, TextureFormat format, bool multi_sample)
-      : type(type), format(format), multi_sample(multi_sample) {}
+  TextureDesc(TextureType type, TextureFormat format, bool multiSample)
+      : type(type), format(format), multiSample(multiSample) {}
 
   TextureType type = TextureType_2D;
   TextureFormat format = TextureFormat_RGBA8;
-  bool multi_sample = false;
+  bool multiSample = false;
 };
 
 class Texture {
  public:
-  virtual int GetId() const = 0;
-  virtual void SetSamplerDesc(SamplerDesc &sampler) {};
-  virtual void SetImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
-  virtual void SetImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {};
-  virtual void InitImageData(int w, int h) {};
-  virtual void DumpImage(const char *path) {};
+  virtual int getId() const = 0;
+  virtual void setSamplerDesc(SamplerDesc &sampler) {};
+  virtual void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
+  virtual void setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {};
+  virtual void initImageData(int w, int h) {};
+  virtual void dumpImage(const char *path) {};
 
  public:
   int width = 0;
   int height = 0;
-  bool multi_sample = false;
+  bool multiSample = false;
   TextureType type = TextureType_2D;
   TextureFormat format = TextureFormat_RGBA8;
 };

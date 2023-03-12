@@ -15,10 +15,13 @@ class BoundingBox {
   BoundingBox() = default;
   BoundingBox(const glm::vec3 &a, const glm::vec3 &b) : min(a), max(b) {}
 
-  void GetCorners(glm::vec3 *dst) const;
-  BoundingBox Transform(const glm::mat4 &matrix) const;
-  bool Intersects(const BoundingBox &box) const;
-  void Merge(const BoundingBox &box);
+  void getCorners(glm::vec3 *dst) const;
+  BoundingBox transform(const glm::mat4 &matrix) const;
+  bool intersects(const BoundingBox &box) const;
+  void merge(const BoundingBox &box);
+
+ protected:
+  static void updateMinMax(glm::vec3 *point, glm::vec3 *min, glm::vec3 *max);
 
  public:
   glm::vec3 min{0.f, 0.f, 0.f};

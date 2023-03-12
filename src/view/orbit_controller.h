@@ -16,15 +16,15 @@ class OrbitController {
  public:
   explicit OrbitController(Camera &camera);
 
-  void Update();
+  void update();
 
-  void PanByPixels(double dx, double dy);
+  void panByPixels(double dx, double dy);
 
-  void RotateByPixels(double dx, double dy);
+  void rotateByPixels(double dx, double dy);
 
-  void ZoomByPixels(double dx, double dy);
+  void zoomByPixels(double dx, double dy);
 
-  void Reset();
+  void reset();
 
  private:
   Camera &camera_;
@@ -33,51 +33,49 @@ class OrbitController {
   glm::vec3 center_{};
   glm::vec3 up_{};
 
-  float arm_length_;
-  glm::vec3 arm_dir_{};
+  float armLength_ = 0.f;
+  glm::vec3 armDir_{};
 
-  float pan_sensitivity_ = 0.1f;
-  float zoom_sensitivity_ = 0.2f;
-  float rotate_sensitivity_ = 0.2f;
+  float panSensitivity_ = 0.1f;
+  float zoomSensitivity_ = 0.2f;
+  float rotateSensitivity_ = 0.2f;
 };
 
 class SmoothOrbitController {
-  const double motion_eps = 0.001f;
-  const double motion_sensitivity = 1.2f;
  public:
   explicit SmoothOrbitController(std::shared_ptr<OrbitController> orbit_controller)
-      : orbitController(std::move(orbit_controller)) {}
+      : orbitController_(std::move(orbit_controller)) {}
 
-  void Update() {
-    if (std::abs(zoomX) > motion_eps || std::abs(zoomY) > motion_eps) {
-      zoomX /= motion_sensitivity;
-      zoomY /= motion_sensitivity;
-      orbitController->ZoomByPixels(zoomX, zoomY);
+  void update() {
+    if (std::abs(zoomX) > motionEps || std::abs(zoomY) > motionEps) {
+      zoomX /= motionSensitivity;
+      zoomY /= motionSensitivity;
+      orbitController_->zoomByPixels(zoomX, zoomY);
     } else {
       zoomX = 0;
       zoomY = 0;
     }
 
-    if (std::abs(rotateX) > motion_eps || std::abs(rotateY) > motion_eps) {
-      rotateX /= motion_sensitivity;
-      rotateY /= motion_sensitivity;
-      orbitController->RotateByPixels(rotateX, rotateY);
+    if (std::abs(rotateX) > motionEps || std::abs(rotateY) > motionEps) {
+      rotateX /= motionSensitivity;
+      rotateY /= motionSensitivity;
+      orbitController_->rotateByPixels(rotateX, rotateY);
     } else {
       rotateX = 0;
       rotateY = 0;
     }
 
-    if (std::abs(panX) > motion_eps || std::abs(panY) > motion_eps) {
-      orbitController->PanByPixels(panX, panY);
+    if (std::abs(panX) > motionEps || std::abs(panY) > motionEps) {
+      orbitController_->panByPixels(panX, panY);
       panX = 0;
       panY = 0;
     }
 
-    orbitController->Update();
+    orbitController_->update();
   }
 
-  inline void Reset() {
-    orbitController->Reset();
+  inline void reset() {
+    orbitController_->reset();
   }
 
   double zoomX = 0;
@@ -88,7 +86,9 @@ class SmoothOrbitController {
   double panY = 0;
 
  private:
-  std::shared_ptr<OrbitController> orbitController;
+  const double motionEps = 0.001f;
+  const double motionSensitivity = 1.2f;
+  std::shared_ptr<OrbitController> orbitController_;
 };
 
 }

@@ -15,10 +15,10 @@ namespace SoftGL {
 class VertexArrayObjectOpenGL : public VertexArrayObject {
  public:
   explicit VertexArrayObjectOpenGL(const VertexArray &vertex_array) {
-    if (!vertex_array.vertexes_buffer || !vertex_array.indices_buffer) {
+    if (!vertex_array.vertexesBuffer || !vertex_array.indicesBuffer) {
       return;
     }
-    indices_cnt_ = vertex_array.indices_buffer_length / sizeof(int32_t);
+    indicesCnt_ = vertex_array.indicesBufferLength / sizeof(int32_t);
 
     // vao
     GL_CHECK(glGenVertexArrays(1, &vao_));
@@ -28,12 +28,12 @@ class VertexArrayObjectOpenGL : public VertexArrayObject {
     GL_CHECK(glGenBuffers(1, &vbo_));
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER,
-                          vertex_array.vertexes_buffer_length,
-                          vertex_array.vertexes_buffer,
+                          vertex_array.vertexesBufferLength,
+                          vertex_array.vertexesBuffer,
                           GL_STATIC_DRAW));
 
-    for (int i = 0; i < vertex_array.vertexes_desc.size(); i++) {
-      auto &desc = vertex_array.vertexes_desc[i];
+    for (int i = 0; i < vertex_array.vertexesDesc.size(); i++) {
+      auto &desc = vertex_array.vertexesDesc[i];
       GL_CHECK(glVertexAttribPointer(i, desc.size, GL_FLOAT, GL_FALSE, desc.stride, (void *) desc.offset));
       GL_CHECK(glEnableVertexAttribArray(i));
     }
@@ -42,8 +42,8 @@ class VertexArrayObjectOpenGL : public VertexArrayObject {
     GL_CHECK(glGenBuffers(1, &ebo_));
     GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_));
     GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                          vertex_array.indices_buffer_length,
-                          vertex_array.indices_buffer,
+                          vertex_array.indicesBufferLength,
+                          vertex_array.indicesBuffer,
                           GL_STATIC_DRAW));
   }
 
@@ -59,30 +59,30 @@ class VertexArrayObjectOpenGL : public VertexArrayObject {
     }
   }
 
-  void UpdateVertexData(void *data, size_t length) override {
+  void updateVertexData(void *data, size_t length) override {
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER, length, data, GL_STATIC_DRAW));
   }
 
-  int GetId() const override {
+  int getId() const override {
     return (int) vao_;
   }
 
-  void Bind() const {
+  void bind() const {
     if (vao_) {
       GL_CHECK(glBindVertexArray(vao_));
     }
   }
 
-  size_t GetIndicesCnt() const {
-    return indices_cnt_;
+  size_t getIndicesCnt() const {
+    return indicesCnt_;
   }
 
  private:
   GLuint vao_ = 0;
   GLuint vbo_ = 0;
   GLuint ebo_ = 0;
-  size_t indices_cnt_ = 0;
+  size_t indicesCnt_ = 0;
 };
 
 }

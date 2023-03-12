@@ -13,48 +13,48 @@ namespace SoftGL {
 
 class FrameBuffer {
  public:
-  virtual int GetId() const = 0;
-  virtual bool IsValid() = 0;
+  virtual int getId() const = 0;
+  virtual bool isValid() = 0;
 
   // TODO MTR
-  virtual void SetColorAttachment(std::shared_ptr<Texture> &color, int level) {
-    color_tex_type = TextureType_2D;
-    color_attachment_2d.tex = color;
-    color_attachment_2d.level = level;
-    color_ready = true;
+  virtual void setColorAttachment(std::shared_ptr<Texture> &color, int level) {
+    colorTexType = TextureType_2D;
+    colorAttachment2d.tex = color;
+    colorAttachment2d.level = level;
+    colorReady = true;
   };
 
-  virtual void SetColorAttachment(std::shared_ptr<Texture> &color, CubeMapFace face, int level) {
-    color_tex_type = TextureType_CUBE;
-    color_attachment_cube.tex = color;
-    color_attachment_cube.face = face;
-    color_attachment_cube.level = level;
-    color_ready = true;
+  virtual void setColorAttachment(std::shared_ptr<Texture> &color, CubeMapFace face, int level) {
+    colorTexType = TextureType_CUBE;
+    colorAttachmentCube.tex = color;
+    colorAttachmentCube.face = face;
+    colorAttachmentCube.level = level;
+    colorReady = true;
   };
 
-  virtual void SetDepthAttachment(std::shared_ptr<Texture> &depth) {
-    depth_attachment = depth;
-    depth_ready = true;
+  virtual void setDepthAttachment(std::shared_ptr<Texture> &depth) {
+    depthAttachment = depth;
+    depthReady = true;
   };
 
  protected:
-  bool color_ready = false;
-  bool depth_ready = false;
+  bool colorReady = false;
+  bool depthReady = false;
 
-  TextureType color_tex_type = TextureType_2D;
+  TextureType colorTexType = TextureType_2D;
 
   struct {
     std::shared_ptr<Texture> tex = nullptr;
     int level = 0;
-  } color_attachment_2d;
+  } colorAttachment2d;
 
   struct {
     std::shared_ptr<Texture> tex = nullptr;
     CubeMapFace face = TEXTURE_CUBE_MAP_POSITIVE_X;
     int level = 0;
-  } color_attachment_cube;
+  } colorAttachmentCube;
 
-  std::shared_ptr<Texture> depth_attachment = nullptr;
+  std::shared_ptr<Texture> depthAttachment = nullptr;
 };
 
 }

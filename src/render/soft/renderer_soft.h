@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "renderer_base.h"
+#include "renderer_internal.h"
 #include "base/thread_pool.h"
 #include "render/renderer.h"
 #include "render/soft/vertex_soft.h"
@@ -18,118 +18,117 @@ namespace SoftGL {
 class RendererSoft : public Renderer {
  public:
   // config reverse z
-  void SetReverseZ(bool enable) override { reverse_z = enable; };
-  bool GetReverseZ() override { return reverse_z; };
+  void setReverseZ(bool enable) override { reverseZ_ = enable; };
+  bool getReverseZ() override { return reverseZ_; };
 
   // config early z
-  void SetEarlyZ(bool enable) override { early_z = enable; };
-  bool GetEarlyZ() override { return early_z; };
+  void setEarlyZ(bool enable) override { earlyZ_ = enable; };
+  bool getEarlyZ() override { return earlyZ_; };
 
   // framebuffer
-  std::shared_ptr<FrameBuffer> CreateFrameBuffer() override;
+  std::shared_ptr<FrameBuffer> createFrameBuffer() override;
 
   // texture
-  std::shared_ptr<Texture> CreateTexture(const TextureDesc &desc) override;
+  std::shared_ptr<Texture> createTexture(const TextureDesc &desc) override;
 
   // vertex
-  std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) override;
+  std::shared_ptr<VertexArrayObject> createVertexArrayObject(const VertexArray &vertexArray) override;
 
   // shader program
-  std::shared_ptr<ShaderProgram> CreateShaderProgram() override;
+  std::shared_ptr<ShaderProgram> createShaderProgram() override;
 
   // uniform
-  std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name,
-                                                       TextureType type,
+  std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
+  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
                                                        TextureFormat format) override;
 
   // pipeline
-  void SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) override;
-  void SetViewPort(int x, int y, int width, int height) override;
-  void Clear(const ClearState &state) override;
-  void SetRenderState(const RenderState &state) override;
-  void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
-  void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
-  void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
-  void Draw(PrimitiveType type) override;
+  void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;
+  void setViewPort(int x, int y, int width, int height) override;
+  void clear(const ClearState &state) override;
+  void setRenderState(const RenderState &state) override;
+  void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
+  void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
+  void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
+  void draw(PrimitiveType type) override;
 
  private:
-  void ProcessVertexShader();
-  void ProcessPrimitiveAssembly();
-  void ProcessClipping();
-  void ProcessPerspectiveDivide();
-  void ProcessViewportTransform();
-  void ProcessFaceCulling();
-  void ProcessRasterization();
-  void ProcessFragmentShader(glm::vec4 &screen_pos, bool front_facing, void *varyings, ShaderProgramSoft *shader);
-  void ProcessPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample);
-  bool ProcessDepthTest(int x, int y, float depth, int sample, bool skip_write);
-  void ProcessColorBlending(int x, int y, glm::vec4 &color, int sample);
+  void processVertexShader();
+  void processPrimitiveAssembly();
+  void processClipping();
+  void processPerspectiveDivide();
+  void processViewportTransform();
+  void processFaceCulling();
+  void processRasterization();
+  void processFragmentShader(glm::vec4 &screenPos, bool frontFacing, void *varyings, ShaderProgramSoft *shader);
+  void processPerSampleOperations(int x, int y, float depth, const glm::vec4 &color, int sample);
+  bool processDepthTest(int x, int y, float depth, int sample, bool skipWrite);
+  void processColorBlending(int x, int y, glm::vec4 &color, int sample);
 
-  void ProcessPointAssembly();
-  void ProcessLineAssembly();
-  void ProcessPolygonAssembly();
+  void processPointAssembly();
+  void processLineAssembly();
+  void processPolygonAssembly();
 
-  void ClippingPoint(PrimitiveHolder &point);
-  void ClippingLine(PrimitiveHolder &line, bool post_vertex_process = false);
-  void ClippingTriangle(PrimitiveHolder &triangle);
+  void clippingPoint(PrimitiveHolder &point);
+  void clippingLine(PrimitiveHolder &line, bool postVertexProcess = false);
+  void clippingTriangle(PrimitiveHolder &triangle);
 
-  void InterpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t);
-  void InterpolateLinear(float *vars_out, const float *vars_in[2], size_t elem_cnt, float t);
-  void InterpolateBarycentric(float *vars_out, const float *vars_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
-  void InterpolateBarycentricSIMD(float *vars_out, const float *vars_in[3], size_t elem_cnt, glm::aligned_vec4 &bc);
+  void interpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t);
+  void interpolateLinear(float *varsOut, const float *varsIn[2], size_t elemCnt, float t);
+  void interpolateBarycentric(float *varsOut, const float *varsIn[3], size_t elemCnt, glm::aligned_vec4 &bc);
+  void interpolateBarycentricSIMD(float *varsOut, const float *varsIn[3], size_t elemCnt, glm::aligned_vec4 &bc);
 
-  void RasterizationPoint(VertexHolder *v, float point_size);
-  void RasterizationLine(VertexHolder *v0, VertexHolder *v1, float line_width);
-  void RasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool front_facing);
-  void RasterizationPolygons(std::vector<PrimitiveHolder> &primitives);
-  void RasterizationPolygonsPoint(std::vector<PrimitiveHolder> &primitives);
-  void RasterizationPolygonsLine(std::vector<PrimitiveHolder> &primitives);
-  void RasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives);
-  void RasterizationPixelQuad(PixelQuadContext &quad);
+  void rasterizationPoint(VertexHolder *v, float pointSize);
+  void rasterizationLine(VertexHolder *v0, VertexHolder *v1, float lineWidth);
+  void rasterizationTriangle(VertexHolder *v0, VertexHolder *v1, VertexHolder *v2, bool frontFacing);
+  void rasterizationPolygons(std::vector<PrimitiveHolder> &primitives);
+  void rasterizationPolygonsPoint(std::vector<PrimitiveHolder> &primitives);
+  void rasterizationPolygonsLine(std::vector<PrimitiveHolder> &primitives);
+  void rasterizationPolygonsTriangle(std::vector<PrimitiveHolder> &primitives);
+  void rasterizationPixelQuad(PixelQuadContext &quad);
 
-  bool EarlyZTest(PixelQuadContext &quad);
-  void MultiSampleResolve();
+  bool earlyZTest(PixelQuadContext &quad);
+  void multiSampleResolve();
  private:
-  inline RGBA *GetFrameColor(int x, int y, int sample);
-  inline float *GetFrameDepth(int x, int y, int sample);
-  inline void SetFrameColor(int x, int y, const RGBA &color, int sample);
+  inline RGBA *getFrameColor(int x, int y, int sample);
+  inline float *getFrameDepth(int x, int y, int sample);
+  inline void setFrameColor(int x, int y, const RGBA &color, int sample);
 
-  VertexHolder &ClippingNewVertex(size_t idx0, size_t idx1, float t, bool post_vertex_process = false);
-  void VertexShaderImpl(VertexHolder &vertex);
-  void PerspectiveDivideImpl(VertexHolder &vertex);
-  void ViewportTransformImpl(VertexHolder &vertex);
-  int CountFrustumClipMask(glm::vec4 &clip_pos);
-  BoundingBox TriangleBoundingBox(glm::vec4 *vert, float width, float height);
+  VertexHolder &clippingNewVertex(size_t idx0, size_t idx1, float t, bool postVertexProcess = false);
+  void vertexShaderImpl(VertexHolder &vertex);
+  void perspectiveDivideImpl(VertexHolder &vertex);
+  void viewportTransformImpl(VertexHolder &vertex);
+  int countFrustumClipMask(glm::vec4 &clipPos);
+  BoundingBox triangleBoundingBox(glm::vec4 *vert, float width, float height);
 
-  bool Barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
+  bool barycentric(glm::aligned_vec4 *vert, glm::aligned_vec4 &v0, glm::aligned_vec4 &p, glm::aligned_vec4 &bc);
 
  private:
   Viewport viewport_{};
-  PrimitiveType primitive_type_ = Primitive_TRIANGLE;
+  PrimitiveType primitiveType_ = Primitive_TRIANGLE;
   FrameBufferSoft *fbo_ = nullptr;
-  const RenderState *render_state_ = nullptr;
+  const RenderState *renderState_ = nullptr;
   VertexArrayObjectSoft *vao_ = nullptr;
-  ShaderProgramSoft *shader_program_ = nullptr;
+  ShaderProgramSoft *shaderProgram_ = nullptr;
 
-  std::shared_ptr<ImageBufferSoft<RGBA>> fbo_color_ = nullptr;
-  std::shared_ptr<ImageBufferSoft<float>> fbo_depth_ = nullptr;
+  std::shared_ptr<ImageBufferSoft<RGBA>> fboColor_ = nullptr;
+  std::shared_ptr<ImageBufferSoft<float>> fboDepth_ = nullptr;
 
   std::vector<VertexHolder> vertexes_;
   std::vector<PrimitiveHolder> primitives_;
 
   std::shared_ptr<float> varyings_ = nullptr;
-  size_t varyings_cnt_ = 0;
-  size_t varyings_aligned_cnt_ = 0;
-  size_t varyings_aligned_size_ = 0;
+  size_t varyingsCnt_ = 0;
+  size_t varyingsAlignedCnt_ = 0;
+  size_t varyingsAlignedSize_ = 0;
 
-  bool reverse_z = true;
-  bool early_z = false;
-  int raster_samples = 1;
-  int raster_block_size_ = 32;
+  bool reverseZ_ = true;
+  bool earlyZ_ = false;
+  int rasterSamples_ = 1;
+  int rasterBlockSize_ = 32;
 
-  ThreadPool thread_pool_;
-  std::vector<PixelQuadContext> thread_quad_ctx_;
+  ThreadPool threadPool_;
+  std::vector<PixelQuadContext> threadQuadCtx_;
 };
 
 }

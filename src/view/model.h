@@ -25,51 +25,51 @@ struct Vertex {
 };
 
 struct ModelVertexes : VertexArray {
-  PrimitiveType primitive_type;
-  size_t primitive_cnt = 0;
+  PrimitiveType primitiveType;
+  size_t primitiveCnt = 0;
   std::vector<Vertex> vertexes;
   std::vector<int32_t> indices;
   std::shared_ptr<VertexArrayObject> vao = nullptr;
 
   void UpdateVertexes() const {
     if (vao) {
-      vao->UpdateVertexData(vertexes_buffer, vertexes_buffer_length);
+      vao->updateVertexData(vertexesBuffer, vertexesBufferLength);
     }
   };
 
   void InitVertexes() {
-    vertexes_desc.resize(4);
-    vertexes_desc[0] = {3, sizeof(Vertex), offsetof(Vertex, a_position)};
-    vertexes_desc[1] = {2, sizeof(Vertex), offsetof(Vertex, a_texCoord)};
-    vertexes_desc[2] = {3, sizeof(Vertex), offsetof(Vertex, a_normal)};
-    vertexes_desc[3] = {3, sizeof(Vertex), offsetof(Vertex, a_tangent)};
+    vertexesDesc.resize(4);
+    vertexesDesc[0] = {3, sizeof(Vertex), offsetof(Vertex, a_position)};
+    vertexesDesc[1] = {2, sizeof(Vertex), offsetof(Vertex, a_texCoord)};
+    vertexesDesc[2] = {3, sizeof(Vertex), offsetof(Vertex, a_normal)};
+    vertexesDesc[3] = {3, sizeof(Vertex), offsetof(Vertex, a_tangent)};
 
-    vertexes_buffer = vertexes.empty() ? nullptr : (uint8_t *) &vertexes[0];
-    vertexes_buffer_length = vertexes.size() * sizeof(Vertex);
+    vertexesBuffer = vertexes.empty() ? nullptr : (uint8_t *) &vertexes[0];
+    vertexesBufferLength = vertexes.size() * sizeof(Vertex);
 
-    indices_buffer = indices.empty() ? nullptr : &indices[0];
-    indices_buffer_length = indices.size() * sizeof(int32_t);
+    indicesBuffer = indices.empty() ? nullptr : &indices[0];
+    indicesBufferLength = indices.size() * sizeof(int32_t);
   }
 };
 
 struct ModelPoints : ModelVertexes {
-  float point_size;
+  float pointSize;
   BaseColorMaterial material;
 };
 
 struct ModelLines : ModelVertexes {
-  float line_width;
+  float lineWidth;
   BaseColorMaterial material;
 };
 
 struct ModelMesh : ModelVertexes {
   BoundingBox aabb;
-  BaseColorMaterial material_base_color;
-  TexturedMaterial material_textured;
+  BaseColorMaterial materialBaseColor;
+  TexturedMaterial materialTextured;
 };
 
 struct ModelSkybox : ModelVertexes {
-  std::unordered_map<std::string, SkyboxMaterial> material_cache;
+  std::unordered_map<std::string, SkyboxMaterial> materialCache;
   SkyboxMaterial *material = nullptr;
 };
 
@@ -80,63 +80,63 @@ struct ModelNode {
 };
 
 struct Model {
-  std::string res_dir;
+  std::string resDir;
 
-  ModelNode root_node;
-  BoundingBox root_aabb;
+  ModelNode rootNode;
+  BoundingBox rootAABB;
 
-  size_t mesh_cnt = 0;
-  size_t primitive_cnt = 0;
-  size_t vertex_cnt = 0;
+  size_t meshCnt = 0;
+  size_t primitiveCnt = 0;
+  size_t vertexCnt = 0;
 
-  glm::mat4 centered_transform;
+  glm::mat4 centeredTransform;
 };
 
 struct DemoScene {
   std::shared_ptr<Model> model;
   ModelMesh floor;
-  ModelLines world_axis;
-  ModelPoints point_light;
+  ModelLines worldAxis;
+  ModelPoints pointLight;
   ModelSkybox skybox;
 
-  void ResetModelTextures() {
-    std::function<void(ModelNode &node)> reset_node_func = [&](ModelNode &node) -> void {
+  void resetModelTextures() {
+    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
       for (auto &mesh : node.meshes) {
-        mesh.material_textured.ResetRuntimeStates();
+        mesh.materialTextured.resetRuntimeStates();
       }
-      for (auto &child_node : node.children) {
-        reset_node_func(child_node);
+      for (auto &childNode : node.children) {
+        resetNodeFunc(childNode);
       }
     };
-    reset_node_func(model->root_node);
+    resetNodeFunc(model->rootNode);
   }
 
-  void ResetAllStates() {
-    std::function<void(ModelNode &node)> reset_node_func = [&](ModelNode &node) -> void {
+  void resetAllStates() {
+    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
       for (auto &mesh : node.meshes) {
         mesh.vao = nullptr;
-        mesh.material_base_color.ResetRuntimeStates();
-        mesh.material_textured.ResetRuntimeStates();
+        mesh.materialBaseColor.resetRuntimeStates();
+        mesh.materialTextured.resetRuntimeStates();
       }
-      for (auto &child_node : node.children) {
-        reset_node_func(child_node);
+      for (auto &childNode : node.children) {
+        resetNodeFunc(childNode);
       }
     };
-    reset_node_func(model->root_node);
+    resetNodeFunc(model->rootNode);
 
     floor.vao = nullptr;
-    floor.material_base_color.ResetRuntimeStates();
-    floor.material_textured.ResetRuntimeStates();
+    floor.materialBaseColor.resetRuntimeStates();
+    floor.materialTextured.resetRuntimeStates();
 
-    world_axis.vao = nullptr;
-    world_axis.material.ResetRuntimeStates();
+    worldAxis.vao = nullptr;
+    worldAxis.material.resetRuntimeStates();
 
-    point_light.vao = nullptr;
-    point_light.material.ResetRuntimeStates();
+    pointLight.vao = nullptr;
+    pointLight.material.resetRuntimeStates();
 
     skybox.vao = nullptr;
-    for (auto &kv : skybox.material_cache) {
-      kv.second.ResetRuntimeStates();
+    for (auto &kv : skybox.materialCache) {
+      kv.second.resetRuntimeStates();
     }
   }
 };

@@ -16,48 +16,48 @@ static const glm::vec3 init_center_(0, 1, 0);
 static const glm::vec3 init_up_(0, 1, 0);
 
 OrbitController::OrbitController(Camera &camera) : camera_(camera) {
-  Reset();
+  reset();
 }
 
-void OrbitController::Update() {
-  eye_ = center_ + arm_dir_ * arm_length_;
-  camera_.LookAt(eye_, center_, up_);
+void OrbitController::update() {
+  eye_ = center_ + armDir_ * armLength_;
+  camera_.lookAt(eye_, center_, up_);
 }
 
-void OrbitController::PanByPixels(double offset_x, double offset_y) {
-  glm::vec3 world_offset = camera_.GetWorldPositionFromView(glm::vec3(offset_x, -offset_y, 0));
-  glm::vec3 world_origin = camera_.GetWorldPositionFromView(glm::vec3(0));
+void OrbitController::panByPixels(double dx, double dy) {
+  glm::vec3 world_offset = camera_.getWorldPositionFromView(glm::vec3(dx, -dy, 0));
+  glm::vec3 world_origin = camera_.getWorldPositionFromView(glm::vec3(0));
 
-  glm::vec3 delta = (world_origin - world_offset) * arm_length_ * pan_sensitivity_;
+  glm::vec3 delta = (world_origin - world_offset) * armLength_ * panSensitivity_;
   center_ += delta;
 }
 
-void OrbitController::RotateByPixels(double offset_x, double offset_y) {
-  float x_angle = (float) offset_x * rotate_sensitivity_;
-  float y_angle = (float) offset_y * rotate_sensitivity_;
+void OrbitController::rotateByPixels(double dx, double dy) {
+  float x_angle = (float) dx * rotateSensitivity_;
+  float y_angle = (float) dy * rotateSensitivity_;
 
   glm::qua<float> q = glm::qua<float>(glm::radians(glm::vec3(-y_angle, -x_angle, 0)));
-  glm::vec3 new_dir = glm::mat4_cast(q) * glm::vec4(arm_dir_, 1.0f);
+  glm::vec3 new_dir = glm::mat4_cast(q) * glm::vec4(armDir_, 1.0f);
 
-  arm_dir_ = glm::normalize(new_dir);
+  armDir_ = glm::normalize(new_dir);
 }
 
-void OrbitController::ZoomByPixels(double dx, double dy) {
-  arm_length_ += -(float) dy * zoom_sensitivity_;
-  if (arm_length_ < MIN_ORBIT_ARM_LENGTH) {
-    arm_length_ = MIN_ORBIT_ARM_LENGTH;
+void OrbitController::zoomByPixels(double dx, double dy) {
+  armLength_ += -(float) dy * zoomSensitivity_;
+  if (armLength_ < MIN_ORBIT_ARM_LENGTH) {
+    armLength_ = MIN_ORBIT_ARM_LENGTH;
   }
-  eye_ = center_ + arm_dir_ * arm_length_;
+  eye_ = center_ + armDir_ * armLength_;
 }
 
-void OrbitController::Reset() {
+void OrbitController::reset() {
   eye_ = init_eye_;
   center_ = init_center_;
   up_ = init_up_;
 
   glm::vec3 dir = eye_ - center_;
-  arm_dir_ = glm::normalize(dir);
-  arm_length_ = glm::length(dir);
+  armDir_ = glm::normalize(dir);
+  armLength_ = glm::length(dir);
 }
 
 }

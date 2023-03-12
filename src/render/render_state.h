@@ -49,46 +49,46 @@ enum PolygonMode {
 };
 
 struct BlendParameters {
-  BlendFunction blend_func_rgb = BlendFunc_ADD;
-  BlendFactor blend_src_rgb = BlendFactor_ONE;
-  BlendFactor blend_dst_rgb = BlendFactor_ZERO;
+  BlendFunction blendFuncRgb = BlendFunc_ADD;
+  BlendFactor blendSrcRgb = BlendFactor_ONE;
+  BlendFactor blendDstRgb = BlendFactor_ZERO;
 
-  BlendFunction blend_func_alpha = BlendFunc_ADD;
-  BlendFactor blend_src_alpha = BlendFactor_ONE;
-  BlendFactor blend_dst_alpha = BlendFactor_ZERO;
+  BlendFunction blendFuncAlpha = BlendFunc_ADD;
+  BlendFactor blendSrcAlpha = BlendFactor_ONE;
+  BlendFactor blendDstAlpha = BlendFactor_ZERO;
 
   void SetBlendFactor(BlendFactor src, BlendFactor dst) {
-    blend_src_rgb = src;
-    blend_src_alpha = src;
-    blend_dst_rgb = dst;
-    blend_dst_alpha = dst;
+    blendSrcRgb = src;
+    blendSrcAlpha = src;
+    blendDstRgb = dst;
+    blendDstAlpha = dst;
   }
 
   void SetBlendFunc(BlendFunction func) {
-    blend_func_rgb = func;
-    blend_func_alpha = func;
+    blendFuncRgb = func;
+    blendFuncAlpha = func;
   }
 };
 
 struct RenderState {
   bool blend = false;
-  BlendParameters blend_parameters;
+  BlendParameters blendParams;
 
-  bool depth_test = false;
-  bool depth_mask = true;
-  DepthFunction depth_func = DepthFunc_LESS;
+  bool depthTest = false;
+  bool depthMask = true;
+  DepthFunction depthFunc = DepthFunc_LESS;
 
-  bool cull_face = false;
-  PolygonMode polygon_mode = PolygonMode_FILL;
+  bool cullFace = false;
+  PolygonMode polygonMode = PolygonMode_FILL;
 
-  float line_width = 1.f;
-  float point_size = 1.f;
+  float lineWidth = 1.f;
+  float pointSize = 1.f;
 };
 
 struct ClearState {
-  bool depth_flag = true;
-  bool color_flag = true;
-  glm::vec4 clear_color = glm::vec4(0.f);
+  bool depthFlag = true;
+  bool colorFlag = true;
+  glm::vec4 clearColor = glm::vec4(0.f);
 };
 
 }

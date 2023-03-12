@@ -39,7 +39,7 @@ static inline GLint ConvertFilter(FilterMode mode) {
   return GL_NEAREST;
 }
 
-static inline GLint ConvertCubeFace(CubeMapFace face) {
+static inline GLint convertCubeFace(CubeMapFace face) {
   switch (face) {
     CASE_CVT_GL(, TEXTURE_CUBE_MAP_POSITIVE_X);
     CASE_CVT_GL(, TEXTURE_CUBE_MAP_NEGATIVE_X);
@@ -53,7 +53,7 @@ static inline GLint ConvertCubeFace(CubeMapFace face) {
   return 0;
 }
 
-static inline GLint ConvertDepthFunc(DepthFunction func) {
+static inline GLint convertDepthFunc(DepthFunction func) {
   switch (func) {
     CASE_CVT_GL(DepthFunc_, NEVER);
     CASE_CVT_GL(DepthFunc_, LESS);
@@ -69,7 +69,7 @@ static inline GLint ConvertDepthFunc(DepthFunction func) {
   return 0;
 }
 
-static inline GLint ConvertBlendFactor(BlendFactor factor) {
+static inline GLint convertBlendFactor(BlendFactor factor) {
   switch (factor) {
     CASE_CVT_GL(BlendFactor_, ZERO);
     CASE_CVT_GL(BlendFactor_, ONE);
@@ -87,7 +87,7 @@ static inline GLint ConvertBlendFactor(BlendFactor factor) {
   return 0;
 }
 
-static inline GLint ConvertBlendFunction(BlendFunction func) {
+static inline GLint convertBlendFunction(BlendFunction func) {
   switch (func) {
     case BlendFunc_ADD:               return GL_FUNC_ADD;
     case BlendFunc_SUBTRACT:          return GL_FUNC_SUBTRACT;
@@ -100,7 +100,7 @@ static inline GLint ConvertBlendFunction(BlendFunction func) {
   return 0;
 }
 
-static inline GLint ConvertPolygonMode(PolygonMode mode) {
+static inline GLint convertPolygonMode(PolygonMode mode) {
   switch (mode) {
     CASE_CVT_GL(PolygonMode_, POINT);
     CASE_CVT_GL(PolygonMode_, LINE);
@@ -111,7 +111,7 @@ static inline GLint ConvertPolygonMode(PolygonMode mode) {
   return 0;
 }
 
-static inline GLint ConvertDrawMode(PrimitiveType type) {
+static inline GLint convertDrawMode(PrimitiveType type) {
   switch (type) {
     case Primitive_POINT:       return GL_POINTS;
     case Primitive_LINE:        return GL_LINES;

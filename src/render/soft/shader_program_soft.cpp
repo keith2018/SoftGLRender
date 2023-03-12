@@ -9,6 +9,6 @@
 
 namespace SoftGL {
 
-int ShaderProgramSoft::uuid_counter_ = 0;
+int ShaderProgramSoft::uuidCounter_ = 0;
 
 }

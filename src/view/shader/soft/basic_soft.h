@@ -44,12 +44,12 @@ class ShaderBasic : public ShaderSoft {
  public:
   CREATE_SHADER_OVERRIDE
 
-  std::vector<std::string> &GetDefines() override {
+  std::vector<std::string> &getDefines() override {
     static std::vector<std::string> defines;
     return defines;
   }
 
-  std::vector<UniformDesc> &GetUniformsDesc() override {
+  std::vector<UniformDesc> &getUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
         {"UniformsModel", offsetof(ShaderUniforms, u_reverseZ)},
         {"UniformsMaterial", offsetof(ShaderUniforms, u_enableLight)},
@@ -62,7 +62,7 @@ class VS : public ShaderBasic {
  public:
   CREATE_SHADER_CLONE(VS)
 
-  void ShaderMain() override {
+  void shaderMain() override {
     gl->Position = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0);
   }
 };
@@ -71,7 +71,7 @@ class FS : public ShaderBasic {
  public:
   CREATE_SHADER_CLONE(FS)
 
-  void ShaderMain() override {
+  void shaderMain() override {
     gl->FragColor = u->u_baseColor;
   }
 };

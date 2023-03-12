@@ -37,12 +37,12 @@ class ShaderFXAA : public ShaderSoft {
  public:
   CREATE_SHADER_OVERRIDE
 
-  std::vector<std::string> &GetDefines() override {
+  std::vector<std::string> &getDefines() override {
     static std::vector<std::string> defines;
     return defines;
   }
 
-  std::vector<UniformDesc> &GetUniformsDesc() override {
+  std::vector<UniformDesc> &getUniformsDesc() override {
     static std::vector<UniformDesc> desc = {
         {"UniformsQuadFilter", offsetof(ShaderUniforms, u_screenSize)},
         {"u_screenTexture", offsetof(ShaderUniforms, u_screenTexture)},
@@ -55,7 +55,7 @@ class VS : public ShaderFXAA {
  public:
   CREATE_SHADER_CLONE(VS)
 
-  void ShaderMain() override {
+  void shaderMain() override {
     gl->Position = glm::vec4(a->a_position, 1.0);
     v->v_texCoord = a->a_texCoord;
   }
@@ -261,7 +261,7 @@ class FS : public ShaderFXAA {
     return finalColor;
   }
 
-  void ShaderMain() override {
+  void shaderMain() override {
     gl->FragColor = glm::vec4(fxaa(), 1.f);
   }
 };

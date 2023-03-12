@@ -11,26 +11,26 @@
 namespace SoftGL {
 
 template<typename T>
-T CalcBlendFactor(const T &src, const float &src_alpha,
-                  const T &dst, const float &dst_alpha,
+T calcBlendFactor(const T &src, const float &srcAlpha,
+                  const T &dst, const float &dstAlpha,
                   const BlendFactor &factor) {
   switch (factor) {
     case BlendFactor_ZERO:                return T(0.f);
     case BlendFactor_ONE:                 return T(1.f);
     case BlendFactor_SRC_COLOR:           return src;
-    case BlendFactor_SRC_ALPHA:           return T(src_alpha);
+    case BlendFactor_SRC_ALPHA:           return T(srcAlpha);
     case BlendFactor_DST_COLOR:           return dst;
-    case BlendFactor_DST_ALPHA:           return T(dst_alpha);
+    case BlendFactor_DST_ALPHA:           return T(dstAlpha);
     case BlendFactor_ONE_MINUS_SRC_COLOR: return T(1.f) - src;
-    case BlendFactor_ONE_MINUS_SRC_ALPHA: return T(1.f - src_alpha);
+    case BlendFactor_ONE_MINUS_SRC_ALPHA: return T(1.f - srcAlpha);
     case BlendFactor_ONE_MINUS_DST_COLOR: return T(1.f) - dst;
-    case BlendFactor_ONE_MINUS_DST_ALPHA: return T(1.f - dst_alpha);
+    case BlendFactor_ONE_MINUS_DST_ALPHA: return T(1.f - dstAlpha);
   }
   return T(0.f);
 }
 
 template<typename T>
-T CalcBlendFunc(const T &src, const T &dst, const BlendFunction &func) {
+T calcBlendFunc(const T &src, const T &dst, const BlendFunction &func) {
   switch (func) {
     case BlendFunc_ADD:               return src + dst;
     case BlendFunc_SUBTRACT:          return src - dst;
@@ -41,18 +41,18 @@ T CalcBlendFunc(const T &src, const T &dst, const BlendFunction &func) {
   return src + dst;
 }
 
-glm::vec4 CalcBlendColor(glm::vec4 &src, glm::vec4 &dst, const BlendParameters &params) {
-  auto src_rgb = glm::vec3(src);
-  auto dst_rgb = glm::vec3(dst);
-  auto src_rgb_f = CalcBlendFactor<glm::vec3>(src_rgb, src.a, dst_rgb, dst.a, params.blend_src_rgb);
-  auto dst_rgb_f = CalcBlendFactor<glm::vec3>(src_rgb, src.a, dst_rgb, dst.a, params.blend_dst_rgb);
-  auto ret_rgb = CalcBlendFunc<glm::vec3>(src_rgb * src_rgb_f, dst_rgb * dst_rgb_f, params.blend_func_rgb);
+glm::vec4 calcBlendColor(glm::vec4 &src, glm::vec4 &dst, const BlendParameters &params) {
+  auto srcRgb = glm::vec3(src);
+  auto dstRgb = glm::vec3(dst);
+  auto srcRgbF = calcBlendFactor<glm::vec3>(srcRgb, src.a, dstRgb, dst.a, params.blendSrcRgb);
+  auto dstRgbF = calcBlendFactor<glm::vec3>(srcRgb, src.a, dstRgb, dst.a, params.blendDstRgb);
+  auto retRgb = calcBlendFunc<glm::vec3>(srcRgb * srcRgbF, dstRgb * dstRgbF, params.blendFuncRgb);
 
-  auto src_alpha_f = CalcBlendFactor<float>(src.a, src.a, dst.a, dst.a, params.blend_src_alpha);
-  auto dst_alpha_f = CalcBlendFactor<float>(src.a, src.a, dst.a, dst.a, params.blend_dst_alpha);
-  auto ret_alpha = CalcBlendFunc<float>(src.a * src_alpha_f, dst.a * dst_alpha_f, params.blend_func_alpha);
+  auto srcAlphaF = calcBlendFactor<float>(src.a, src.a, dst.a, dst.a, params.blendSrcAlpha);
+  auto dstAlphaF = calcBlendFactor<float>(src.a, src.a, dst.a, dst.a, params.blendDstAlpha);
+  auto retAlpha = calcBlendFunc<float>(src.a * srcAlphaF, dst.a * dstAlphaF, params.blendFuncAlpha);
 
-  return {ret_rgb, ret_alpha};
+  return {retRgb, retAlpha};
 }
 
 }

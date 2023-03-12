@@ -16,15 +16,15 @@ struct Viewport {
   float y;
   float width;
   float height;
-  float depth_near;
-  float depth_far;
+  float depthNear;
+  float depthFar;
 
-  float depth_min;
-  float depth_max;
+  float depthMin;
+  float depthMax;
 
   // ref: https://registry.khronos.org/vulkan/specs/1.0/html/chap24.html#vertexpostproc-viewport
-  glm::vec4 inner_o;
-  glm::vec4 inner_p;
+  glm::vec4 innerO;
+  glm::vec4 innerP;
 };
 
 struct VertexHolder {
@@ -34,24 +34,24 @@ struct VertexHolder {
   void *vertex = nullptr;
   float *varyings = nullptr;
 
-  int clip_mask = 0;
-  glm::aligned_vec4 clip_pos = glm::vec4(0.f);    // clip space position
-  glm::aligned_vec4 frag_pos = glm::vec4(0.f);    // screen space position
+  int clipMask = 0;
+  glm::aligned_vec4 clipPos = glm::vec4(0.f);     // clip space position
+  glm::aligned_vec4 fragPos = glm::vec4(0.f);     // screen space position
 
-  std::shared_ptr<uint8_t> vertex_holder = nullptr;
-  std::shared_ptr<float> varyings_holder = nullptr;
+  std::shared_ptr<uint8_t> vertexHolder = nullptr;
+  std::shared_ptr<float> varyingsHolder = nullptr;
 };
 
 struct PrimitiveHolder {
   bool discard = false;
-  bool front_facing = true;
+  bool frontFacing = true;
   size_t indices[3] = {0, 0, 0};
 };
 
 class SampleContext {
  public:
   bool inside = false;
-  glm::ivec2 fbo_coord = glm::ivec2(0);
+  glm::ivec2 fboCoord = glm::ivec2(0);
   glm::aligned_vec4 position = glm::aligned_vec4(0.f);
   glm::aligned_vec4 barycentric = glm::aligned_vec4(0.f);
 };
@@ -70,32 +70,32 @@ class PixelContext {
 
   void Init(float x, float y, int sample_cnt = 1) {
     inside = false;
-    sample_count = sample_cnt;
+    sampleCount = sample_cnt;
     coverage = 0;
-    if (sample_count > 1) {
-      samples.resize(sample_count + 1);  // store center sample at end
-      if (sample_count == 4) {
-        for (int i = 0; i < sample_count; i++) {
-          samples[i].fbo_coord = glm::ivec2(x, y);
+    if (sampleCount > 1) {
+      samples.resize(sampleCount + 1);  // store center sample at end
+      if (sampleCount == 4) {
+        for (int i = 0; i < sampleCount; i++) {
+          samples[i].fboCoord = glm::ivec2(x, y);
           samples[i].position = glm::vec4(GetSampleLocation4X()[i] + glm::vec2(x, y), 0.f, 0.f);
         }
         // pixel center
-        samples[4].fbo_coord = glm::ivec2(x, y);
+        samples[4].fboCoord = glm::ivec2(x, y);
         samples[4].position = glm::vec4(x + 0.5f, y + 0.5f, 0.f, 0.f);
-        sample_shading = &samples[4];
+        sampleShading = &samples[4];
       } else {
         // not support
       }
     } else {
       samples.resize(1);
-      samples[0].fbo_coord = glm::ivec2(x, y);
+      samples[0].fboCoord = glm::ivec2(x, y);
       samples[0].position = glm::vec4(x + 0.5f, y + 0.5f, 0.f, 0.f);
-      sample_shading = &samples[0];
+      sampleShading = &samples[0];
     }
   }
 
   bool InitCoverage() {
-    if (sample_count > 1) {
+    if (sampleCount > 1) {
       coverage = 0;
       inside = false;
       for (int i = 0; i < samples.size() - 1; i++) {
@@ -112,12 +112,12 @@ class PixelContext {
   }
 
   void InitShadingSample() {
-    if (sample_shading->inside) {
+    if (sampleShading->inside) {
       return;
     }
     for (auto &sample : samples) {
       if (sample.inside) {
-        sample_shading = &sample;
+        sampleShading = &sample;
         break;
       }
     }
@@ -125,21 +125,21 @@ class PixelContext {
 
  public:
   bool inside = false;
-  float *varyings_frag = nullptr;
+  float *varyingsFrag = nullptr;
   std::vector<SampleContext> samples;
-  SampleContext *sample_shading = nullptr;
-  int sample_count = 0;
+  SampleContext *sampleShading = nullptr;
+  int sampleCount = 0;
   int coverage = 0;
 };
 
 class PixelQuadContext {
  public:
   void SetVaryingsSize(size_t size) {
-    if (varyings_aligned_cnt_ != size) {
-      varyings_aligned_cnt_ = size;
-      varyings_pool_ = MemoryUtils::MakeAlignedBuffer<float>(4 * varyings_aligned_cnt_);
+    if (varyingsAlignedCnt_ != size) {
+      varyingsAlignedCnt_ = size;
+      varyingsPool_ = MemoryUtils::makeAlignedBuffer<float>(4 * varyingsAlignedCnt_);
       for (int i = 0; i < 4; i++) {
-        pixels[i].varyings_frag = varyings_pool_.get() + i * varyings_aligned_cnt_;
+        pixels[i].varyingsFrag = varyingsPool_.get() + i * varyingsAlignedCnt_;
       }
     }
   }
@@ -164,25 +164,25 @@ class PixelQuadContext {
   PixelContext pixels[4];
 
   // triangle vertex screen space position
-  glm::aligned_vec4 vert_pos[3];
-  glm::aligned_vec4 vert_pos_flat[4];
+  glm::aligned_vec4 vertPos[3];
+  glm::aligned_vec4 vertPosFlat[4];
 
   // triangle barycentric correct
-  const float *vert_z[3] = {nullptr, nullptr, nullptr};
-  glm::aligned_vec4 vert_w = glm::aligned_vec4(0.f, 0.f, 0.f, 1.f);
+  const float *vertZ[3] = {nullptr, nullptr, nullptr};
+  glm::aligned_vec4 vertW = glm::aligned_vec4(0.f, 0.f, 0.f, 1.f);
 
   // triangle vertex shader varyings
-  const float *vert_varyings[3] = {nullptr, nullptr, nullptr};
+  const float *vertVaryings[3] = {nullptr, nullptr, nullptr};
 
   // triangle Facing
-  bool front_facing = true;
+  bool frontFacing = true;
 
   // shader program
-  std::shared_ptr<ShaderProgramSoft> shader_program = nullptr;
+  std::shared_ptr<ShaderProgramSoft> shaderProgram = nullptr;
 
  private:
-  size_t varyings_aligned_cnt_ = 0;
-  std::shared_ptr<float> varyings_pool_ = nullptr;
+  size_t varyingsAlignedCnt_ = 0;
+  std::shared_ptr<float> varyingsPool_ = nullptr;
 };
 
 }

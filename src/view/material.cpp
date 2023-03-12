@@ -11,7 +11,7 @@ namespace View {
 
 #define CASE_ENUM_STR(type) case type: return #type
 
-const char *Material::ShadingModelStr(ShadingModel model) {
+const char *Material::shadingModelStr(ShadingModel model) {
   switch (model) {
     CASE_ENUM_STR(Shading_BaseColor);
     CASE_ENUM_STR(Shading_BlinnPhong);
@@ -20,12 +20,13 @@ const char *Material::ShadingModelStr(ShadingModel model) {
     CASE_ENUM_STR(Shading_IBL_Irradiance);
     CASE_ENUM_STR(Shading_IBL_Prefilter);
     CASE_ENUM_STR(Shading_FXAA);
-    default:break;
+    default:
+      break;
   }
   return "";
 }
 
-const char *Material::TextureUsageStr(TextureUsage usage) {
+const char *Material::textureUsageStr(TextureUsage usage) {
   switch (usage) {
     CASE_ENUM_STR(TextureUsage_NONE);
     CASE_ENUM_STR(TextureUsage_ALBEDO);
@@ -45,7 +46,7 @@ const char *Material::TextureUsageStr(TextureUsage usage) {
   return "";
 }
 
-const char *Material::SamplerDefine(TextureUsage usage) {
+const char *Material::samplerDefine(TextureUsage usage) {
   switch (usage) {
     case TextureUsage_ALBEDO:             return "ALBEDO_MAP";
     case TextureUsage_NORMAL:             return "NORMAL_MAP";
@@ -63,7 +64,7 @@ const char *Material::SamplerDefine(TextureUsage usage) {
   return nullptr;
 }
 
-const char *Material::SamplerName(TextureUsage usage) {
+const char *Material::samplerName(TextureUsage usage) {
   switch (usage) {
     case TextureUsage_ALBEDO:             return "u_albedoMap";
     case TextureUsage_NORMAL:             return "u_normalMap";

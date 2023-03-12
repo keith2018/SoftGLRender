@@ -22,27 +22,27 @@ class UniformBlockOpenGL : public UniformBlock {
     GL_CHECK(glDeleteBuffers(1, &ubo_));
   }
 
-  int GetLocation(ShaderProgram &program) override {
-    return glGetUniformBlockIndex(program.GetId(), name.c_str());
+  int getLocation(ShaderProgram &program) override {
+    return glGetUniformBlockIndex(program.getId(), name.c_str());
   }
 
-  void BindProgram(ShaderProgram &program, int location) override {
+  void bindProgram(ShaderProgram &program, int location) override {
     if (location < 0) {
       return;
     }
     auto *program_gl = dynamic_cast<ShaderProgramOpenGL *>(&program);
     int binding = program_gl->GetUniformBlockBinding();
 
-    GL_CHECK(glUniformBlockBinding(program_gl->GetId(), location, binding));
+    GL_CHECK(glUniformBlockBinding(program_gl->getId(), location, binding));
     GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, binding, ubo_));
   }
 
-  void SetSubData(void *data, int len, int offset) override {
+  void setSubData(void *data, int len, int offset) override {
     GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, ubo_));
     GL_CHECK(glBufferSubData(GL_UNIFORM_BUFFER, offset, len, data));
   }
 
-  void SetData(void *data, int len) override {
+  void setData(void *data, int len) override {
     GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, ubo_));
     GL_CHECK(glBufferData(GL_UNIFORM_BUFFER, len, data, GL_STATIC_DRAW));
   }
@@ -57,11 +57,11 @@ class UniformSamplerOpenGL : public UniformSampler {
       : UniformSampler(name, type, format) {}
   ~UniformSamplerOpenGL() = default;
 
-  int GetLocation(ShaderProgram &program) override {
-    return glGetUniformLocation(program.GetId(), name.c_str());
+  int getLocation(ShaderProgram &program) override {
+    return glGetUniformLocation(program.getId(), name.c_str());
   }
 
-  void BindProgram(ShaderProgram &program, int location) override {
+  void bindProgram(ShaderProgram &program, int location) override {
     if (location < 0) {
       return;
     }
@@ -79,7 +79,7 @@ class UniformSamplerOpenGL : public UniformSampler {
       BIND_TEX_OPENGL(6)
       BIND_TEX_OPENGL(7)
       default: {
-        LOGE("UniformSampler::BindProgram error: texture unit not support");
+        LOGE("UniformSampler::bindProgram error: texture unit not support");
         break;
       }
     }
@@ -87,7 +87,7 @@ class UniformSamplerOpenGL : public UniformSampler {
     GL_CHECK(glUniform1i(location, binding));
   }
 
-  void SetTexture(const std::shared_ptr<Texture> &tex) override {
+  void setTexture(const std::shared_ptr<Texture> &tex) override {
     switch (tex->type) {
       case TextureType_2D:
         texTarget_ = GL_TEXTURE_2D;
@@ -96,10 +96,10 @@ class UniformSamplerOpenGL : public UniformSampler {
         texTarget_ = GL_TEXTURE_CUBE_MAP;
         break;
       default:
-        LOGE("UniformSampler::SetTexture error: texture type not support");
+        LOGE("UniformSampler::setTexture error: texture type not support");
         break;
     }
-    texId_ = tex->GetId();
+    texId_ = tex->getId();
   }
 
  private:
