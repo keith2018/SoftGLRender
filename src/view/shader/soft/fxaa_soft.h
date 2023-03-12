@@ -204,7 +204,9 @@ class FS : public ShaderFXAA {
       }
 
       // If both sides have been reached, stop the exploration.
-      if (reachedBoth) { break; }
+      if (reachedBoth) {
+        break;
+      }
     }
 
     // Compute the distances to each side edge of the edge (!).

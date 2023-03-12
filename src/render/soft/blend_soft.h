@@ -15,26 +15,16 @@ T CalcBlendFactor(const T &src, const float &src_alpha,
                   const T &dst, const float &dst_alpha,
                   const BlendFactor &factor) {
   switch (factor) {
-    case BlendFactor_ZERO:
-      return T(0.f);
-    case BlendFactor_ONE:
-      return T(1.f);
-    case BlendFactor_SRC_COLOR:
-      return src;
-    case BlendFactor_SRC_ALPHA:
-      return T(src_alpha);
-    case BlendFactor_DST_COLOR:
-      return dst;
-    case BlendFactor_DST_ALPHA:
-      return T(dst_alpha);
-    case BlendFactor_ONE_MINUS_SRC_COLOR:
-      return T(1.f) - src;
-    case BlendFactor_ONE_MINUS_SRC_ALPHA:
-      return T(1.f - src_alpha);
-    case BlendFactor_ONE_MINUS_DST_COLOR:
-      return T(1.f) - dst;
-    case BlendFactor_ONE_MINUS_DST_ALPHA:
-      return T(1.f - dst_alpha);
+    case BlendFactor_ZERO:                return T(0.f);
+    case BlendFactor_ONE:                 return T(1.f);
+    case BlendFactor_SRC_COLOR:           return src;
+    case BlendFactor_SRC_ALPHA:           return T(src_alpha);
+    case BlendFactor_DST_COLOR:           return dst;
+    case BlendFactor_DST_ALPHA:           return T(dst_alpha);
+    case BlendFactor_ONE_MINUS_SRC_COLOR: return T(1.f) - src;
+    case BlendFactor_ONE_MINUS_SRC_ALPHA: return T(1.f - src_alpha);
+    case BlendFactor_ONE_MINUS_DST_COLOR: return T(1.f) - dst;
+    case BlendFactor_ONE_MINUS_DST_ALPHA: return T(1.f - dst_alpha);
   }
   return T(0.f);
 }
@@ -42,16 +32,11 @@ T CalcBlendFactor(const T &src, const float &src_alpha,
 template<typename T>
 T CalcBlendFunc(const T &src, const T &dst, const BlendFunction &func) {
   switch (func) {
-    case BlendFunc_ADD:
-      return src + dst;
-    case BlendFunc_SUBTRACT:
-      return src - dst;
-    case BlendFunc_REVERSE_SUBTRACT:
-      return dst - src;
-    case BlendFunc_MIN:
-      return glm::min(src, dst);
-    case BlendFunc_MAX:
-      return glm::max(src, dst);
+    case BlendFunc_ADD:               return src + dst;
+    case BlendFunc_SUBTRACT:          return src - dst;
+    case BlendFunc_REVERSE_SUBTRACT:  return dst - src;
+    case BlendFunc_MIN:               return glm::min(src, dst);
+    case BlendFunc_MAX:               return glm::max(src, dst);
   }
   return src + dst;
 }

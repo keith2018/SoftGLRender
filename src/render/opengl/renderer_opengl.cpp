@@ -24,10 +24,8 @@ std::shared_ptr<FrameBuffer> RendererOpenGL::CreateFrameBuffer() {
 // texture
 std::shared_ptr<Texture> RendererOpenGL::CreateTexture(const TextureDesc &desc) {
   switch (desc.type) {
-    case TextureType_2D:
-      return std::make_shared<Texture2DOpenGL>(desc);
-    case TextureType_CUBE:
-      return std::make_shared<TextureCubeOpenGL>(desc);
+    case TextureType_2D:    return std::make_shared<Texture2DOpenGL>(desc);
+    case TextureType_CUBE:  return std::make_shared<TextureCubeOpenGL>(desc);
   }
   return nullptr;
 }

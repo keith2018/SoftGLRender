@@ -89,16 +89,11 @@ static inline GLint ConvertBlendFactor(BlendFactor factor) {
 
 static inline GLint ConvertBlendFunction(BlendFunction func) {
   switch (func) {
-    case BlendFunc_ADD:
-      return GL_FUNC_ADD;
-    case BlendFunc_SUBTRACT:
-      return GL_FUNC_SUBTRACT;
-    case BlendFunc_REVERSE_SUBTRACT:
-      return GL_FUNC_REVERSE_SUBTRACT;
-    case BlendFunc_MIN:
-      return GL_MIN;
-    case BlendFunc_MAX:
-      return GL_MAX;
+    case BlendFunc_ADD:               return GL_FUNC_ADD;
+    case BlendFunc_SUBTRACT:          return GL_FUNC_SUBTRACT;
+    case BlendFunc_REVERSE_SUBTRACT:  return GL_FUNC_REVERSE_SUBTRACT;
+    case BlendFunc_MIN:               return GL_MIN;
+    case BlendFunc_MAX:               return GL_MAX;
     default:
       break;
   }
@@ -118,12 +113,9 @@ static inline GLint ConvertPolygonMode(PolygonMode mode) {
 
 static inline GLint ConvertDrawMode(PrimitiveType type) {
   switch (type) {
-    case Primitive_POINT:
-      return GL_POINTS;
-    case Primitive_LINE:
-      return GL_LINES;
-    case Primitive_TRIANGLE:
-      return GL_TRIANGLES;
+    case Primitive_POINT:       return GL_POINTS;
+    case Primitive_LINE:        return GL_LINES;
+    case Primitive_TRIANGLE:    return GL_TRIANGLES;
     default:
       break;
   }

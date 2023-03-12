@@ -63,7 +63,9 @@ Plane::PlaneIntersects Plane::Intersects(const glm::vec3 &p0, const glm::vec3 &p
 
 bool Frustum::Intersects(const BoundingBox &box) const {
   for (auto &plane : planes) {
-    if (plane.Intersects(box) == Plane::Intersects_Back) return false;
+    if (plane.Intersects(box) == Plane::Intersects_Back) {
+      return false;
+    }
   }
 
   // check box intersects
