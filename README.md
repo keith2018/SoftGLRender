@@ -15,50 +15,59 @@ by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.co
 
 ![](screenshot/helmet.png)
 
-- [render](src/render):
-    - [soft](src/render/soft): software renderer implementation
-    - [opengl](src/render/opengl): OpenGL renderer implementation
-- [view](src/view): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel,
-  and render pass management. You can switch between software renderer and OpenGL renderer in real time.
-    - [shader/soft](src/view/shader/soft): simulate vertex shader & fragment shader using c++, several basic shaders are
-      embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
-    - [shader/opengl](src/view/shader/opengl): GLSL shader code
+
+#### Source Code Structure
+
+```
+src
+├── Base/ - Basic utility classes.
+├── Render/ - Renderer abstraction.
+|   ├── OpenGL/ - OpenGL renderer implementation.
+|   └── Software/ - Software renderer implementation.
+└── Viewer/ -  Code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, 
+    |          setting panel, and render pass management. 
+    |          You can switch between software renderer and OpenGL renderer in real time.
+    └── Shader/
+        ├── OpenGL/ - GLSL shader code.
+        └── Software/ - Simulate vertex shader & fragment shader using c++, several basic shaders
+                        are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
+```
 
 #### Renderer abstraction
-
-![](screenshot/pipeline.jpg)
 
 ```cpp
 class Renderer {
  public:
   // framebuffer
-  virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer() = 0;
+  virtual std::shared_ptr<FrameBuffer> createFrameBuffer() = 0;
 
   // texture
-  virtual std::shared_ptr<Texture> CreateTexture(const TextureDesc &desc) = 0;
+  virtual std::shared_ptr<Texture> createTexture(const TextureDesc &desc) = 0;
 
   // vertex
-  virtual std::shared_ptr<VertexArrayObject> CreateVertexArrayObject(const VertexArray &vertex_array) = 0;
+  virtual std::shared_ptr<VertexArrayObject> createVertexArrayObject(const VertexArray &vertexArray) = 0;
 
   // shader program
-  virtual std::shared_ptr<ShaderProgram> CreateShaderProgram() = 0;
+  virtual std::shared_ptr<ShaderProgram> createShaderProgram() = 0;
 
   // uniform
-  virtual std::shared_ptr<UniformBlock> CreateUniformBlock(const std::string &name, int size) = 0;
-  virtual std::shared_ptr<UniformSampler> CreateUniformSampler(const std::string &name, TextureType type,
+  virtual std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) = 0;
+  virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
                                                                TextureFormat format) = 0;
 
   // pipeline
-  virtual void SetFrameBuffer(std::shared_ptr<FrameBuffer> &frame_buffer) = 0;
-  virtual void SetViewPort(int x, int y, int width, int height) = 0;
-  virtual void Clear(const ClearState &state) = 0;
-  virtual void SetRenderState(const RenderState &state) = 0;
-  virtual void SetVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
-  virtual void SetShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
-  virtual void SetShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
-  virtual void Draw(PrimitiveType type) = 0;
+  virtual void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) = 0;
+  virtual void setViewPort(int x, int y, int width, int height) = 0;
+  virtual void clear(const ClearState &state) = 0;
+  virtual void setRenderState(const RenderState &state) = 0;
+  virtual void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
+  virtual void setShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
+  virtual void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
+  virtual void draw(PrimitiveType type) = 0;
 };
 ```
+
+![](screenshot/pipeline.jpg)
 
 #### Software Renderer Features
 
