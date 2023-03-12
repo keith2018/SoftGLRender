@@ -15,18 +15,25 @@ by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.co
 
 ![](screenshot/helmet.png)
 
-- [render](src/render):
-    - [soft](src/render/soft): software renderer implementation
-    - [opengl](src/render/opengl): OpenGL renderer implementation
-- [view](src/view): code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, setting panel,
-  and render pass management. You can switch between software renderer and OpenGL renderer in real time.
-    - [shader/soft](src/view/shader/soft): simulate vertex shader & fragment shader using c++, several basic shaders are
-      embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
-    - [shader/opengl](src/view/shader/opengl): GLSL shader code
+
+#### Source Code Structure
+
+```
+src
+├── Base/ - Basic utility classes.
+├── Render/ - Renderer abstraction.
+|   ├── OpenGL/ - OpenGL renderer implementation.
+|   └── Software/ - Software renderer implementation.
+└── Viewer/ -  Code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, 
+    |          setting panel, and render pass management. 
+    |          You can switch between software renderer and OpenGL renderer in real time.
+    └── Shader/
+        ├── OpenGL/ - GLSL shader code.
+        └── Software/ - Simulate vertex shader & fragment shader using c++, several basic shaders
+                        are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
+```
 
 #### Renderer abstraction
-
-![](screenshot/pipeline.jpg)
 
 ```cpp
 class Renderer {
@@ -59,6 +66,8 @@ class Renderer {
   virtual void draw(PrimitiveType type) = 0;
 };
 ```
+
+![](screenshot/pipeline.jpg)
 
 #### Software Renderer Features
 
