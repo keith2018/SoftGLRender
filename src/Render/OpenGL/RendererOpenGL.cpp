@@ -107,7 +107,7 @@ void RendererOpenGL::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
     return;
   }
   shaderProgram_ = dynamic_cast<ShaderProgramOpenGL *>(program.get());
-  shaderProgram_->Use();
+  shaderProgram_->use();
 }
 
 void RendererOpenGL::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {

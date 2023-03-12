@@ -17,7 +17,7 @@ namespace SoftGL {
 namespace View {
 
 #define CASE_CREATE_SHADER_GL(shading, source) case shading: \
-  return programGL->CompileAndLink(source##_VS, source##_FS)
+  return programGL->compileAndLink(source##_VS, source##_FS)
 
 class ViewerOpenGL : public Viewer {
  public:

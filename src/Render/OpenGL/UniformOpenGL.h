@@ -30,10 +30,10 @@ class UniformBlockOpenGL : public UniformBlock {
     if (location < 0) {
       return;
     }
-    auto *program_gl = dynamic_cast<ShaderProgramOpenGL *>(&program);
-    int binding = program_gl->GetUniformBlockBinding();
+    auto *programGL = dynamic_cast<ShaderProgramOpenGL *>(&program);
+    int binding = programGL->getUniformBlockBinding();
 
-    GL_CHECK(glUniformBlockBinding(program_gl->getId(), location, binding));
+    GL_CHECK(glUniformBlockBinding(programGL->getId(), location, binding));
     GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, binding, ubo_));
   }
 
@@ -55,7 +55,6 @@ class UniformSamplerOpenGL : public UniformSampler {
  public:
   explicit UniformSamplerOpenGL(const std::string &name, TextureType type, TextureFormat format)
       : UniformSampler(name, type, format) {}
-  ~UniformSamplerOpenGL() = default;
 
   int getLocation(ShaderProgram &program) override {
     return glGetUniformLocation(program.getId(), name.c_str());
@@ -66,8 +65,8 @@ class UniformSamplerOpenGL : public UniformSampler {
       return;
     }
 
-    auto *program_gl = dynamic_cast<ShaderProgramOpenGL *>(&program);
-    int binding = program_gl->GetUniformSamplerBinding();
+    auto *programGL = dynamic_cast<ShaderProgramOpenGL *>(&program);
+    int binding = programGL->getUniformSamplerBinding();
 
     switch (binding) {
       BIND_TEX_OPENGL(0)
