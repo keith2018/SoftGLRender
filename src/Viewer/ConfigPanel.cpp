@@ -62,10 +62,11 @@ void ConfigPanel::drawSettings() {
   const char *rendererItems[] = {
       "Software",
       "OpenGL",
+      "Vulkan",
   };
   ImGui::Separator();
   ImGui::Text("renderer");
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 3; i++) {
     if (ImGui::RadioButton(rendererItems[i], config_.rendererType == i)) {
       config_.rendererType = i;
     }

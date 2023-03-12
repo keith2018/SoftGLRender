@@ -680,11 +680,11 @@ std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, T
   sampler2d.useMipmaps = mipmaps;
   sampler2d.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
 
-  auto texture_2d = renderer_->createTexture({TextureType_2D, format, false});
-  texture_2d->setSamplerDesc(sampler2d);
-  texture_2d->initImageData(width, height);
+  auto texture2d = renderer_->createTexture({TextureType_2D, format, false});
+  texture2d->setSamplerDesc(sampler2d);
+  texture2d->initImageData(width, height);
 
-  return texture_2d;
+  return texture2d;
 }
 
 std::set<std::string> Viewer::generateShaderDefines(Material &material) {

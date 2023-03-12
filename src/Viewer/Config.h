@@ -21,6 +21,7 @@ enum AAType {
 enum RendererType {
   Renderer_SOFT,
   Renderer_OPENGL,
+  Renderer_Vulkan,
 };
 
 class Config {

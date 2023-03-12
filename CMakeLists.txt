@@ -18,6 +18,7 @@ include_directories(
         "${THIRD_PARTY_DIR}/imgui"
         "${THIRD_PARTY_DIR}/json11"
         "${THIRD_PARTY_DIR}/stb/include"
+        "${THIRD_PARTY_DIR}/vulkan/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
@@ -43,8 +44,9 @@ file(GLOB SOFTGL_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/Software/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/OpenGL/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/Vulkan/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/Shader/OpenGL/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/Shader/GLSL/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/Shader/Software/*.cpp
         )
 
@@ -61,15 +63,17 @@ add_executable(SoftGLRender
         )
 
 if (WIN32)
+    target_link_libraries(SoftGLRender
+            assimp
+            "${THIRD_PARTY_DIR}/vulkan/lib-win-x64/vulkan-1.lib"
+            )
     if (MSVC)
         target_link_libraries(SoftGLRender
-                assimp
                 "${THIRD_PARTY_DIR}/glfw/lib-vc2022/glfw3.lib"
                 "${THIRD_PARTY_DIR}/glfw/lib-vc2022/glfw3dll.lib"
                 )
     else ()
         target_link_libraries(SoftGLRender
-                assimp
                 "${THIRD_PARTY_DIR}/glfw/lib-mingw-w64/libglfw3.a"
                 "${THIRD_PARTY_DIR}/glfw/lib-mingw-w64/libglfw3dll.a"
                 )

@@ -11,7 +11,7 @@
 #include "Render/OpenGL/RendererOpenGL.h"
 #include "Render/OpenGL/ShaderProgramOpenGL.h"
 #include "Render/OpenGL/OpenGLUtils.h"
-#include "Shader/OpenGL/ShaderGLSL.h"
+#include "Shader/GLSL/ShaderGLSL.h"
 
 namespace SoftGL {
 namespace View {

@@ -10,8 +10,9 @@
 #include "OrbitController.h"
 #include "ConfigPanel.h"
 #include "ModelLoader.h"
+#include "ViewerSoftware.h"
 #include "ViewerOpenGL.h"
-#include "ViewerSoft.h"
+#include "ViewerVulkan.h"
 
 namespace SoftGL {
 namespace View {
@@ -41,13 +42,17 @@ class ViewerManager {
       modelLoader_->getScene().resetModelTextures();
     });
 
-    // viewer soft
-    auto viewer_soft = std::make_shared<ViewerSoft>(*config_, *camera_);
+    // viewer software
+    auto viewer_soft = std::make_shared<ViewerSoftware>(*config_, *camera_);
     viewers_[Renderer_SOFT] = std::move(viewer_soft);
 
     // viewer opengl
     auto viewer_opengl = std::make_shared<ViewerOpenGL>(*config_, *camera_);
     viewers_[Renderer_OPENGL] = std::move(viewer_opengl);
+
+    // viewer vulkan
+    auto viewer_vulkan = std::make_shared<ViewerVulkan>(*config_, *camera_);
+    viewers_[Renderer_Vulkan] = std::move(viewer_vulkan);
 
     // model loader
     modelLoader_ = std::make_shared<ModelLoader>(*config_, *configPanel_);

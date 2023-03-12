@@ -28,7 +28,7 @@ src
     |          setting panel, and render pass management. 
     |          You can switch between software renderer and OpenGL renderer in real time.
     └── Shader/
-        ├── OpenGL/ - GLSL shader code.
+        ├── GLSL/ - GLSL shader code.
         └── Software/ - Simulate vertex shader & fragment shader using c++, several basic shaders
                         are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
 ```
