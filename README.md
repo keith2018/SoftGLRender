@@ -22,8 +22,9 @@ by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.co
 src
 ├── Base/ - Basic utility classes.
 ├── Render/ - Renderer abstraction.
+|   ├── Software/ - Software renderer implementation.
 |   ├── OpenGL/ - OpenGL renderer implementation.
-|   └── Software/ - Software renderer implementation.
+|   └── Vulkan/ - Vulkan renderer implementation.
 └── Viewer/ -  Code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, 
     |          setting panel, and render pass management. 
     |          You can switch between software renderer and OpenGL renderer in real time.
