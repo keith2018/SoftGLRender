@@ -10,10 +10,16 @@
 namespace SoftGL {
 
 const std::vector<const char *> kValidationLayers = {
-    "VK_LAYER_KHRONOS_validation"
+    "VK_LAYER_KHRONOS_validation",
 };
 
-const std::vector<const char *> kRequiredExtensions = {
+const std::vector<const char *> kRequiredInstanceExtensions = {
+    "VK_KHR_portability_enumeration",
+    "VK_KHR_get_physical_device_properties2",
+};
+
+const std::vector<const char *> kRequiredDeviceExtensions = {
+    "VK_KHR_portability_subset",
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -154,9 +160,10 @@ bool RendererVulkan::createInstance() {
 
   VkInstanceCreateInfo createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+  createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
   createInfo.pApplicationInfo = &appInfo;
 
-  auto extensions = kRequiredExtensions;
+  auto extensions = kRequiredInstanceExtensions;
   if (enableValidationLayers_) {
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
@@ -192,7 +199,8 @@ bool RendererVulkan::setupDebugMessenger() {
   populateDebugMessengerCreateInfo(createInfo);
 
   VkResult ret = VK_SUCCESS;
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(vkInstance_, "vkCreateDebugUtilsMessengerEXT");
+  auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(vkInstance_,
+                                                                         "vkCreateDebugUtilsMessengerEXT");
   if (func != nullptr) {
     ret = func(vkInstance_, &createInfo, nullptr, &vkDebugMessenger_);
   } else {
@@ -247,7 +255,10 @@ bool RendererVulkan::createLogicalDevice() {
   createInfo.pQueueCreateInfos = &queueCreateInfo;
   createInfo.queueCreateInfoCount = 1;
   createInfo.pEnabledFeatures = &deviceFeatures;
-  createInfo.enabledExtensionCount = 0;
+
+  auto extensions = kRequiredDeviceExtensions;
+  createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+  createInfo.ppEnabledExtensionNames = extensions.data();
 
   if (enableValidationLayers_) {
     createInfo.enabledLayerCount = static_cast<uint32_t>(kValidationLayers.size());
@@ -301,25 +312,20 @@ void RendererVulkan::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreat
 }
 
 QueueFamilyIndices RendererVulkan::findQueueFamilies(VkPhysicalDevice device) {
-  QueueFamilyIndices indices;
-
   uint32_t queueFamilyCount = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
   std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
   vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-  int i = 0;
-  for (const auto &queueFamily : queueFamilies) {
-    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+  QueueFamilyIndices indices;
+  for (int i = 0; i < queueFamilies.size(); i++) {
+    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = i;
     }
-
     if (indices.isComplete()) {
       break;
     }
-
-    i++;
   }
 
   return indices;

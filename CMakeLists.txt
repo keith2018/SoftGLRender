@@ -86,6 +86,7 @@ if (APPLE)
     target_link_libraries(SoftGLRender
             assimp
             "${THIRD_PARTY_DIR}/glfw/lib-macos-universal/libglfw3.a"
+            "${THIRD_PARTY_DIR}/vulkan/lib-macos-universal/libvulkan.1.dylib"
             )
 endif ()
 
@@ -96,6 +97,7 @@ if (UNIX AND NOT APPLE)
             glfw
             OpenGL::GL
             pthread
+            "${THIRD_PARTY_DIR}/vulkan/lib-linux-x64/libvulkan.so.1"
             ${CMAKE_DL_LIBS}
             )
 endif ()

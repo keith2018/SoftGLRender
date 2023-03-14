@@ -6,8 +6,14 @@
 
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include "Base/Platform.h"
 #include "Render/Renderer.h"
+
+#ifdef PLATFORM_OSX
+#include "MoltenVK/mvk_vulkan.h"
+#else
+#include "vukan/vukan.h"
+#endif
 
 namespace SoftGL {
 
