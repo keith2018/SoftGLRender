@@ -65,19 +65,32 @@ class RendererVulkan : public Renderer {
   bool setupDebugMessenger();
   bool pickPhysicalDevice();
   bool createLogicalDevice();
+  bool createRenderPass();
+  bool createGraphicsPipeline();
+  bool createFrameBuffers();
+  bool createCommandPool();
+  bool createCommandBuffer();
 
   bool checkValidationLayerSupport();
   void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+  bool createShaderModule(VkShaderModule &shaderModule, const std::string &code);
 
  private:
   bool enableValidationLayers_ = false;
-  VkDebugUtilsMessengerEXT vkDebugMessenger_;
+  VkDebugUtilsMessengerEXT debugMessenger_;
 
-  VkInstance vkInstance_;
-  VkPhysicalDevice vkPhysicalDevice_ = VK_NULL_HANDLE;
-  VkDevice vkDevice_;
-  VkQueue vkGraphicsQueue_;
+  VkInstance instance_;
+  VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
+  VkDevice device_;
+  VkQueue graphicsQueue_;
+
+  VkRenderPass renderPass_;
+  VkPipelineLayout pipelineLayout_;
+  VkPipeline graphicsPipeline_;
+
+  VkCommandPool commandPool_;
+  VkCommandBuffer commandBuffer_;
 };
 
 }
