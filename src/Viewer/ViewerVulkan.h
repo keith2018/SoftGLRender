@@ -21,8 +21,21 @@ class ViewerVulkan : public Viewer {
   }
 
   void swapBuffer() override {
-    int width = texColorMain_->width;
-    int height = texColorMain_->height;
+    auto *vkRenderer = dynamic_cast<RendererVulkan *>(renderer_.get());
+    auto buffer = vkRenderer->pixelBuffer;
+    if (!buffer) {
+      return;
+    }
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
+                          0,
+                          GL_RGBA,
+                          (int) buffer->getWidth(),
+                          (int) buffer->getHeight(),
+                          0,
+                          GL_RGBA,
+                          GL_UNSIGNED_BYTE,
+                          buffer->getRawDataPtr()));
   }
 
   void destroy() override {

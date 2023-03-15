@@ -31,6 +31,11 @@ struct FrameBufferAttachment {
   VkImageView view;
 };
 
+struct OffscreenImage {
+  VkImage image;
+  VkDeviceMemory memory;
+};
+
 class RendererVulkan : public Renderer {
  public:
   RendererVulkan();
@@ -76,15 +81,22 @@ class RendererVulkan : public Renderer {
   bool createFrameBuffers();
   bool createCommandPool();
   bool createCommandBuffer();
+  bool createOffscreenImage();
 
-  void recordCommandBuffer(VkCommandBuffer commandBuffer);
+  void recordDraw(VkCommandBuffer commandBuffer);
+  void recordCopy(VkCommandBuffer commandBuffer);
   void submitWork(VkCommandBuffer cmdBuffer, VkQueue queue);
+
+  void readImagePixels();
 
   bool checkValidationLayerSupport();
   void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
   bool createShaderModule(VkShaderModule &shaderModule, const std::string &code);
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
+
+ public:
+  std::shared_ptr<Buffer<RGBA>> pixelBuffer;
 
  private:
   bool enableValidationLayers_ = false;
@@ -98,13 +110,16 @@ class RendererVulkan : public Renderer {
   uint32_t width_ = 1024, height_ = 1024;
   VkFramebuffer framebuffer_;
   FrameBufferAttachment colorAttachment_;
+  OffscreenImage offscreenImage_;
 
   VkRenderPass renderPass_;
   VkPipelineLayout pipelineLayout_;
   VkPipeline graphicsPipeline_;
 
   VkCommandPool commandPool_;
-  VkCommandBuffer commandBuffer_;
+
+  VkCommandBuffer drawCmd_;
+  VkCommandBuffer copyCmd_;
 };
 
 }

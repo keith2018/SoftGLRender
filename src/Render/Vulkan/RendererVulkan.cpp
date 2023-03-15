@@ -83,9 +83,14 @@ void RendererVulkan::setViewPort(int x, int y, int width, int height) {
 
 void RendererVulkan::clear(const ClearState &state) {
   // Fixme Test code
-  recordCommandBuffer(commandBuffer_);
-  submitWork(commandBuffer_, graphicsQueue_);
+  recordDraw(drawCmd_);
+  submitWork(drawCmd_, graphicsQueue_);
   VK_CHECK(vkDeviceWaitIdle(device_));
+
+  recordCopy(copyCmd_);
+  submitWork(copyCmd_, graphicsQueue_);
+  readImagePixels();
+  vkQueueWaitIdle(graphicsQueue_);
 }
 
 void RendererVulkan::setRenderState(const RenderState &state) {
@@ -123,12 +128,12 @@ bool RendererVulkan::initVulkan() {
   EXEC_VULKAN_STEP(setupDebugMessenger)
   EXEC_VULKAN_STEP(pickPhysicalDevice)
   EXEC_VULKAN_STEP(createLogicalDevice)
-
   EXEC_VULKAN_STEP(createRenderPass)
   EXEC_VULKAN_STEP(createGraphicsPipeline)
   EXEC_VULKAN_STEP(createFrameBuffers)
   EXEC_VULKAN_STEP(createCommandPool)
   EXEC_VULKAN_STEP(createCommandBuffer)
+  EXEC_VULKAN_STEP(createOffscreenImage)
 
   return true;
 }
@@ -137,6 +142,9 @@ void RendererVulkan::cleanupVulkan() {
   vkDestroyImageView(device_, colorAttachment_.view, nullptr);
   vkDestroyImage(device_, colorAttachment_.image, nullptr);
   vkFreeMemory(device_, colorAttachment_.memory, nullptr);
+
+  vkDestroyImage(device_, offscreenImage_.image, nullptr);
+  vkFreeMemory(device_, offscreenImage_.memory, nullptr);
 
   vkDestroyRenderPass(device_, renderPass_, nullptr);
   vkDestroyFramebuffer(device_, framebuffer_, nullptr);
@@ -287,7 +295,7 @@ bool RendererVulkan::createRenderPass() {
   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
   VkAttachmentReference colorAttachmentRef{};
   colorAttachmentRef.attachment = 0;
@@ -420,6 +428,9 @@ bool RendererVulkan::createGraphicsPipeline() {
   pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
   VK_CHECK(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline_));
+
+  vkDestroyShaderModule(device_, fragShaderModule, nullptr);
+  vkDestroyShaderModule(device_, vertShaderModule, nullptr);
   return true;
 }
 
@@ -498,11 +509,42 @@ bool RendererVulkan::createCommandBuffer() {
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   allocInfo.commandBufferCount = 1;
 
-  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer_));
+  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &drawCmd_));
+  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &copyCmd_));
   return true;
 }
 
-void RendererVulkan::recordCommandBuffer(VkCommandBuffer commandBuffer) {
+bool RendererVulkan::createOffscreenImage() {
+  VkImageCreateInfo imageInfo{};
+  imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageInfo.imageType = VK_IMAGE_TYPE_2D;
+  imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  imageInfo.extent.width = width_;
+  imageInfo.extent.height = height_;
+  imageInfo.extent.depth = 1;
+  imageInfo.arrayLayers = 1;
+  imageInfo.mipLevels = 1;
+  imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+  imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
+  imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &offscreenImage_.image));
+
+  VkMemoryRequirements memRequirements;
+  VkMemoryAllocateInfo memAllocInfo{};
+  memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+
+  vkGetImageMemoryRequirements(device_, offscreenImage_.image, &memRequirements);
+  memAllocInfo.allocationSize = memRequirements.size;
+
+  memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(
+      memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &offscreenImage_.memory));
+  VK_CHECK(vkBindImageMemory(device_, offscreenImage_.image, offscreenImage_.memory, 0));
+  return true;
+}
+
+void RendererVulkan::recordDraw(VkCommandBuffer commandBuffer) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -544,6 +586,72 @@ void RendererVulkan::recordCommandBuffer(VkCommandBuffer commandBuffer) {
   VK_CHECK(vkEndCommandBuffer(commandBuffer));
 }
 
+void RendererVulkan::recordCopy(VkCommandBuffer commandBuffer) {
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+  VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+  // Transition destination image to transfer destination layout
+  VkImageMemoryBarrier imageMemoryBarrier{};
+  imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  imageMemoryBarrier.srcAccessMask = 0;
+  imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  imageMemoryBarrier.image = offscreenImage_.image;
+  imageMemoryBarrier.subresourceRange = VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+  vkCmdPipelineBarrier(commandBuffer,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       0,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr,
+                       1,
+                       &imageMemoryBarrier);
+
+  // colorAttachment.image is already in VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, and does not need to be transitioned
+
+  VkImageCopy imageCopyRegion{};
+  imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  imageCopyRegion.srcSubresource.layerCount = 1;
+  imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  imageCopyRegion.dstSubresource.layerCount = 1;
+  imageCopyRegion.extent.width = width_;
+  imageCopyRegion.extent.height = height_;
+  imageCopyRegion.extent.depth = 1;
+
+  vkCmdCopyImage(commandBuffer,
+                 colorAttachment_.image,
+                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 offscreenImage_.image,
+                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                 1,
+                 &imageCopyRegion);
+
+  // Transition destination image to general layout, which is the required layout for mapping the image memory later on
+  imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+  imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+  vkCmdPipelineBarrier(commandBuffer,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       0,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr,
+                       1,
+                       &imageMemoryBarrier);
+
+  VK_CHECK(vkEndCommandBuffer(commandBuffer));
+}
+
 void RendererVulkan::submitWork(VkCommandBuffer cmdBuffer, VkQueue queue) {
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -561,6 +669,30 @@ void RendererVulkan::submitWork(VkCommandBuffer cmdBuffer, VkQueue queue) {
 
   VK_CHECK(vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX));
   vkDestroyFence(device_, fence, nullptr);
+}
+
+void RendererVulkan::readImagePixels() {
+  VkImageSubresource subResource{};
+  subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  VkSubresourceLayout subResourceLayout;
+
+  vkGetImageSubresourceLayout(device_, offscreenImage_.image, &subResource, &subResourceLayout);
+
+  uint8_t *pixelPtr = nullptr;
+  vkMapMemory(device_, offscreenImage_.memory, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
+  pixelPtr += subResourceLayout.offset;
+
+  if (!pixelBuffer) {
+    pixelBuffer = Buffer<RGBA>::makeDefault(width_, height_);
+  }
+  auto *dstPtr = reinterpret_cast<uint8_t *>(pixelBuffer->getRawDataPtr());
+  for (int32_t y = 0; y < height_; y++) {
+    memcpy(dstPtr, pixelPtr, width_ * sizeof(RGBA));
+    dstPtr += width_ * sizeof(RGBA);
+    pixelPtr += subResourceLayout.rowPitch;
+  }
+
+  vkUnmapMemory(device_, offscreenImage_.memory);
 }
 
 bool RendererVulkan::checkValidationLayerSupport() {
