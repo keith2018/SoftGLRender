@@ -669,9 +669,10 @@ std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height,
   samplerCube.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
 
   auto textureCube = renderer_->createTexture({TextureType_CUBE, TextureFormat_RGBA8, false});
-  textureCube->setSamplerDesc(samplerCube);
-  textureCube->initImageData(width, height);
-
+  if (textureCube) {
+    textureCube->setSamplerDesc(samplerCube);
+    textureCube->initImageData(width, height);
+  }
   return textureCube;
 }
 
@@ -681,9 +682,10 @@ std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, T
   sampler2d.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
 
   auto texture2d = renderer_->createTexture({TextureType_2D, format, false});
-  texture2d->setSamplerDesc(sampler2d);
-  texture2d->initImageData(width, height);
-
+  if (texture2d) {
+    texture2d->setSamplerDesc(sampler2d);
+    texture2d->initImageData(width, height);
+  }
   return texture2d;
 }
 

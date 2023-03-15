@@ -25,6 +25,12 @@ struct QueueFamilyIndices {
   }
 };
 
+struct FrameBufferAttachment {
+  VkImage image;
+  VkDeviceMemory memory;
+  VkImageView view;
+};
+
 class RendererVulkan : public Renderer {
  public:
   RendererVulkan();
@@ -71,10 +77,14 @@ class RendererVulkan : public Renderer {
   bool createCommandPool();
   bool createCommandBuffer();
 
+  void recordCommandBuffer(VkCommandBuffer commandBuffer);
+  void submitWork(VkCommandBuffer cmdBuffer, VkQueue queue);
+
   bool checkValidationLayerSupport();
   void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
   bool createShaderModule(VkShaderModule &shaderModule, const std::string &code);
+  uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
 
  private:
   bool enableValidationLayers_ = false;
@@ -84,6 +94,10 @@ class RendererVulkan : public Renderer {
   VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
   VkDevice device_;
   VkQueue graphicsQueue_;
+
+  uint32_t width_ = 1024, height_ = 1024;
+  VkFramebuffer framebuffer_;
+  FrameBufferAttachment colorAttachment_;
 
   VkRenderPass renderPass_;
   VkPipelineLayout pipelineLayout_;
