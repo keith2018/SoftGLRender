@@ -16,19 +16,38 @@ const std::vector<const char *> kValidationLayers = {
 };
 
 const std::vector<const char *> kRequiredInstanceExtensions = {
+#ifdef PLATFORM_OSX
     "VK_KHR_portability_enumeration",
     "VK_KHR_get_physical_device_properties2",
+#endif
 };
 
 const std::vector<const char *> kRequiredDeviceExtensions = {
+#ifdef PLATFORM_OSX
     "VK_KHR_portability_subset",
+#endif
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                       VkDebugUtilsMessageTypeFlagsEXT messageType,
                                                       const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
                                                       void *pUserData) {
-  LOGE("validation layer: %s", pCallbackData->pMessage);
+  LogLevel level = LOG_INFO;
+  switch (messageSeverity) {
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+      level = LOG_INFO;
+      break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+      level = LOG_WARNING;
+      break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+      level = LOG_ERROR;
+      break;
+    default:
+      break;
+  }
+  SoftGL::Logger::log(level, __FILE__, __LINE__, "validation layer: %s", pCallbackData->pMessage);
   return VK_FALSE;
 }
 
@@ -85,12 +104,9 @@ void RendererVulkan::clear(const ClearState &state) {
   // Fixme Test code
   recordDraw(drawCmd_);
   submitWork(drawCmd_, graphicsQueue_);
-  VK_CHECK(vkDeviceWaitIdle(device_));
 
   recordCopy(copyCmd_);
   submitWork(copyCmd_, graphicsQueue_);
-  readImagePixels();
-  vkQueueWaitIdle(graphicsQueue_);
 }
 
 void RendererVulkan::setRenderState(const RenderState &state) {
@@ -181,7 +197,9 @@ bool RendererVulkan::createInstance() {
 
   VkInstanceCreateInfo createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+#ifdef PLATFORM_OSX
   createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
   createInfo.pApplicationInfo = &appInfo;
 
   auto extensions = kRequiredInstanceExtensions;
@@ -671,7 +689,7 @@ void RendererVulkan::submitWork(VkCommandBuffer cmdBuffer, VkQueue queue) {
   vkDestroyFence(device_, fence, nullptr);
 }
 
-void RendererVulkan::readImagePixels() {
+void RendererVulkan::readPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height)> &func) {
   VkImageSubresource subResource{};
   subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   VkSubresourceLayout subResourceLayout;
@@ -682,17 +700,12 @@ void RendererVulkan::readImagePixels() {
   vkMapMemory(device_, offscreenImage_.memory, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
   pixelPtr += subResourceLayout.offset;
 
-  if (!pixelBuffer) {
-    pixelBuffer = Buffer<RGBA>::makeDefault(width_, height_);
-  }
-  auto *dstPtr = reinterpret_cast<uint8_t *>(pixelBuffer->getRawDataPtr());
-  for (int32_t y = 0; y < height_; y++) {
-    memcpy(dstPtr, pixelPtr, width_ * sizeof(RGBA));
-    dstPtr += width_ * sizeof(RGBA);
-    pixelPtr += subResourceLayout.rowPitch;
+  if (func) {
+    func(pixelPtr, width_, height_);
   }
 
   vkUnmapMemory(device_, offscreenImage_.memory);
+  vkQueueWaitIdle(graphicsQueue_);
 }
 
 bool RendererVulkan::checkValidationLayerSupport() {

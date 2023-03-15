@@ -12,7 +12,7 @@
 #ifdef PLATFORM_OSX
 #include "MoltenVK/mvk_vulkan.h"
 #else
-#include "vukan/vukan.h"
+#include "vulkan/vulkan.h"
 #endif
 
 namespace SoftGL {
@@ -87,8 +87,6 @@ class RendererVulkan : public Renderer {
   void recordCopy(VkCommandBuffer commandBuffer);
   void submitWork(VkCommandBuffer cmdBuffer, VkQueue queue);
 
-  void readImagePixels();
-
   bool checkValidationLayerSupport();
   void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -96,7 +94,7 @@ class RendererVulkan : public Renderer {
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
 
  public:
-  std::shared_ptr<Buffer<RGBA>> pixelBuffer;
+  void readPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height)> &func);
 
  private:
   bool enableValidationLayers_ = false;

@@ -22,20 +22,18 @@ class ViewerVulkan : public Viewer {
 
   void swapBuffer() override {
     auto *vkRenderer = dynamic_cast<RendererVulkan *>(renderer_.get());
-    auto buffer = vkRenderer->pixelBuffer;
-    if (!buffer) {
-      return;
-    }
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
-    GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
-                          0,
-                          GL_RGBA,
-                          (int) buffer->getWidth(),
-                          (int) buffer->getHeight(),
-                          0,
-                          GL_RGBA,
-                          GL_UNSIGNED_BYTE,
-                          buffer->getRawDataPtr()));
+    vkRenderer->readPixels([&](uint8_t *buffer, uint32_t width, uint32_t height) -> void {
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
+      GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
+                            0,
+                            GL_RGBA,
+                            width,
+                            height,
+                            0,
+                            GL_RGBA,
+                            GL_UNSIGNED_BYTE,
+                            buffer));
+    });
   }
 
   void destroy() override {
