@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Base/UUID.h"
 #include "Render/Framebuffer.h"
 #include "Render/Software/TextureSoft.h"
 
@@ -13,11 +14,8 @@ namespace SoftGL {
 
 class FrameBufferSoft : public FrameBuffer {
  public:
-  FrameBufferSoft() : uuid_(uuidCounter_++) {
-  }
-
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
   bool isValid() override {
@@ -54,8 +52,7 @@ class FrameBufferSoft : public FrameBuffer {
   };
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
+  UUID<FrameBufferSoft> uuid_;
 };
 
 }

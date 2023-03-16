@@ -8,6 +8,7 @@
 
 #include <thread>
 #include <atomic>
+#include "Base/UUID.h"
 #include "Base/Buffer.h"
 #include "Base/ImageUtils.h"
 #include "Render/Texture.h"
@@ -82,7 +83,7 @@ class TextureImageSoft {
 template<typename T>
 class Texture2DSoft : public Texture {
  public:
-  explicit Texture2DSoft(const TextureDesc &desc) : uuid_(uuidCounter_++) {
+  explicit Texture2DSoft(const TextureDesc &desc) {
     assert(desc.type == TextureType_2D);
 
     type = TextureType_2D;
@@ -91,7 +92,7 @@ class Texture2DSoft : public Texture {
   }
 
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
   void setSamplerDesc(SamplerDesc &sampler) override {
@@ -166,8 +167,7 @@ class Texture2DSoft : public Texture {
   }
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
+  UUID<Texture2DSoft<T>> uuid_;
   Sampler2DDesc samplerDesc_;
   TextureImageSoft<T> image_;
 };
@@ -175,7 +175,7 @@ class Texture2DSoft : public Texture {
 template<typename T>
 class TextureCubeSoft : public Texture {
  public:
-  explicit TextureCubeSoft(const TextureDesc &desc) : uuid_(uuidCounter_++) {
+  explicit TextureCubeSoft(const TextureDesc &desc) {
     assert(desc.type == TextureType_CUBE);
     assert(desc.multiSample == false);
 
@@ -185,7 +185,7 @@ class TextureCubeSoft : public Texture {
   }
 
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
   void setSamplerDesc(SamplerDesc &sampler) override {
@@ -248,16 +248,9 @@ class TextureCubeSoft : public Texture {
   }
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
+  UUID<TextureCubeSoft<T>> uuid_;
   SamplerCubeDesc samplerDesc_;
   TextureImageSoft<T> images_[6];
 };
-
-template<typename T>
-int Texture2DSoft<T>::uuidCounter_ = 0;
-
-template<typename T>
-int TextureCubeSoft<T>::uuidCounter_ = 0;
 
 }

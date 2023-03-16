@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include "Base/UUID.h"
 #include "Texture.h"
 
 namespace SoftGL {
@@ -18,10 +19,10 @@ class ShaderProgram;
 
 class Uniform {
  public:
-  explicit Uniform(std::string name) : name(std::move(name)), uuid_(uuidCounter_++) {}
+  explicit Uniform(std::string name) : name(std::move(name)) {}
 
   inline int getHash() const {
-    return uuid_;
+    return uuid_.get();
   }
 
   virtual int getLocation(ShaderProgram &program) = 0;
@@ -31,8 +32,7 @@ class Uniform {
   std::string name;
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
+  UUID<Uniform> uuid_;
 };
 
 class UniformBlock : public Uniform {

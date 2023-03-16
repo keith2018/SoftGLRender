@@ -7,6 +7,7 @@
 #pragma once
 
 #include <vector>
+#include "Base/UUID.h"
 #include "Render/ShaderProgram.h"
 #include "ShaderSoft.h"
 
@@ -14,10 +15,8 @@ namespace SoftGL {
 
 class ShaderProgramSoft : public ShaderProgram {
  public:
-  ShaderProgramSoft() : uuid_(uuidCounter_++) {}
-
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
   void addDefine(const std::string &def) override {
@@ -125,8 +124,7 @@ class ShaderProgramSoft : public ShaderProgram {
   std::shared_ptr<uint8_t> uniformBuffer_;
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
+  UUID<ShaderProgramSoft> uuid_;
 };
 
 }
