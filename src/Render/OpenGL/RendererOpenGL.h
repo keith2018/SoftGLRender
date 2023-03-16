@@ -28,8 +28,7 @@ class RendererOpenGL : public Renderer {
 
   // uniform
   std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
-                                                       TextureFormat format) override;
+  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
 
   // pipeline
   void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;

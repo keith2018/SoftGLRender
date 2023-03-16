@@ -45,9 +45,8 @@ std::shared_ptr<UniformBlock> RendererOpenGL::createUniformBlock(const std::stri
   return std::make_shared<UniformBlockOpenGL>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererOpenGL::createUniformSampler(const std::string &name, TextureType type,
-                                                                     TextureFormat format) {
-  return std::make_shared<UniformSamplerOpenGL>(name, type, format);
+std::shared_ptr<UniformSampler> RendererOpenGL::createUniformSampler(const std::string &name, const TextureDesc &desc) {
+  return std::make_shared<UniformSamplerOpenGL>(name, desc.type, desc.format);
 }
 
 // pipeline

@@ -16,13 +16,16 @@ namespace View {
 #define SHADOW_MAP_WIDTH 512
 #define SHADOW_MAP_HEIGHT 512
 
-void Viewer::create(int width, int height, int outTexId) {
+bool Viewer::create(int width, int height, int outTexId) {
   width_ = width;
   height_ = height;
   outTexId_ = outTexId;
 
   // create renderer
   renderer_ = createRenderer();
+  if (!renderer_) {
+    return false;
+  }
 
   // create uniforms
   uniformBlockScene_ = renderer_->createUniformBlock("UniformsScene", sizeof(UniformsScene));
@@ -41,11 +44,17 @@ void Viewer::create(int width, int height, int outTexId) {
   texColorFxaa_ = nullptr;
   iblPlaceholder_ = createTextureCubeDefault(1, 1);
   programCache_.clear();
+
+  return true;
 }
 
 void Viewer::configRenderer() {}
 
 void Viewer::drawFrame(DemoScene &scene) {
+  if (!renderer_) {
+    return;
+  }
+
   scene_ = &scene;
 
   // init frame buffers
@@ -138,13 +147,13 @@ void Viewer::processFXAASetup() {
     sampler.useMipmaps = false;
     sampler.filterMin = Filter_LINEAR;
 
-    texColorFxaa_ = renderer_->createTexture({TextureType_2D, TextureFormat_RGBA8, false});
+    texColorFxaa_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_RGBA8, false});
     texColorFxaa_->setSamplerDesc(sampler);
-    texColorFxaa_->initImageData(width_, height_);
+    texColorFxaa_->initImageData();
   }
 
   if (!fxaaFilter_) {
-    fxaaFilter_ = std::make_shared<QuadFilter>(createRenderer(),
+    fxaaFilter_ = std::make_shared<QuadFilter>(width_, height_, createRenderer(),
                                                [&](ShaderProgram &program) -> bool {
                                                  return loadShaders(program, Shading_FXAA);
                                                });
@@ -351,9 +360,10 @@ void Viewer::setupShowMapBuffers() {
     sampler.wrapS = Wrap_CLAMP_TO_BORDER;
     sampler.wrapT = Wrap_CLAMP_TO_BORDER;
     sampler.borderColor = glm::vec4(config_.reverseZ ? 0.f : 1.f);
-    texDepthShadow_ = renderer_->createTexture({TextureType_2D, TextureFormat_DEPTH, false});
+    texDepthShadow_ = renderer_->createTexture(
+        {SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT, TextureType_2D, TextureFormat_DEPTH, false});
     texDepthShadow_->setSamplerDesc(sampler);
-    texDepthShadow_->initImageData(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+    texDepthShadow_->initImageData();
 
     fboShadow_->setDepthAttachment(texDepthShadow_);
 
@@ -368,9 +378,9 @@ void Viewer::setupMainColorBuffer(bool multiSample) {
     Sampler2DDesc sampler;
     sampler.useMipmaps = false;
     sampler.filterMin = Filter_LINEAR;
-    texColorMain_ = renderer_->createTexture({TextureType_2D, TextureFormat_RGBA8, multiSample});
+    texColorMain_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_RGBA8, multiSample});
     texColorMain_->setSamplerDesc(sampler);
-    texColorMain_->initImageData(width_, height_);
+    texColorMain_->initImageData();
   }
 }
 
@@ -380,9 +390,9 @@ void Viewer::setupMainDepthBuffer(bool multiSample) {
     sampler.useMipmaps = false;
     sampler.filterMin = Filter_NEAREST;
     sampler.filterMag = Filter_NEAREST;
-    texDepthMain_ = renderer_->createTexture({TextureType_2D, TextureFormat_DEPTH, multiSample});
+    texDepthMain_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_DEPTH, multiSample});
     texDepthMain_->setSamplerDesc(sampler);
-    texDepthMain_->initImageData(width_, height_);
+    texDepthMain_->initImageData();
   }
 }
 
@@ -409,6 +419,8 @@ void Viewer::setupRenderStates(RenderState &rs, bool blend) const {
 
 void Viewer::setupTextures(Material &material) {
   for (auto &kv : material.textureData) {
+    int width = (int) kv.second.width;
+    int height = (int) kv.second.height;
     std::shared_ptr<Texture> texture = nullptr;
     switch (kv.first) {
       case TextureUsage_IBL_IRRADIANCE:
@@ -417,7 +429,7 @@ void Viewer::setupTextures(Material &material) {
         break;
       }
       case TextureUsage_CUBE: {
-        texture = renderer_->createTexture({TextureType_CUBE, TextureFormat_RGBA8, false});
+        texture = renderer_->createTexture({width, height, TextureType_CUBE, TextureFormat_RGBA8, false});
         SamplerCubeDesc samplerCube;
         samplerCube.wrapS = kv.second.wrapMode;
         samplerCube.wrapT = kv.second.wrapMode;
@@ -426,7 +438,7 @@ void Viewer::setupTextures(Material &material) {
         break;
       }
       default: {
-        texture = renderer_->createTexture({TextureType_2D, TextureFormat_RGBA8, false});
+        texture = renderer_->createTexture({width, height, TextureType_2D, TextureFormat_RGBA8, false});
         Sampler2DDesc sampler2d;
         sampler2d.wrapS = kv.second.wrapMode;
         sampler2d.wrapT = kv.second.wrapMode;
@@ -459,7 +471,7 @@ void Viewer::setupSamplerUniforms(Material &material) {
     // create sampler uniform
     const char *samplerName = Material::samplerName((TextureUsage) kv.first);
     if (samplerName) {
-      auto uniform = renderer_->createUniformSampler(samplerName, kv.second->type, kv.second->format);
+      auto uniform = renderer_->createUniformSampler(samplerName, *kv.second);
       uniform->setTexture(kv.second);
       material.shaderUniforms->samplers[kv.first] = std::move(uniform);
     }
@@ -668,10 +680,10 @@ std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height,
   samplerCube.useMipmaps = mipmaps;
   samplerCube.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
 
-  auto textureCube = renderer_->createTexture({TextureType_CUBE, TextureFormat_RGBA8, false});
+  auto textureCube = renderer_->createTexture({width, height, TextureType_CUBE, TextureFormat_RGBA8, false});
   if (textureCube) {
     textureCube->setSamplerDesc(samplerCube);
-    textureCube->initImageData(width, height);
+    textureCube->initImageData();
   }
   return textureCube;
 }
@@ -681,10 +693,10 @@ std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, T
   sampler2d.useMipmaps = mipmaps;
   sampler2d.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
 
-  auto texture2d = renderer_->createTexture({TextureType_2D, format, false});
+  auto texture2d = renderer_->createTexture({width, height, TextureType_2D, format, false});
   if (texture2d) {
     texture2d->setSamplerDesc(sampler2d);
-    texture2d->initImageData(width, height);
+    texture2d->initImageData();
   }
   return texture2d;
 }

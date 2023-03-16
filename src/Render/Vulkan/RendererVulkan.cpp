@@ -7,6 +7,8 @@
 #include "RendererVulkan.h"
 #include "Base/Logger.h"
 #include "Base/FileUtils.h"
+#include "TextureVulkan.h"
+#include "FramebufferVulkan.h"
 #include "VulkanUtils.h"
 
 namespace SoftGL {
@@ -51,15 +53,14 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(VkDebugUtilsMessageSeverit
   return VK_FALSE;
 }
 
-RendererVulkan::RendererVulkan() {
+bool RendererVulkan::create() {
 #ifdef DEBUG
   enableValidationLayers_ = true;
 #endif
-  bool success = initVulkan();
-  LOGD("init Vulkan: %s", success ? "success" : "failed");
+  return initVulkan();
 }
 
-RendererVulkan::~RendererVulkan() {
+void RendererVulkan::destroy() {
   cleanupVulkan();
 }
 
@@ -88,8 +89,7 @@ std::shared_ptr<UniformBlock> RendererVulkan::createUniformBlock(const std::stri
   return nullptr;
 }
 
-std::shared_ptr<UniformSampler> RendererVulkan::createUniformSampler(const std::string &name, TextureType type,
-                                                                     TextureFormat format) {
+std::shared_ptr<UniformSampler> RendererVulkan::createUniformSampler(const std::string &name, const TextureDesc &desc) {
   return nullptr;
 }
 

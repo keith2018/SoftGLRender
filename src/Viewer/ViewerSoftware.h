@@ -23,7 +23,7 @@ class ViewerSoftware : public Viewer {
   ViewerSoftware(Config &config, Camera &camera) : Viewer(config, camera) {}
 
   void configRenderer() override {
-    if (renderer_->getReverseZ() != config_.reverseZ) {
+    if (renderer_->isReverseZ() != config_.reverseZ) {
       texDepthShadow_ = nullptr;
     }
     renderer_->setReverseZ(config_.reverseZ);
@@ -45,8 +45,18 @@ class ViewerSoftware : public Viewer {
                           buffer->getRawDataPtr()));
   }
 
+  void destroy() override {
+    if (renderer_) {
+      renderer_->destroy();
+    }
+  }
+
   std::shared_ptr<Renderer> createRenderer() override {
-    return std::make_shared<RendererSoft>();
+    auto renderer = std::make_shared<RendererSoft>();
+    if (!renderer->create()) {
+      return nullptr;
+    }
+    return renderer;
   }
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {

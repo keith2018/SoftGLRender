@@ -19,11 +19,10 @@ class RendererSoft : public Renderer {
  public:
   // config reverse z
   void setReverseZ(bool enable) override { reverseZ_ = enable; };
-  bool getReverseZ() override { return reverseZ_; };
+  bool isReverseZ() override { return reverseZ_; };
 
   // config early z
   void setEarlyZ(bool enable) override { earlyZ_ = enable; };
-  bool getEarlyZ() override { return earlyZ_; };
 
   // framebuffer
   std::shared_ptr<FrameBuffer> createFrameBuffer() override;
@@ -39,8 +38,7 @@ class RendererSoft : public Renderer {
 
   // uniform
   std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
-                                                       TextureFormat format) override;
+  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
 
   // pipeline
   void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;

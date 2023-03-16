@@ -20,7 +20,7 @@ class Viewer {
  public:
   Viewer(Config &config, Camera &camera) : config_(config), cameraMain_(camera) {}
 
-  virtual void create(int width, int height, int outTexId);
+  virtual bool create(int width, int height, int outTexId);
 
   virtual void configRenderer();
 

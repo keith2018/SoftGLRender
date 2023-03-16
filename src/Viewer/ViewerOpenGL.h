@@ -58,12 +58,19 @@ class ViewerOpenGL : public Viewer {
   }
 
   void destroy() override {
+    if (renderer_) {
+      renderer_->destroy();
+    }
     GL_CHECK(glDeleteFramebuffers(1, &fbo_in_));
     GL_CHECK(glDeleteFramebuffers(1, &fbo_out_));
   }
 
   std::shared_ptr<Renderer> createRenderer() override {
-    return std::make_shared<RendererOpenGL>();
+    auto renderer = std::make_shared<RendererOpenGL>();
+    if (!renderer->create()) {
+      return nullptr;
+    }
+    return renderer;
   }
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {

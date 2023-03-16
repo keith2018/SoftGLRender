@@ -83,30 +83,28 @@ enum TextureFormat {
   TextureFormat_DEPTH = 1,    // Float32
 };
 
-struct TextureDesc {
-  TextureDesc(TextureType type, TextureFormat format, bool multiSample)
-      : type(type), format(format), multiSample(multiSample) {}
+class TextureDesc {
+ public:
+  TextureDesc() = default;
+  TextureDesc(int width, int height, TextureType type, TextureFormat format, bool multi_sample)
+      : width(width), height(height), type(type), format(format), multiSample(multi_sample) {}
 
+ public:
+  int width = 0;
+  int height = 0;
   TextureType type = TextureType_2D;
   TextureFormat format = TextureFormat_RGBA8;
   bool multiSample = false;
 };
 
-class Texture {
+class Texture : public TextureDesc {
  public:
   virtual int getId() const = 0;
   virtual void setSamplerDesc(SamplerDesc &sampler) {};
+  virtual void initImageData() {};
   virtual void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
   virtual void setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {};
-  virtual void initImageData(int w, int h) {};
   virtual void dumpImage(const char *path) {};
-
- public:
-  int width = 0;
-  int height = 0;
-  bool multiSample = false;
-  TextureType type = TextureType_2D;
-  TextureFormat format = TextureFormat_RGBA8;
 };
 
 }

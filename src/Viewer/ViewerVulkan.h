@@ -37,10 +37,17 @@ class ViewerVulkan : public Viewer {
   }
 
   void destroy() override {
+    if (renderer_) {
+      renderer_->destroy();
+    }
   }
 
   std::shared_ptr<Renderer> createRenderer() override {
-    return std::make_shared<RendererVulkan>();
+    auto renderer = std::make_shared<RendererVulkan>();
+    if (!renderer->create()) {
+      return nullptr;
+    }
+    return renderer;
   }
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {

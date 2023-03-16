@@ -21,6 +21,11 @@ bool Environment::convertEquirectangular(const std::shared_ptr<Renderer> &render
                                          const std::function<bool(ShaderProgram &program)> &shaderFunc,
                                          const std::shared_ptr<Texture> &texIn,
                                          std::shared_ptr<Texture> &texOut) {
+  if (!renderer) {
+    LOGE("convertEquirectangular error: renderer nullptr");
+    return false;
+  }
+
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = createCubeRenderContext(context,
@@ -40,6 +45,11 @@ bool Environment::generateIrradianceMap(const std::shared_ptr<Renderer> &rendere
                                         const std::function<bool(ShaderProgram &program)> &shaderFunc,
                                         const std::shared_ptr<Texture> &texIn,
                                         std::shared_ptr<Texture> &texOut) {
+  if (!renderer) {
+    LOGE("generateIrradianceMap error: renderer nullptr");
+    return false;
+  }
+
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = createCubeRenderContext(context,
@@ -59,6 +69,11 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
                                        const std::function<bool(ShaderProgram &program)> &shaderFunc,
                                        const std::shared_ptr<Texture> &texIn,
                                        std::shared_ptr<Texture> &texOut) {
+  if (!renderer) {
+    LOGE("generatePrefilterMap error: renderer nullptr");
+    return false;
+  }
+
   CubeRenderContext context;
   context.renderer = renderer;
   bool success = createCubeRenderContext(context,
@@ -124,7 +139,7 @@ bool Environment::createCubeRenderContext(CubeRenderContext &context,
 
   // uniforms
   const char *samplerName = Material::samplerName(texUsage);
-  auto uniform = context.renderer->createUniformSampler(samplerName, texIn->type, texIn->format);
+  auto uniform = context.renderer->createUniformSampler(samplerName, *texIn);
   uniform->setTexture(texIn);
   context.modelSkybox.material->shaderUniforms->samplers[texUsage] = uniform;
 

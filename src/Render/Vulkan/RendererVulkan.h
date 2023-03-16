@@ -8,12 +8,7 @@
 
 #include "Base/Platform.h"
 #include "Render/Renderer.h"
-
-#ifdef PLATFORM_OSX
-#include "MoltenVK/mvk_vulkan.h"
-#else
-#include "vulkan/vulkan.h"
-#endif
+#include "VulkanUtils.h"
 
 namespace SoftGL {
 
@@ -38,8 +33,8 @@ struct OffscreenImage {
 
 class RendererVulkan : public Renderer {
  public:
-  RendererVulkan();
-  ~RendererVulkan();
+  bool create() override;
+  void destroy() override;
 
   // framebuffer
   std::shared_ptr<FrameBuffer> createFrameBuffer() override;
@@ -55,8 +50,7 @@ class RendererVulkan : public Renderer {
 
   // uniform
   std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
-                                                       TextureFormat format) override;
+  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
 
   // pipeline
   void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;

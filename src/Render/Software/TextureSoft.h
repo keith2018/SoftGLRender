@@ -116,15 +116,9 @@ class Texture2DSoft : public Texture {
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     image_.levels.resize(1);
-    image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(w, h, multiSample ? SOFT_MS_CNT : 1);
+    image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(width, height, multiSample ? SOFT_MS_CNT : 1);
     if (samplerDesc_.useMipmaps) {
       image_.generateMipmap(false);
     }
@@ -214,16 +208,10 @@ class TextureCubeSoft : public Texture {
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     for (auto &image : images_) {
       image.levels.resize(1);
-      image.levels[0] = std::make_shared<ImageBufferSoft<T>>(w, h);
+      image.levels[0] = std::make_shared<ImageBufferSoft<T>>(width, height);
       if (samplerDesc_.useMipmaps) {
         image.generateMipmap(false);
       }

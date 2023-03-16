@@ -9,6 +9,12 @@
 #include <string>
 #include "Base/Logger.h"
 
+#ifdef PLATFORM_OSX
+#include "MoltenVK/mvk_vulkan.h"
+#else
+#include "vulkan/vulkan.h"
+#endif
+
 namespace SoftGL {
 
 #ifdef DEBUG

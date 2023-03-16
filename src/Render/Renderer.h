@@ -17,13 +17,15 @@ namespace SoftGL {
 
 class Renderer {
  public:
+  virtual bool create() { return true; };
+  virtual void destroy() {};
+
   // config reverse z
   virtual void setReverseZ(bool enable) {};
-  virtual bool getReverseZ() { return false; };
+  virtual bool isReverseZ() { return false; };
 
   // config early z
   virtual void setEarlyZ(bool enable) {};
-  virtual bool getEarlyZ() { return false; };
 
   // framebuffer
   virtual std::shared_ptr<FrameBuffer> createFrameBuffer() = 0;
@@ -39,8 +41,7 @@ class Renderer {
 
   // uniform
   virtual std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) = 0;
-  virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
-                                                               TextureFormat format) = 0;
+  virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) = 0;
 
   // pipeline
   virtual void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) = 0;

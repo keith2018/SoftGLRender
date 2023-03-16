@@ -163,13 +163,20 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     pool.pushTask([&](int thread_id) { skyboxTex[5] = loadTextureFile(filepath + "back.jpg"); });
     pool.waitTasksFinish();
 
-    material.textureData[TextureUsage_CUBE].data = std::move(skyboxTex);
-    material.textureData[TextureUsage_CUBE].wrapMode = Wrap_CLAMP_TO_EDGE;
+    auto &texData = material.textureData[TextureUsage_CUBE];
+    texData.width = skyboxTex[0]->getWidth();
+    texData.height = skyboxTex[0]->getHeight();
+    texData.data = std::move(skyboxTex);
+    texData.wrapMode = Wrap_CLAMP_TO_EDGE;
   } else {
     skyboxTex.resize(1);
     skyboxTex[0] = loadTextureFile(filepath);
-    material.textureData[TextureUsage_EQUIRECTANGULAR].data = std::move(skyboxTex);
-    material.textureData[TextureUsage_EQUIRECTANGULAR].wrapMode = Wrap_CLAMP_TO_EDGE;
+
+    auto &texData = material.textureData[TextureUsage_EQUIRECTANGULAR];
+    texData.width = skyboxTex[0]->getWidth();
+    texData.height = skyboxTex[0]->getHeight();
+    texData.data = std::move(skyboxTex);
+    texData.wrapMode = Wrap_CLAMP_TO_EDGE;
   }
 
   scene_.skybox.materialCache[filepath] = std::move(material);
@@ -386,7 +393,6 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
 
     auto buffer = loadTextureFile(absolutePath);
     if (buffer) {
-      material.textureData[usage].data = {buffer};
       WrapMode mode;
       switch (texMapMode) {
         case aiTextureMapMode_Wrap:
@@ -399,9 +405,14 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
           mode = Wrap_MIRRORED_REPEAT;
           break;
         default:
+          mode = Wrap_REPEAT;
           break;
       }
-      material.textureData[usage].wrapMode = mode;
+      auto &texData = material.textureData[usage];
+      texData.width = buffer->getWidth();
+      texData.height = buffer->getHeight();
+      texData.data = {buffer};
+      texData.wrapMode = mode;
     } else {
       LOGE("load texture failed: %s, path: %s", Material::textureUsageStr(usage), absolutePath.c_str());
     }

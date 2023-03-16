@@ -105,18 +105,13 @@ class Texture2DOpenGL : public TextureOpenGL {
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     GL_CHECK(glBindTexture(target_, texId_));
     if (multiSample) {
-      GL_CHECK(glTexImage2DMultisample(target_, 4, glDesc_.internalformat, w, h, GL_TRUE));
+      GL_CHECK(glTexImage2DMultisample(target_, 4, glDesc_.internalformat, width, height, GL_TRUE));
     } else {
-      GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, w, h, 0, glDesc_.format, glDesc_.type, nullptr));
+      GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, width, height, 0, glDesc_.format, glDesc_.type,
+                            nullptr));
 
       if (useMipmaps) {
         GL_CHECK(glGenerateMipmap(target_));
@@ -221,16 +216,10 @@ class TextureCubeOpenGL : public TextureOpenGL {
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
     for (int i = 0; i < 6; i++) {
-      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glDesc_.internalformat, w, h, 0,
+      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glDesc_.internalformat, width, height, 0,
                             glDesc_.format, glDesc_.type, nullptr));
     }
 

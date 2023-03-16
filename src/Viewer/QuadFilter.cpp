@@ -9,8 +9,15 @@
 namespace SoftGL {
 namespace View {
 
-QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
+QuadFilter::QuadFilter(int width, int height, const std::shared_ptr<Renderer> &renderer,
                        const std::function<bool(ShaderProgram &program)> &shaderFunc) {
+  if (!renderer) {
+    LOGE("QuadFilter error: renderer nullptr");
+    return;
+  }
+  width_ = width;
+  height_ = height;
+
   // quad mesh
   quadMesh_.primitiveType = Primitive_TRIANGLE;
   quadMesh_.primitiveCnt = 2;
@@ -43,7 +50,8 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
   // uniforms
   TextureUsage usage = TextureUsage_QUAD_FILTER;
   const char *samplerName = Material::samplerName(usage);
-  uniformTexIn_ = renderer_->createUniformSampler(samplerName, TextureType_2D, TextureFormat_RGBA8);
+  uniformTexIn_ =
+      renderer_->createUniformSampler(samplerName, {width_, height_, TextureType_2D, TextureFormat_RGBA8, false});
   quadMesh_.materialTextured.shaderUniforms->samplers[usage] = uniformTexIn_;
 
   uniformBlockFilter_ = renderer_->createUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
@@ -54,8 +62,16 @@ QuadFilter::QuadFilter(const std::shared_ptr<Renderer> &renderer,
 }
 
 void QuadFilter::setTextures(std::shared_ptr<Texture> &texIn, std::shared_ptr<Texture> &texOut) {
-  width_ = texOut->width;
-  height_ = texOut->height;
+  if (width_ != texIn->width || height_ != texIn->height) {
+    LOGE("setTextures failed, texIn size not match");
+    return;
+  }
+
+  if (width_ != texOut->width || height_ != texOut->height) {
+    LOGE("setTextures failed, texOut size not match");
+    return;
+  }
+
   uniformFilter_.u_screenSize = glm::vec2(width_, height_);
   uniformBlockFilter_->setData(&uniformFilter_, sizeof(UniformsQuadFilter));
 
