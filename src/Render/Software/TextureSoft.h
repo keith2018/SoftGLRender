@@ -86,6 +86,8 @@ class Texture2DSoft : public Texture {
   explicit Texture2DSoft(const TextureDesc &desc) {
     assert(desc.type == TextureType_2D);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_2D;
     format = desc.format;
     multiSample = desc.multiSample;
@@ -105,8 +107,10 @@ class Texture2DSoft : public Texture {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     image_.levels.resize(1);
     image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(buffers[0]);
@@ -173,6 +177,8 @@ class TextureCubeSoft : public Texture {
     assert(desc.type == TextureType_CUBE);
     assert(desc.multiSample == false);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_CUBE;
     format = desc.format;
     multiSample = desc.multiSample;
@@ -192,11 +198,10 @@ class TextureCubeSoft : public Texture {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
-
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     for (int i = 0; i < 6; i++) {
       images_[i].levels.resize(1);

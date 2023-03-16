@@ -49,6 +49,8 @@ class Texture2DOpenGL : public TextureOpenGL {
   explicit Texture2DOpenGL(const TextureDesc &desc) {
     assert(desc.type == TextureType_2D);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_2D;
     format = desc.format;
     multiSample = desc.multiSample;
@@ -93,8 +95,10 @@ class Texture2DOpenGL : public TextureOpenGL {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     GL_CHECK(glBindTexture(target_, texId_));
     GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, width, height, 0, glDesc_.format, glDesc_.type,
@@ -158,6 +162,8 @@ class TextureCubeOpenGL : public TextureOpenGL {
   explicit TextureCubeOpenGL(const TextureDesc &desc) {
     assert(desc.type == TextureType_CUBE);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_CUBE;
     format = desc.format;
     multiSample = desc.multiSample;
@@ -203,8 +209,10 @@ class TextureCubeOpenGL : public TextureOpenGL {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
     for (int i = 0; i < 6; i++) {

@@ -65,6 +65,11 @@ void Viewer::drawFrame(DemoScene &scene) {
     processFXAASetup();
   }
 
+  // init skybox ibl
+  if (config_.showSkybox && config_.pbrIbl) {
+    initSkyboxIBL(scene_->skybox);
+  }
+
   // set fbo & viewport
   renderer_->setFrameBuffer(fboMain_);
   renderer_->setViewPort(0, 0, width_, height_);
@@ -76,11 +81,6 @@ void Viewer::drawFrame(DemoScene &scene) {
 
   // update scene uniform
   updateUniformScene();
-
-  // init skybox ibl
-  if (config_.showSkybox && config_.pbrIbl) {
-    initSkyboxIBL(scene_->skybox);
-  }
 
   // draw shadow map
   if (config_.shadowMap) {
@@ -153,7 +153,7 @@ void Viewer::processFXAASetup() {
   }
 
   if (!fxaaFilter_) {
-    fxaaFilter_ = std::make_shared<QuadFilter>(width_, height_, createRenderer(),
+    fxaaFilter_ = std::make_shared<QuadFilter>(width_, height_, renderer_,
                                                [&](ShaderProgram &program) -> bool {
                                                  return loadShaders(program, Shading_FXAA);
                                                });
@@ -579,7 +579,7 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
       auto tex2d = std::dynamic_pointer_cast<Texture>(texEqIt->second);
       auto cubeSize = std::min(tex2d->width, tex2d->height);
       auto texCvt = createTextureCubeDefault(cubeSize, cubeSize);
-      auto success = Environment::convertEquirectangular(createRenderer(),
+      auto success = Environment::convertEquirectangular(renderer_,
                                                          [&](ShaderProgram &program) -> bool {
                                                            return loadShaders(program, Shading_Skybox);
                                                          },
@@ -607,7 +607,7 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
   // generate irradiance map
   LOGD("generate ibl irradiance map ...");
   auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize);
-  if (Environment::generateIrradianceMap(createRenderer(),
+  if (Environment::generateIrradianceMap(renderer_,
                                          [&](ShaderProgram &program) -> bool {
                                            return loadShaders(program, Shading_IBL_Irradiance);
                                          },
@@ -624,7 +624,7 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
   // generate prefilter map
   LOGD("generate ibl prefilter map ...");
   auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, true);
-  if (Environment::generatePrefilterMap(createRenderer(),
+  if (Environment::generatePrefilterMap(renderer_,
                                         [&](ShaderProgram &program) -> bool {
                                           return loadShaders(program, Shading_IBL_Prefilter);
                                         },
