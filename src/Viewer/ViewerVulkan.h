@@ -21,8 +21,8 @@ class ViewerVulkan : public Viewer {
   }
 
   void swapBuffer() override {
-    auto *vkRenderer = dynamic_cast<RendererVulkan *>(renderer_.get());
-    vkRenderer->readPixels([&](uint8_t *buffer, uint32_t width, uint32_t height) -> void {
+    auto *vkFbo = dynamic_cast<FrameBufferVulkan *>(fboMain_.get());
+    vkFbo->readColorPixels([&](uint8_t *buffer, uint32_t width, uint32_t height) -> void {
       GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
       GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
                             0,

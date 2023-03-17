@@ -44,7 +44,7 @@ bool ShaderGLSL::loadSource(const std::string &source) {
 }
 
 bool ShaderGLSL::loadFile(const std::string &path) {
-  std::string source = FileUtils::readAll(path);
+  std::string source = FileUtils::readText(path);
   if (source.length() <= 0) {
     LOGE("read shader source failed");
     return false;

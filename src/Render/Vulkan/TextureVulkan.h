@@ -22,27 +22,42 @@ class TextureVulkan : public Texture {
     multiSample = desc.multiSample;
   }
 
+  virtual ~TextureVulkan() {
+    vkDestroyImageView(vkCtx_.device, view_, nullptr);
+    vkDestroyImage(vkCtx_.device, image_, nullptr);
+    vkFreeMemory(vkCtx_.device, memory_, nullptr);
+  }
+
   int getId() const override {
     return uuid_.get();
   }
 
-  void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
-
-  };
-
-  void setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) override {
-
-  };
-
   void initImageData() override {
-
+    createImage();
+    createMemory();
   };
 
-  void dumpImage(const char *path) override {
+  void createImageView(VkImageAspectFlagBits aspectMask) {
+    if (view_ != VK_NULL_HANDLE) {
+      vkDestroyImageView(vkCtx_.device, view_, nullptr);
+      view_ = VK_NULL_HANDLE;
+    }
 
-  };
+    VkImageViewCreateInfo imageViewCreateInfo{};
+    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewCreateInfo.viewType = VK::cvtImageViewType(type);
+    imageViewCreateInfo.format = VK::cvtImageFormat(format);
+    imageViewCreateInfo.subresourceRange = {};
+    imageViewCreateInfo.subresourceRange.aspectMask = aspectMask;
+    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.layerCount = 1;
+    imageViewCreateInfo.image = image_;
+    VK_CHECK(vkCreateImageView(vkCtx_.device, &imageViewCreateInfo, nullptr, &view_));
+  }
 
- private:
+ protected:
   void createImage() {
     if (image_ != VK_NULL_HANDLE) {
       return;
@@ -81,32 +96,14 @@ class TextureVulkan : public Texture {
     VK_CHECK(vkBindImageMemory(vkCtx_.device, image_, memory_, 0));
   }
 
-  void createImageView(VkImageAspectFlagBits aspectMask) {
-    if (view_ != VK_NULL_HANDLE) {
-      return;
-    }
-
-    VkImageViewCreateInfo imageViewCreateInfo{};
-    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    imageViewCreateInfo.viewType = VK::cvtImageViewType(type);
-    imageViewCreateInfo.format = VK::cvtImageFormat(format);
-    imageViewCreateInfo.subresourceRange = {};
-    imageViewCreateInfo.subresourceRange.aspectMask = aspectMask;
-    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-    imageViewCreateInfo.subresourceRange.levelCount = 1;
-    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    imageViewCreateInfo.subresourceRange.layerCount = 1;
-    imageViewCreateInfo.image = image_;
-    VK_CHECK(vkCreateImageView(vkCtx_.device, &imageViewCreateInfo, nullptr, &view_));
-  }
-
- private:
-  UUID<TextureVulkan> uuid_;
-
-  VKContext &vkCtx_;
+ public:
   VkImage image_ = VK_NULL_HANDLE;
   VkDeviceMemory memory_ = VK_NULL_HANDLE;
   VkImageView view_ = VK_NULL_HANDLE;
+
+ protected:
+  UUID<TextureVulkan> uuid_;
+  VKContext &vkCtx_;
 };
 
 class Texture2DVulkan : public TextureVulkan {

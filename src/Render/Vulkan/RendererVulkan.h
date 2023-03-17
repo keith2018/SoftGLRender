@@ -8,6 +8,8 @@
 
 #include "Base/Platform.h"
 #include "Render/Renderer.h"
+#include "FramebufferVulkan.h"
+#include "ShaderProgramVulkan.h"
 #include "VulkanUtils.h"
 
 namespace SoftGL {
@@ -18,17 +20,6 @@ struct QueueFamilyIndices {
   bool isComplete() const {
     return graphicsFamily >= 0;
   }
-};
-
-struct FrameBufferAttachment {
-  VkImage image;
-  VkDeviceMemory memory;
-  VkImageView view;
-};
-
-struct OffscreenImage {
-  VkImage image;
-  VkDeviceMemory memory;
 };
 
 class RendererVulkan : public Renderer {
@@ -72,10 +63,8 @@ class RendererVulkan : public Renderer {
   bool createLogicalDevice();
   bool createRenderPass();
   bool createGraphicsPipeline();
-  bool createFrameBuffers();
   bool createCommandPool();
   bool createCommandBuffer();
-  bool createOffscreenImage();
 
   void recordDraw(VkCommandBuffer commandBuffer);
   void recordCopy(VkCommandBuffer commandBuffer);
@@ -84,26 +73,17 @@ class RendererVulkan : public Renderer {
   bool checkValidationLayerSupport();
   void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-  bool createShaderModule(VkShaderModule &shaderModule, const std::string &code);
-  uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
-
- public:
-  void readPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height)> &func);
 
  private:
+  FrameBufferVulkan *fbo_ = nullptr;
+  ShaderProgramVulkan *shaderProgram_ = nullptr;
+
+  VkClearValue clearValue_;
+  VkViewport viewport_;
+
   bool enableValidationLayers_ = false;
   VkDebugUtilsMessengerEXT debugMessenger_;
   VKContext vkCtx_;
-
-  VkInstance instance_;
-  VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
-  VkDevice device_;
-  VkQueue graphicsQueue_;
-
-  uint32_t width_ = 1024, height_ = 1024;
-  VkFramebuffer framebuffer_;
-  FrameBufferAttachment colorAttachment_;
-  OffscreenImage offscreenImage_;
 
   VkRenderPass renderPass_;
   VkPipelineLayout pipelineLayout_;

@@ -6,9 +6,7 @@
 
 #include "RendererVulkan.h"
 #include "Base/Logger.h"
-#include "Base/FileUtils.h"
 #include "TextureVulkan.h"
-#include "FramebufferVulkan.h"
 #include "VulkanUtils.h"
 
 namespace SoftGL {
@@ -20,7 +18,7 @@ const std::vector<const char *> kValidationLayers = {
 const std::vector<const char *> kRequiredInstanceExtensions = {
 #ifdef PLATFORM_OSX
     "VK_KHR_portability_enumeration",
-    "VK_KHR_get_physical_device_properties2",
+    "VK_KHR_get_physical_vkCtx_.deviceproperties2",
 #endif
 };
 
@@ -66,7 +64,7 @@ void RendererVulkan::destroy() {
 
 // framebuffer
 std::shared_ptr<FrameBuffer> RendererVulkan::createFrameBuffer() {
-  return nullptr;
+  return std::make_shared<FrameBufferVulkan>(vkCtx_);
 }
 
 // texture
@@ -85,7 +83,7 @@ std::shared_ptr<VertexArrayObject> RendererVulkan::createVertexArrayObject(const
 
 // shader program
 std::shared_ptr<ShaderProgram> RendererVulkan::createShaderProgram() {
-  return nullptr;
+  return std::make_shared<ShaderProgramVulkan>(vkCtx_);
 }
 
 // uniform
@@ -99,18 +97,30 @@ std::shared_ptr<UniformSampler> RendererVulkan::createUniformSampler(const std::
 
 // pipeline
 void RendererVulkan::setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) {
+  if (!frameBuffer) {
+    return;
+  }
+
+  fbo_ = dynamic_cast<FrameBufferVulkan *>(frameBuffer.get());
 }
 
 void RendererVulkan::setViewPort(int x, int y, int width, int height) {
+  viewport_.x = (float) x;
+  viewport_.y = (float) y;
+  viewport_.width = (float) width;
+  viewport_.height = (float) height;
+  viewport_.minDepth = 0.0f;
+  viewport_.maxDepth = 1.0f;
 }
 
 void RendererVulkan::clear(const ClearState &state) {
-  // Fixme Test code
-  recordDraw(drawCmd_);
-  submitWork(drawCmd_, graphicsQueue_);
+  if (state.colorFlag) {
+    clearValue_.color = {state.clearColor.r, state.clearColor.g, state.clearColor.b, state.clearColor.a};
+  }
 
-  recordCopy(copyCmd_);
-  submitWork(copyCmd_, graphicsQueue_);
+  if (state.depthFlag) {
+    clearValue_.depthStencil.depth = viewport_.maxDepth;
+  }
 }
 
 void RendererVulkan::setRenderState(const RenderState &state) {
@@ -126,6 +136,7 @@ void RendererVulkan::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
   if (!program) {
     return;
   }
+  shaderProgram_ = dynamic_cast<ShaderProgramVulkan *>(program.get());
 }
 
 void RendererVulkan::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
@@ -135,6 +146,11 @@ void RendererVulkan::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms
 }
 
 void RendererVulkan::draw(PrimitiveType type) {
+  recordDraw(drawCmd_);
+  submitWork(drawCmd_, vkCtx_.graphicsQueue);
+
+  recordCopy(copyCmd_);
+  submitWork(copyCmd_, vkCtx_.graphicsQueue);
 }
 
 bool RendererVulkan::initVulkan() {
@@ -150,39 +166,29 @@ bool RendererVulkan::initVulkan() {
   EXEC_VULKAN_STEP(createLogicalDevice)
   EXEC_VULKAN_STEP(createRenderPass)
   EXEC_VULKAN_STEP(createGraphicsPipeline)
-  EXEC_VULKAN_STEP(createFrameBuffers)
   EXEC_VULKAN_STEP(createCommandPool)
   EXEC_VULKAN_STEP(createCommandBuffer)
-  EXEC_VULKAN_STEP(createOffscreenImage)
 
   return true;
 }
 
 void RendererVulkan::cleanupVulkan() {
-  vkDestroyImageView(device_, colorAttachment_.view, nullptr);
-  vkDestroyImage(device_, colorAttachment_.image, nullptr);
-  vkFreeMemory(device_, colorAttachment_.memory, nullptr);
+  vkDestroyRenderPass(vkCtx_.device, renderPass_, nullptr);
+  vkDestroyPipelineLayout(vkCtx_.device, pipelineLayout_, nullptr);
+  vkDestroyPipeline(vkCtx_.device, graphicsPipeline_, nullptr);
+  vkDestroyCommandPool(vkCtx_.device, commandPool_, nullptr);
 
-  vkDestroyImage(device_, offscreenImage_.image, nullptr);
-  vkFreeMemory(device_, offscreenImage_.memory, nullptr);
-
-  vkDestroyRenderPass(device_, renderPass_, nullptr);
-  vkDestroyFramebuffer(device_, framebuffer_, nullptr);
-  vkDestroyPipelineLayout(device_, pipelineLayout_, nullptr);
-  vkDestroyPipeline(device_, graphicsPipeline_, nullptr);
-  vkDestroyCommandPool(device_, commandPool_, nullptr);
-
-  vkDestroyDevice(device_, nullptr);
+  vkDestroyDevice(vkCtx_.device, nullptr);
 
   if (enableValidationLayers_) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance_,
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(vkCtx_.instance,
                                                                             "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr) {
-      func(instance_, debugMessenger_, nullptr);
+      func(vkCtx_.instance, debugMessenger_, nullptr);
     }
   }
 
-  vkDestroyInstance(instance_, nullptr);
+  vkDestroyInstance(vkCtx_.instance, nullptr);
 }
 
 bool RendererVulkan::createInstance() {
@@ -225,7 +231,7 @@ bool RendererVulkan::createInstance() {
     createInfo.pNext = nullptr;
   }
 
-  VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance_));
+  VK_CHECK(vkCreateInstance(&createInfo, nullptr, &vkCtx_.instance));
   return true;
 }
 
@@ -238,10 +244,10 @@ bool RendererVulkan::setupDebugMessenger() {
   populateDebugMessengerCreateInfo(createInfo);
 
   VkResult ret = VK_SUCCESS;
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance_,
+  auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(vkCtx_.instance,
                                                                          "vkCreateDebugUtilsMessengerEXT");
   if (func != nullptr) {
-    ret = func(instance_, &createInfo, nullptr, &debugMessenger_);
+    ret = func(vkCtx_.instance, &createInfo, nullptr, &debugMessenger_);
   } else {
     ret = VK_ERROR_EXTENSION_NOT_PRESENT;
   }
@@ -252,7 +258,7 @@ bool RendererVulkan::setupDebugMessenger() {
 
 bool RendererVulkan::pickPhysicalDevice() {
   uint32_t deviceCount = 0;
-  vkEnumeratePhysicalDevices(instance_, &deviceCount, nullptr);
+  vkEnumeratePhysicalDevices(vkCtx_.instance, &deviceCount, nullptr);
 
   if (deviceCount == 0) {
     LOGE("failed to find GPUs with Vulkan support");
@@ -260,21 +266,21 @@ bool RendererVulkan::pickPhysicalDevice() {
   }
 
   std::vector<VkPhysicalDevice> devices(deviceCount);
-  vkEnumeratePhysicalDevices(instance_, &deviceCount, devices.data());
+  vkEnumeratePhysicalDevices(vkCtx_.instance, &deviceCount, devices.data());
 
   for (const auto &device : devices) {
     QueueFamilyIndices indices = findQueueFamilies(device);
     if (indices.isComplete()) {
-      physicalDevice_ = device;
+      vkCtx_.physicalDevice = device;
       break;
     }
   }
 
-  return physicalDevice_ != VK_NULL_HANDLE;
+  return vkCtx_.physicalDevice != VK_NULL_HANDLE;
 }
 
 bool RendererVulkan::createLogicalDevice() {
-  QueueFamilyIndices indices = findQueueFamilies(physicalDevice_);
+  QueueFamilyIndices indices = findQueueFamilies(vkCtx_.physicalDevice);
 
   VkDeviceQueueCreateInfo queueCreateInfo{};
   queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -303,8 +309,8 @@ bool RendererVulkan::createLogicalDevice() {
     createInfo.enabledLayerCount = 0;
   }
 
-  VK_CHECK(vkCreateDevice(physicalDevice_, &createInfo, nullptr, &device_));
-  vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
+  VK_CHECK(vkCreateDevice(vkCtx_.physicalDevice, &createInfo, nullptr, &vkCtx_.device));
+  vkGetDeviceQueue(vkCtx_.device, indices.graphicsFamily, 0, &vkCtx_.graphicsQueue);
   return true;
 }
 
@@ -345,32 +351,11 @@ bool RendererVulkan::createRenderPass() {
   renderPassInfo.dependencyCount = 1;
   renderPassInfo.pDependencies = &dependency;
 
-  VK_CHECK(vkCreateRenderPass(device_, &renderPassInfo, nullptr, &renderPass_));
+  VK_CHECK(vkCreateRenderPass(vkCtx_.device, &renderPassInfo, nullptr, &renderPass_));
   return true;
 }
 
 bool RendererVulkan::createGraphicsPipeline() {
-  auto vertShaderCode = FileUtils::readAll("assets/Shaders/vert.spv");
-  auto fragShaderCode = FileUtils::readAll("assets/Shaders/frag.spv");
-
-  VkShaderModule vertShaderModule, fragShaderModule;
-  createShaderModule(vertShaderModule, vertShaderCode);
-  createShaderModule(fragShaderModule, fragShaderCode);
-
-  VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-  vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-  vertShaderStageInfo.module = vertShaderModule;
-  vertShaderStageInfo.pName = "main";
-
-  VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-  fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-  fragShaderStageInfo.module = fragShaderModule;
-  fragShaderStageInfo.pName = "main";
-
-  VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -431,12 +416,14 @@ bool RendererVulkan::createGraphicsPipeline() {
   pipelineLayoutInfo.setLayoutCount = 0;
   pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-  VK_CHECK(vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &pipelineLayout_));
+  VK_CHECK(vkCreatePipelineLayout(vkCtx_.device, &pipelineLayoutInfo, nullptr, &pipelineLayout_));
+
+  auto &shaderStages = shaderProgram_->getShaderStages();
 
   VkGraphicsPipelineCreateInfo pipelineInfo{};
   pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-  pipelineInfo.stageCount = 2;
-  pipelineInfo.pStages = shaderStages;
+  pipelineInfo.stageCount = shaderStages.size();
+  pipelineInfo.pStages = shaderStages.data();
   pipelineInfo.pVertexInputState = &vertexInputInfo;
   pipelineInfo.pInputAssemblyState = &inputAssembly;
   pipelineInfo.pViewportState = &viewportState;
@@ -449,78 +436,19 @@ bool RendererVulkan::createGraphicsPipeline() {
   pipelineInfo.subpass = 0;
   pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-  VK_CHECK(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline_));
-
-  vkDestroyShaderModule(device_, fragShaderModule, nullptr);
-  vkDestroyShaderModule(device_, vertShaderModule, nullptr);
-  return true;
-}
-
-bool RendererVulkan::createFrameBuffers() {
-  VkImageCreateInfo imageInfo{};
-  imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  imageInfo.imageType = VK_IMAGE_TYPE_2D;
-  imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-  imageInfo.extent.width = width_;
-  imageInfo.extent.height = height_;
-  imageInfo.extent.depth = 1;
-  imageInfo.mipLevels = 1;
-  imageInfo.arrayLayers = 1;
-  imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-  imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &colorAttachment_.image));
-
-  VkMemoryRequirements memReqs;
-  vkGetImageMemoryRequirements(device_, colorAttachment_.image, &memReqs);
-
-  VkMemoryAllocateInfo memAllocInfo{};
-  memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  memAllocInfo.allocationSize = memReqs.size;
-  memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &colorAttachment_.memory));
-
-  VK_CHECK(vkBindImageMemory(device_, colorAttachment_.image, colorAttachment_.memory, 0));
-
-  VkImageViewCreateInfo imageViewCreateInfo{};
-  imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  imageViewCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-  imageViewCreateInfo.subresourceRange = {};
-  imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-  imageViewCreateInfo.subresourceRange.levelCount = 1;
-  imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-  imageViewCreateInfo.subresourceRange.layerCount = 1;
-  imageViewCreateInfo.image = colorAttachment_.image;
-  VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &colorAttachment_.view));
-
-  VkImageView attachments[1];
-  attachments[0] = colorAttachment_.view;
-
-  VkFramebufferCreateInfo framebufferCreateInfo{};
-  framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  framebufferCreateInfo.renderPass = renderPass_;
-  framebufferCreateInfo.attachmentCount = 1;
-  framebufferCreateInfo.pAttachments = attachments;
-  framebufferCreateInfo.width = width_;
-  framebufferCreateInfo.height = height_;
-  framebufferCreateInfo.layers = 1;
-  VK_CHECK(vkCreateFramebuffer(device_, &framebufferCreateInfo, nullptr, &framebuffer_));
-
+  VK_CHECK(vkCreateGraphicsPipelines(vkCtx_.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline_));
   return true;
 }
 
 bool RendererVulkan::createCommandPool() {
-  QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice_);
+  QueueFamilyIndices queueFamilyIndices = findQueueFamilies(vkCtx_.physicalDevice);
 
   VkCommandPoolCreateInfo poolInfo{};
   poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 
-  VK_CHECK(vkCreateCommandPool(device_, &poolInfo, nullptr, &commandPool_));
+  VK_CHECK(vkCreateCommandPool(vkCtx_.device, &poolInfo, nullptr, &commandPool_));
   return true;
 }
 
@@ -531,38 +459,8 @@ bool RendererVulkan::createCommandBuffer() {
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   allocInfo.commandBufferCount = 1;
 
-  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &drawCmd_));
-  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &copyCmd_));
-  return true;
-}
-
-bool RendererVulkan::createOffscreenImage() {
-  VkImageCreateInfo imageInfo{};
-  imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  imageInfo.imageType = VK_IMAGE_TYPE_2D;
-  imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-  imageInfo.extent.width = width_;
-  imageInfo.extent.height = height_;
-  imageInfo.extent.depth = 1;
-  imageInfo.arrayLayers = 1;
-  imageInfo.mipLevels = 1;
-  imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-  imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
-  imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &offscreenImage_.image));
-
-  VkMemoryRequirements memRequirements;
-  VkMemoryAllocateInfo memAllocInfo{};
-  memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-
-  vkGetImageMemoryRequirements(device_, offscreenImage_.image, &memRequirements);
-  memAllocInfo.allocationSize = memRequirements.size;
-
-  memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(
-      memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &offscreenImage_.memory));
-  VK_CHECK(vkBindImageMemory(device_, offscreenImage_.image, offscreenImage_.memory, 0));
+  VK_CHECK(vkAllocateCommandBuffers(vkCtx_.device, &allocInfo, &drawCmd_));
+  VK_CHECK(vkAllocateCommandBuffers(vkCtx_.device, &allocInfo, &copyCmd_));
   return true;
 }
 
@@ -575,30 +473,22 @@ void RendererVulkan::recordDraw(VkCommandBuffer commandBuffer) {
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   renderPassInfo.renderPass = renderPass_;
-  renderPassInfo.framebuffer = framebuffer_;
+  renderPassInfo.framebuffer = fbo_->getVKFramebuffer();
   renderPassInfo.renderArea.offset = {0, 0};
-  renderPassInfo.renderArea.extent = {width_, height_};
+  renderPassInfo.renderArea.extent = {fbo_->width(), fbo_->height()};
 
-  VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
   renderPassInfo.clearValueCount = 1;
-  renderPassInfo.pClearValues = &clearColor;
+  renderPassInfo.pClearValues = &clearValue_;
 
   vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline_);
 
-  VkViewport viewport{};
-  viewport.x = 0.0f;
-  viewport.y = 0.0f;
-  viewport.width = (float) width_;
-  viewport.height = (float) height_;
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+  vkCmdSetViewport(commandBuffer, 0, 1, &viewport_);
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent = {width_, height_};;
+  scissor.extent = {(uint32_t) viewport_.width, (uint32_t) viewport_.height};
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
   vkCmdDraw(commandBuffer, 3, 1, 0, 0);
@@ -621,7 +511,7 @@ void RendererVulkan::recordCopy(VkCommandBuffer commandBuffer) {
   imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
   imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  imageMemoryBarrier.image = offscreenImage_.image;
+  imageMemoryBarrier.image = fbo_->getHostImage();
   imageMemoryBarrier.subresourceRange = VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
   vkCmdPipelineBarrier(commandBuffer,
@@ -642,14 +532,14 @@ void RendererVulkan::recordCopy(VkCommandBuffer commandBuffer) {
   imageCopyRegion.srcSubresource.layerCount = 1;
   imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   imageCopyRegion.dstSubresource.layerCount = 1;
-  imageCopyRegion.extent.width = width_;
-  imageCopyRegion.extent.height = height_;
+  imageCopyRegion.extent.width = fbo_->width();
+  imageCopyRegion.extent.height = fbo_->height();
   imageCopyRegion.extent.depth = 1;
 
   vkCmdCopyImage(commandBuffer,
-                 colorAttachment_.image,
+                 fbo_->getColorAttachmentImage(),
                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 offscreenImage_.image,
+                 fbo_->getHostImage(),
                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                  1,
                  &imageCopyRegion);
@@ -685,31 +575,12 @@ void RendererVulkan::submitWork(VkCommandBuffer cmdBuffer, VkQueue queue) {
   fenceInfo.flags = 0;
 
   VkFence fence;
-  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &fence));
+  VK_CHECK(vkCreateFence(vkCtx_.device, &fenceInfo, nullptr, &fence));
 
   VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
 
-  VK_CHECK(vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX));
-  vkDestroyFence(device_, fence, nullptr);
-}
-
-void RendererVulkan::readPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height)> &func) {
-  VkImageSubresource subResource{};
-  subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  VkSubresourceLayout subResourceLayout;
-
-  vkGetImageSubresourceLayout(device_, offscreenImage_.image, &subResource, &subResourceLayout);
-
-  uint8_t *pixelPtr = nullptr;
-  vkMapMemory(device_, offscreenImage_.memory, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
-  pixelPtr += subResourceLayout.offset;
-
-  if (func) {
-    func(pixelPtr, width_, height_);
-  }
-
-  vkUnmapMemory(device_, offscreenImage_.memory);
-  vkQueueWaitIdle(graphicsQueue_);
+  VK_CHECK(vkWaitForFences(vkCtx_.device, 1, &fence, VK_TRUE, UINT64_MAX));
+  vkDestroyFence(vkCtx_.device, fence, nullptr);
 }
 
 bool RendererVulkan::checkValidationLayerSupport() {
@@ -764,30 +635,6 @@ QueueFamilyIndices RendererVulkan::findQueueFamilies(VkPhysicalDevice device) {
   }
 
   return indices;
-}
-
-bool RendererVulkan::createShaderModule(VkShaderModule &shaderModule, const std::string &code) {
-  VkShaderModuleCreateInfo createInfo{};
-  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  createInfo.codeSize = code.size();
-  createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
-
-  VK_CHECK(vkCreateShaderModule(device_, &createInfo, nullptr, &shaderModule));
-  return true;
-}
-
-uint32_t RendererVulkan::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties) {
-  VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
-  vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &deviceMemoryProperties);
-  for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
-    if ((typeBits & 1) == 1) {
-      if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-        return i;
-      }
-    }
-    typeBits >>= 1;
-  }
-  return 0;
 }
 
 }

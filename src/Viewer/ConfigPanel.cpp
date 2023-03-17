@@ -226,12 +226,15 @@ bool ConfigPanel::wantCaptureMouse() {
 }
 
 bool ConfigPanel::loadConfig() {
-  auto config_path = ASSETS_DIR + "assets.json";
-  std::string config_str = FileUtils::readAll(config_path);
-  LOGD("load assets config: %s", config_path.c_str());
+  auto configPath = ASSETS_DIR + "assets.json";
+  auto configStr = FileUtils::readText(configPath);
+  if (configStr.empty()) {
+    LOGE("load models failed: error read config file");
+    return false;
+  }
 
   std::string err;
-  const auto json = json11::Json::parse(config_str, err);
+  const auto json = json11::Json::parse(configStr, err);
   for (auto &kv : json["model"].object_items()) {
     modelPaths_[kv.first] = ASSETS_DIR + kv.second["path"].string_value();
   }
@@ -245,8 +248,7 @@ bool ConfigPanel::loadConfig() {
   }
 
   // load default model & skybox
-  return reloadModel(modelPaths_.begin()->first)
-      && reloadSkybox(skyboxPaths_.begin()->first);
+  return reloadModel(modelPaths_.begin()->first) && reloadSkybox(skyboxPaths_.begin()->first);
 }
 
 bool ConfigPanel::reloadModel(const std::string &name) {
