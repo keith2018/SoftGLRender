@@ -80,7 +80,7 @@ enum TextureType {
 
 enum TextureFormat {
   TextureFormat_RGBA8 = 0,    // RGBA8888
-  TextureFormat_DEPTH = 1,    // Float32
+  TextureFormat_FLOAT32 = 1,    // Float32
 };
 
 class TextureDesc {

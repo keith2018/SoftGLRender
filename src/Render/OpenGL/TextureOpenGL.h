@@ -32,7 +32,7 @@ class TextureOpenGL : public Texture {
         ret.type = GL_UNSIGNED_BYTE;
         break;
       }
-      case TextureFormat_DEPTH: {
+      case TextureFormat_FLOAT32: {
         ret.internalformat = GL_DEPTH_COMPONENT;
         ret.format = GL_DEPTH_COMPONENT;
         ret.type = GL_FLOAT;
@@ -75,10 +75,10 @@ class Texture2DOpenGL : public TextureOpenGL {
 
     auto &sampler2d = dynamic_cast<Sampler2DDesc &>(sampler);
     GL_CHECK(glBindTexture(target_, texId_));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler2d.wrapS)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler2d.wrapT)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler2d.filterMin)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler2d.filterMag)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(sampler2d.wrapS)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(sampler2d.wrapT)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::cvtFilter(sampler2d.filterMin)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::cvtFilter(sampler2d.filterMag)));
     GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler2d.borderColor[0]));
 
     useMipmaps = sampler2d.useMipmaps;
@@ -132,7 +132,7 @@ class Texture2DOpenGL : public TextureOpenGL {
     GL_CHECK(glGenFramebuffers(1, &fbo));
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
 
-    GLenum attachment = format == TextureFormat_DEPTH ? GL_DEPTH_ATTACHMENT : GL_COLOR_ATTACHMENT0;
+    GLenum attachment = format == TextureFormat_FLOAT32 ? GL_DEPTH_ATTACHMENT : GL_COLOR_ATTACHMENT0;
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texId_, 0));
 
     auto *pixels = new uint8_t[width * height * 4];
@@ -142,7 +142,7 @@ class Texture2DOpenGL : public TextureOpenGL {
     GL_CHECK(glDeleteFramebuffers(1, &fbo));
 
     // convert float to rgba
-    if (format == TextureFormat_DEPTH) {
+    if (format == TextureFormat_FLOAT32) {
       ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels),
                                     width, height);
     }
@@ -187,13 +187,13 @@ class TextureCubeOpenGL : public TextureOpenGL {
 
     auto &samplerCube = dynamic_cast<SamplerCubeDesc &>(sampler);
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(samplerCube.wrapS)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(samplerCube.wrapT)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::ConvertWrap(samplerCube.wrapR)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(samplerCube.wrapS)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(samplerCube.wrapT)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::cvtWrap(samplerCube.wrapR)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
-                             OpenGL::ConvertFilter(samplerCube.filterMin)));
+                             OpenGL::cvtFilter(samplerCube.filterMin)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
-                             OpenGL::ConvertFilter(samplerCube.filterMag)));
+                             OpenGL::cvtFilter(samplerCube.filterMag)));
     GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &samplerCube.borderColor[0]));
 
     useMipmaps = samplerCube.useMipmaps;

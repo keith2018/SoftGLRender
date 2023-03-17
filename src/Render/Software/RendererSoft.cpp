@@ -30,13 +30,13 @@ std::shared_ptr<Texture> RendererSoft::createTexture(const TextureDesc &desc) {
   switch (desc.type) {
     case TextureType_2D:
       switch (desc.format) {
-        case TextureFormat_RGBA8: return std::make_shared<Texture2DSoft<RGBA>>(desc);
-        case TextureFormat_DEPTH: return std::make_shared<Texture2DSoft<float>>(desc);
+        case TextureFormat_RGBA8:     return std::make_shared<Texture2DSoft<RGBA>>(desc);
+        case TextureFormat_FLOAT32:   return std::make_shared<Texture2DSoft<float>>(desc);
       }
     case TextureType_CUBE:
       switch (desc.format) {
-        case TextureFormat_RGBA8: return std::make_shared<TextureCubeSoft<RGBA>>(desc);
-        case TextureFormat_DEPTH: return std::make_shared<TextureCubeSoft<float>>(desc);
+        case TextureFormat_RGBA8:     return std::make_shared<TextureCubeSoft<RGBA>>(desc);
+        case TextureFormat_FLOAT32:   return std::make_shared<TextureCubeSoft<float>>(desc);
       }
   }
   return nullptr;

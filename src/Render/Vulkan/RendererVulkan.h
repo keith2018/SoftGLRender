@@ -93,6 +93,7 @@ class RendererVulkan : public Renderer {
  private:
   bool enableValidationLayers_ = false;
   VkDebugUtilsMessengerEXT debugMessenger_;
+  VKContext vkCtx_;
 
   VkInstance instance_;
   VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;

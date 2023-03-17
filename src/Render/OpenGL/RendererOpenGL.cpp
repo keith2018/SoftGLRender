@@ -74,20 +74,20 @@ void RendererOpenGL::clear(const ClearState &state) {
 void RendererOpenGL::setRenderState(const RenderState &state) {
   // blend
   GL_STATE_SET(state.blend, GL_BLEND)
-  GL_CHECK(glBlendEquationSeparate(OpenGL::convertBlendFunction(state.blendParams.blendFuncRgb),
-                                   OpenGL::convertBlendFunction(state.blendParams.blendFuncAlpha)));
-  GL_CHECK(glBlendFuncSeparate(OpenGL::convertBlendFactor(state.blendParams.blendSrcRgb),
-                               OpenGL::convertBlendFactor(state.blendParams.blendDstRgb),
-                               OpenGL::convertBlendFactor(state.blendParams.blendSrcAlpha),
-                               OpenGL::convertBlendFactor(state.blendParams.blendDstAlpha)));
+  GL_CHECK(glBlendEquationSeparate(OpenGL::cvtBlendFunction(state.blendParams.blendFuncRgb),
+                                   OpenGL::cvtBlendFunction(state.blendParams.blendFuncAlpha)));
+  GL_CHECK(glBlendFuncSeparate(OpenGL::cvtBlendFactor(state.blendParams.blendSrcRgb),
+                               OpenGL::cvtBlendFactor(state.blendParams.blendDstRgb),
+                               OpenGL::cvtBlendFactor(state.blendParams.blendSrcAlpha),
+                               OpenGL::cvtBlendFactor(state.blendParams.blendDstAlpha)));
 
   // depth
   GL_STATE_SET(state.depthTest, GL_DEPTH_TEST)
   GL_CHECK(glDepthMask(state.depthMask));
-  GL_CHECK(glDepthFunc(OpenGL::convertDepthFunc(state.depthFunc)));
+  GL_CHECK(glDepthFunc(OpenGL::cvtDepthFunc(state.depthFunc)));
 
   GL_STATE_SET(state.cullFace, GL_CULL_FACE)
-  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::convertPolygonMode(state.polygonMode)));
+  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::cvtPolygonMode(state.polygonMode)));
 
   GL_CHECK(glLineWidth(state.lineWidth));
   GL_CHECK(glPointSize(state.pointSize));
@@ -119,7 +119,7 @@ void RendererOpenGL::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms
 }
 
 void RendererOpenGL::draw(PrimitiveType type) {
-  GLenum mode = OpenGL::convertDrawMode(type);
+  GLenum mode = OpenGL::cvtDrawMode(type);
   GL_CHECK(glDrawElements(mode, (GLsizei) vao_->getIndicesCnt(), GL_UNSIGNED_INT, nullptr));
 }
 

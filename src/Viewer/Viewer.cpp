@@ -39,7 +39,7 @@ bool Viewer::create(int width, int height, int outTexId) {
   texDepthMain_ = nullptr;
   fboShadow_ = nullptr;
   texDepthShadow_ = nullptr;
-  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_DEPTH);
+  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32);
   fxaaFilter_ = nullptr;
   texColorFxaa_ = nullptr;
   iblPlaceholder_ = createTextureCubeDefault(1, 1);
@@ -361,7 +361,7 @@ void Viewer::setupShowMapBuffers() {
     sampler.wrapT = Wrap_CLAMP_TO_BORDER;
     sampler.borderColor = glm::vec4(config_.reverseZ ? 0.f : 1.f);
     texDepthShadow_ = renderer_->createTexture(
-        {SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT, TextureType_2D, TextureFormat_DEPTH, false});
+        {SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT, TextureType_2D, TextureFormat_FLOAT32, false});
     texDepthShadow_->setSamplerDesc(sampler);
     texDepthShadow_->initImageData();
 
@@ -390,7 +390,7 @@ void Viewer::setupMainDepthBuffer(bool multiSample) {
     sampler.useMipmaps = false;
     sampler.filterMin = Filter_NEAREST;
     sampler.filterMag = Filter_NEAREST;
-    texDepthMain_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_DEPTH, multiSample});
+    texDepthMain_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_FLOAT32, multiSample});
     texDepthMain_->setSamplerDesc(sampler);
     texDepthMain_->initImageData();
   }

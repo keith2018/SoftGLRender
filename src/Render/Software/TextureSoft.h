@@ -136,7 +136,7 @@ class Texture2DSoft : public Texture {
     void *pixels = image_.getBuffer()->buffer->getRawDataPtr();
 
     // convert float to rgba
-    if (format == TextureFormat_DEPTH) {
+    if (format == TextureFormat_FLOAT32) {
       auto *rgba_pixels = new uint8_t[width * height * 4];
       ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels), reinterpret_cast<float *>(pixels),
                                     width, height);

@@ -56,7 +56,7 @@ class FrameBufferOpenGL : public FrameBuffer {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_));
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
                                     GL_COLOR_ATTACHMENT0,
-                                    OpenGL::convertCubeFace(face),
+                                    OpenGL::cvtCubeFace(face),
                                     color->getId(),
                                     level));
     FrameBuffer::setColorAttachment(color, face, level);

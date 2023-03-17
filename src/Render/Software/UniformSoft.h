@@ -50,7 +50,7 @@ class UniformSamplerSoft : public UniformSampler {
           case TextureFormat_RGBA8:
             sampler_ = std::make_shared<Sampler2DSoft<RGBA>>();
             break;
-          case TextureFormat_DEPTH:
+          case TextureFormat_FLOAT32:
             sampler_ = std::make_shared<Sampler2DSoft<float>>();
             break;
         }
@@ -60,7 +60,7 @@ class UniformSamplerSoft : public UniformSampler {
           case TextureFormat_RGBA8:
             sampler_ = std::make_shared<SamplerCubeSoft<RGBA>>();
             break;
-          case TextureFormat_DEPTH:
+          case TextureFormat_FLOAT32:
             sampler_ = std::make_shared<SamplerCubeSoft<float>>();
             break;
         }

@@ -17,6 +17,19 @@
 
 namespace SoftGL {
 
+struct VKContext {
+  VkInstance instance = VK_NULL_HANDLE;
+  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+  VkDevice device = VK_NULL_HANDLE;
+  VkQueue graphicsQueue = VK_NULL_HANDLE;
+};
+
+namespace VK {
+
+uint32_t getMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeBits, VkMemoryPropertyFlags properties);
+
+}
+
 #ifdef DEBUG
 #define VK_CHECK(stmt) do {                                                                 \
             VkResult result = (stmt);                                                       \
