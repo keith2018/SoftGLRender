@@ -7,7 +7,6 @@
 
 #include "VulkanUtils.h"
 
-
 namespace SoftGL {
 namespace VK {
 
