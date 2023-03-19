@@ -110,7 +110,7 @@ void Viewer::drawFrame(DemoScene &scene) {
   // draw shadow map
   if (config_.shadowMap) {
     // set fbo & viewport
-    setupShowMapBuffers();
+    setupShadowMapBuffers();
     renderer_->setFrameBuffer(fboShadow_);
     renderer_->setViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
 
@@ -369,7 +369,7 @@ void Viewer::setupMainBuffers() {
   }
 }
 
-void Viewer::setupShowMapBuffers() {
+void Viewer::setupShadowMapBuffers() {
   if (!fboShadow_) {
     fboShadow_ = renderer_->createFrameBuffer();
   }
@@ -390,7 +390,7 @@ void Viewer::setupShowMapBuffers() {
     fboShadow_->setDepthAttachment(texDepthShadow_);
 
     if (!fboShadow_->isValid()) {
-      LOGE("setupShowMapBuffers failed");
+      LOGE("setupShadowMapBuffers failed");
     }
   }
 }

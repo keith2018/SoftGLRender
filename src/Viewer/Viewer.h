@@ -50,7 +50,7 @@ class Viewer {
   void pipelineDraw(ModelBase &model);
 
   void setupMainBuffers();
-  void setupShowMapBuffers();
+  void setupShadowMapBuffers();
   void setupMainColorBuffer(bool multiSample);
   void setupMainDepthBuffer(bool multiSample);
 
