@@ -46,6 +46,7 @@ class ViewerSoftware : public Viewer {
   }
 
   void destroy() override {
+    Viewer::destroy();
     if (renderer_) {
       renderer_->destroy();
     }

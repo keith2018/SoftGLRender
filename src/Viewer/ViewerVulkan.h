@@ -37,6 +37,7 @@ class ViewerVulkan : public Viewer {
   }
 
   void destroy() override {
+    Viewer::destroy();
     if (renderer_) {
       renderer_->destroy();
     }
@@ -51,7 +52,8 @@ class ViewerVulkan : public Viewer {
   }
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
-    return false;
+    auto *programVK = dynamic_cast<ShaderProgramVulkan *>(&program);
+    return programVK->compileAndLink("assets/Shaders/vert.spv", "assets/Shaders/frag.spv");
   }
 
  private:

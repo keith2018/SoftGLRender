@@ -34,6 +34,16 @@ class ModelLoader {
     return 0;
   }
 
+  inline void resetAllModelStates() {
+    for (auto &kv : modelCache_) {
+      kv.second->resetStates();
+    }
+
+    for (auto &kv : skyboxMaterialCache_) {
+      kv.second->resetStates();
+    }
+  }
+
   static void loadCubeMesh(ModelVertexes &mesh);
 
  private:
@@ -43,7 +53,7 @@ class ModelLoader {
 
   bool processNode(const aiNode *ai_node, const aiScene *ai_scene, ModelNode &outNode, glm::mat4 &transform);
   bool processMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, ModelMesh &outMesh);
-  void processMaterial(const aiMaterial *ai_material, aiTextureType textureType, TexturedMaterial &material);
+  void processMaterial(const aiMaterial *ai_material, aiTextureType textureType, Material &material);
 
   static glm::mat4 convertMatrix(const aiMatrix4x4 &m);
   static BoundingBox convertBoundingBox(const aiAABB &aabb);
@@ -58,9 +68,10 @@ class ModelLoader {
 
   DemoScene scene_;
   std::unordered_map<std::string, std::shared_ptr<Model>> modelCache_;
-  std::unordered_map<std::string, std::shared_ptr<Buffer<RGBA>>> textureCache_;
+  std::unordered_map<std::string, std::shared_ptr<Buffer<RGBA>>> textureDataCache_;
+  std::unordered_map<std::string, std::shared_ptr<SkyboxMaterial>> skyboxMaterialCache_;
 
-  std::mutex loadMutex_;
+  std::mutex modelLoadMutex_;
   std::mutex texCacheMutex_;
 };
 

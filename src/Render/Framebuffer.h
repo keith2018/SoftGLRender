@@ -37,6 +37,25 @@ class FrameBuffer {
     depthReady = true;
   };
 
+  virtual const TextureDesc *getColorAttachmentDesc() {
+    if (colorReady) {
+      switch (colorTexType) {
+        case TextureType_2D:
+          return colorAttachment2d.tex.get();
+        case TextureType_CUBE:
+          return colorAttachmentCube.tex.get();
+      }
+    }
+    return nullptr;
+  }
+
+  virtual const TextureDesc *getDepthAttachmentDesc() {
+    if (depthReady) {
+      return depthAttachment.get();
+    }
+    return nullptr;
+  }
+
  protected:
   bool colorReady = false;
   bool depthReady = false;

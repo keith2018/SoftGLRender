@@ -8,7 +8,7 @@
 
 #include <unordered_map>
 #include <functional>
-#include "Render/RenderState.h"
+#include "Render/PipelineStates.h"
 #include "Render/Texture.h"
 #include "Render/Uniform.h"
 #include "Render/ShaderProgram.h"
@@ -22,7 +22,8 @@ enum AlphaMode {
 };
 
 enum ShadingModel {
-  Shading_BaseColor = 0,
+  Shading_Unknown = 0,
+  Shading_BaseColor,
   Shading_BlinnPhong,
   Shading_PBR,
   Shading_Skybox,
@@ -49,12 +50,6 @@ enum TextureUsage {
   TextureUsage_QUAD_FILTER,
 
   TextureUsage_SHADOWMAP,
-};
-
-enum MaterialType {
-  Material_BaseColor,
-  Material_Textured,
-  Material_Skybox,
 };
 
 enum UniformBlockType {
@@ -105,6 +100,14 @@ struct TextureData {
   WrapMode wrapMode = Wrap_REPEAT;
 };
 
+class MaterialObject {
+ public:
+  ShadingModel shadingModel = Shading_Unknown;
+  std::shared_ptr<PipelineStates> pipelineStates;
+  std::shared_ptr<ShaderProgram> shaderProgram;
+  std::shared_ptr<ShaderResources> shaderResources;
+};
+
 class Material {
  public:
   static const char *shadingModelStr(ShadingModel model);
@@ -112,93 +115,54 @@ class Material {
   static const char *samplerDefine(TextureUsage usage);
   static const char *samplerName(TextureUsage usage);
 
-  virtual MaterialType type() const = 0;
-
+ public:
   virtual void reset() {
-    shading = Shading_BaseColor;
+    shadingModel = Shading_Unknown;
+    doubleSided = false;
+    alphaMode = Alpha_Opaque;
+
+    baseColor = glm::vec4(1.f);
+    pointSize = 1.f;
+    lineWidth = 1.f;
+
     textureData.clear();
-    resetRuntimeStates();
-  }
 
-  virtual void resetRuntimeStates() {
-    renderState = RenderState();
-    resetProgram();
-    resetTextures();
-  }
-
-  void resetProgram() {
-    shaderProgram = nullptr;
-    shaderUniforms = nullptr;
-    programDirty_ = true;
-  }
-
-  void resetTextures() {
+    shaderDefines.clear();
     textures.clear();
-    texturesDirty_ = true;
+    materialObj = nullptr;
   }
 
-  void createProgram(const std::function<void()> &func) {
-    if (programDirty_) {
-      func();
-      programDirty_ = false;
-    }
-  }
-
-  void createTextures(const std::function<void()> &func) {
-    if (texturesDirty_) {
-      func();
-      texturesDirty_ = false;
-    }
+  virtual void resetStates() {
+    textures.clear();
+    shaderDefines.clear();
+    materialObj = nullptr;
   }
 
  public:
-  ShadingModel shading;
-  AlphaMode alphaMode = Alpha_Opaque;
+  ShadingModel shadingModel = Shading_Unknown;
   bool doubleSided = false;
+  AlphaMode alphaMode = Alpha_Opaque;
+
+  glm::vec4 baseColor = glm::vec4(1.f);
+  float pointSize = 1.f;
+  float lineWidth = 1.f;
+
   std::unordered_map<int, TextureData> textureData;
 
-  RenderState renderState;
-  std::shared_ptr<ShaderProgram> shaderProgram;
-  std::shared_ptr<ShaderUniforms> shaderUniforms;
+  std::set<std::string> shaderDefines;
   std::unordered_map<int, std::shared_ptr<Texture>> textures;
-
- private:
-  bool programDirty_ = false;
-  bool texturesDirty_ = false;
-};
-
-class BaseColorMaterial : public Material {
- public:
-  MaterialType type() const override {
-    return Material_BaseColor;
-  }
-
- public:
-  glm::vec4 baseColor;
-};
-
-class TexturedMaterial : public Material {
- public:
-  MaterialType type() const override {
-    return Material_Textured;
-  }
+  std::shared_ptr<MaterialObject> materialObj = nullptr;
 };
 
 class SkyboxMaterial : public Material {
  public:
-  MaterialType type() const override {
-    return Material_Skybox;
-  }
-
-  void resetRuntimeStates() override {
-    Material::resetRuntimeStates();
+  void resetStates() override {
+    Material::resetStates();
     iblReady = false;
-    iblError = false;
   }
 
  public:
   bool iblReady = false;
-  bool iblError = false;
 };
 
 }

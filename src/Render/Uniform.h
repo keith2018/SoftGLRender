@@ -57,7 +57,7 @@ class UniformSampler : public Uniform {
   TextureFormat format;
 };
 
-class ShaderUniforms {
+class ShaderResources {
  public:
   std::unordered_map<int, std::shared_ptr<UniformBlock>> blocks;
   std::unordered_map<int, std::shared_ptr<UniformSampler>> samplers;

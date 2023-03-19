@@ -10,8 +10,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "Base/Geometry.h"
 #include "Render/Vertex.h"
-#include "Render/BoundingBox.h"
 #include "Material.h"
 
 namespace SoftGL {
@@ -29,6 +29,7 @@ struct ModelVertexes : VertexArray {
   size_t primitiveCnt = 0;
   std::vector<Vertex> vertexes;
   std::vector<int32_t> indices;
+
   std::shared_ptr<VertexArrayObject> vao = nullptr;
 
   void UpdateVertexes() const {
@@ -52,25 +53,28 @@ struct ModelVertexes : VertexArray {
   }
 };
 
-struct ModelPoints : ModelVertexes {
-  float pointSize;
-  BaseColorMaterial material;
-};
-
-struct ModelLines : ModelVertexes {
-  float lineWidth;
-  BaseColorMaterial material;
-};
-
-struct ModelMesh : ModelVertexes {
+struct ModelBase : ModelVertexes {
   BoundingBox aabb;
-  BaseColorMaterial materialBaseColor;
-  TexturedMaterial materialTextured;
+  std::shared_ptr<Material> material = nullptr;
+
+  virtual void resetStates() {
+    vao = nullptr;
+    if (material) {
+      material->resetStates();
+    }
+  }
 };
 
-struct ModelSkybox : ModelVertexes {
-  std::unordered_map<std::string, SkyboxMaterial> materialCache;
-  SkyboxMaterial *material = nullptr;
+struct ModelPoints : ModelBase {
+};
+
+struct ModelLines : ModelBase {
+};
+
+struct ModelMesh : ModelBase {
+};
+
+struct ModelSkybox : ModelBase {
 };
 
 struct ModelNode {
@@ -80,7 +84,7 @@ struct ModelNode {
 };
 
 struct Model {
-  std::string resDir;
+  std::string resourcePath;
 
   ModelNode rootNode;
   BoundingBox rootAABB;
@@ -90,6 +94,18 @@ struct Model {
   size_t vertexCnt = 0;
 
   glm::mat4 centeredTransform;
+
+  void resetStates() {
+    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
+      for (auto &mesh : node.meshes) {
+        mesh.resetStates();
+      }
+      for (auto &childNode : node.children) {
+        resetNodeFunc(childNode);
+      }
+    };
+    resetNodeFunc(rootNode);
+  }
 };
 
 struct DemoScene {
@@ -99,45 +115,15 @@ struct DemoScene {
   ModelPoints pointLight;
   ModelSkybox skybox;
 
-  void resetModelTextures() {
-    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
-      for (auto &mesh : node.meshes) {
-        mesh.materialTextured.resetRuntimeStates();
-      }
-      for (auto &childNode : node.children) {
-        resetNodeFunc(childNode);
-      }
-    };
-    resetNodeFunc(model->rootNode);
-  }
-
-  void resetAllStates() {
-    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
-      for (auto &mesh : node.meshes) {
-        mesh.vao = nullptr;
-        mesh.materialBaseColor.resetRuntimeStates();
-        mesh.materialTextured.resetRuntimeStates();
-      }
-      for (auto &childNode : node.children) {
-        resetNodeFunc(childNode);
-      }
-    };
-    resetNodeFunc(model->rootNode);
-
-    floor.vao = nullptr;
-    floor.materialBaseColor.resetRuntimeStates();
-    floor.materialTextured.resetRuntimeStates();
-
-    worldAxis.vao = nullptr;
-    worldAxis.material.resetRuntimeStates();
-
-    pointLight.vao = nullptr;
-    pointLight.material.resetRuntimeStates();
-
-    skybox.vao = nullptr;
-    for (auto &kv : skybox.materialCache) {
-      kv.second.resetRuntimeStates();
+  void resetStates() {
+    if (model) {
+      model->resetStates();
     }
+
+    floor.resetStates();
+    worldAxis.resetStates();
+    pointLight.resetStates();
+    skybox.resetStates();
   }
 };
 

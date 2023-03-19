@@ -243,7 +243,7 @@ bool ConfigPanel::loadConfig() {
   }
 
   if (modelPaths_.empty()) {
-    LOGE("load models failed");
+    LOGE("load models failed: %s", err.c_str());
     return false;
   }
 

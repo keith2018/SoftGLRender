@@ -15,10 +15,13 @@ namespace SoftGL {
 
 class ShaderProgramVulkan : public ShaderProgram {
  public:
-  explicit ShaderProgramVulkan(VKContext &ctx) : vkCtx_(ctx) {}
+  explicit ShaderProgramVulkan(VKContext &ctx) : vkCtx_(ctx) {
+    device_ = ctx.getDevice();
+  }
+
   ~ShaderProgramVulkan() {
-    vkDestroyShaderModule(vkCtx_.device, vertexShader_, nullptr);
-    vkDestroyShaderModule(vkCtx_.device, fragmentShader_, nullptr);
+    vkDestroyShaderModule(device_, vertexShader_, nullptr);
+    vkDestroyShaderModule(device_, fragmentShader_, nullptr);
   }
 
   int getId() const override {
@@ -45,13 +48,13 @@ class ShaderProgramVulkan : public ShaderProgram {
     createShaderModule(fragmentShader_, fsData);
 
     shaderStages_.resize(2);
-    auto vertShaderStageInfo = shaderStages_[0];
+    auto &vertShaderStageInfo = shaderStages_[0];
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vertShaderStageInfo.module = vertexShader_;
     vertShaderStageInfo.pName = "main";
 
-    auto fragShaderStageInfo = shaderStages_[1];
+    auto &fragShaderStageInfo = shaderStages_[1];
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fragShaderStageInfo.module = fragmentShader_;
@@ -71,15 +74,16 @@ class ShaderProgramVulkan : public ShaderProgram {
     createInfo.codeSize = spvCode.size();
     createInfo.pCode = reinterpret_cast<const uint32_t *>(spvCode.data());
 
-    VK_CHECK(vkCreateShaderModule(vkCtx_.device, &createInfo, nullptr, &shaderModule));
+    VK_CHECK(vkCreateShaderModule(device_, &createInfo, nullptr, &shaderModule));
   }
 
  private:
   UUID<ShaderProgramVulkan> uuid_;
   VKContext &vkCtx_;
+  VkDevice device_ = VK_NULL_HANDLE;
 
-  VkShaderModule vertexShader_;
-  VkShaderModule fragmentShader_;
+  VkShaderModule vertexShader_ = VK_NULL_HANDLE;
+  VkShaderModule fragmentShader_ = VK_NULL_HANDLE;
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages_;
 };
 

@@ -8,10 +8,10 @@
 
 #include "Base/Buffer.h"
 #include "Framebuffer.h"
-#include "Texture.h"
-#include "RenderState.h"
-#include "Vertex.h"
 #include "ShaderProgram.h"
+#include "Texture.h"
+#include "PipelineStates.h"
+#include "Vertex.h"
 
 namespace SoftGL {
 
@@ -39,6 +39,9 @@ class Renderer {
   // shader program
   virtual std::shared_ptr<ShaderProgram> createShaderProgram() = 0;
 
+  // pipeline states
+  virtual std::shared_ptr<PipelineStates> createPipelineStates(const RenderStates &renderStates) = 0;
+
   // uniform
   virtual std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) = 0;
   virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) = 0;
@@ -46,11 +49,11 @@ class Renderer {
   // pipeline
   virtual void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) = 0;
   virtual void setViewPort(int x, int y, int width, int height) = 0;
-  virtual void clear(const ClearState &state) = 0;
-  virtual void setRenderState(const RenderState &state) = 0;
+  virtual void clear(const ClearStates &state) = 0;
   virtual void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
   virtual void setShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
-  virtual void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
+  virtual void setShaderResources(std::shared_ptr<ShaderResources> &uniforms) = 0;
+  virtual void setPipelineStates(std::shared_ptr<PipelineStates> &states) = 0;
   virtual void draw(PrimitiveType type) = 0;
 };
 

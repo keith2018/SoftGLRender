@@ -7,7 +7,7 @@
 #pragma once
 
 #include "Render/Texture.h"
-#include "Render/RenderState.h"
+#include "Render/PipelineStates.h"
 #include "VulkanUtils.h"
 
 namespace SoftGL {

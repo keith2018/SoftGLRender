@@ -155,42 +155,42 @@ int main() {
   bool initSuccess = viewer->create(window, SCR_WIDTH, SCR_HEIGHT, (int) texture);
   if (!initSuccess) {
     LOGE("Failed to create Viewer");
-  }
+  } else {
+    // real frame buffer size
+    int frameWidth, frameHeight;
+    glfwGetFramebufferSize(window, &frameWidth, &frameHeight);
 
-  // real frame buffer size
-  int frameWidth, frameHeight;
-  glfwGetFramebufferSize(window, &frameWidth, &frameHeight);
+    /* Loop until the user closes the window */
+    while (!glfwWindowShouldClose(window)) {
+      // check exit app
+      processInput(window);
 
-  /* Loop until the user closes the window */
-  while (!glfwWindowShouldClose(window)) {
-    // check exit app
-    processInput(window);
+      // draw frame
+      viewer->drawFrame();
 
-    // draw frame
-    viewer->drawFrame();
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glViewport(0, 0, frameWidth, frameHeight);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, frameWidth, frameHeight);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      glDisable(GL_BLEND);
+      glDisable(GL_DEPTH_TEST);
+      glDisable(GL_CULL_FACE);
+      glDepthMask(true);
 
-    glDisable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glDepthMask(true);
+      glClearColor(0.f, 0.f, 0.f, 0.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
 
-    glClearColor(0.f, 0.f, 0.f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, texture);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+      program.use();
+      glBindVertexArray(VAO);
+      glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
-    program.use();
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-
-    viewer->drawPanel();
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+      viewer->drawPanel();
+      glfwSwapBuffers(window);
+      glfwPollEvents();
+    }
   }
 
   viewer->destroy();

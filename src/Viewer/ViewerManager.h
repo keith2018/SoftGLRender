@@ -39,7 +39,7 @@ class ViewerManager {
       orbitController_->reset();
     });
     configPanel_->setResetMipmapsFunc([&]() -> void {
-      modelLoader_->getScene().resetModelTextures();
+      modelLoader_->getScene().model->resetStates();
     });
 
     // viewer software
@@ -72,7 +72,8 @@ class ViewerManager {
     auto &viewer = viewers_[config_->rendererType];
     if (rendererType_ != config_->rendererType) {
       rendererType_ = config_->rendererType;
-      modelLoader_->getScene().resetAllStates();
+      modelLoader_->resetAllModelStates();
+      modelLoader_->getScene().resetStates();
       viewer->create(width_, height_, outTexId_);
     }
     viewer->configRenderer();
@@ -81,6 +82,8 @@ class ViewerManager {
   }
 
   inline void destroy() {
+    modelLoader_->resetAllModelStates();
+    modelLoader_->getScene().resetStates();
     for (auto &it : viewers_) {
       it.second->destroy();
     }

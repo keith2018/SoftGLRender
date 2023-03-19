@@ -24,12 +24,12 @@ class ShaderProgram {
     }
   }
 
-  virtual void bindUniforms(ShaderUniforms &uniforms) {
-    for (auto &kv : uniforms.blocks) {
+  virtual void bindResources(ShaderResources &resources) {
+    for (auto &kv : resources.blocks) {
       bindUniform(*kv.second);
     }
 
-    for (auto &kv : uniforms.samplers) {
+    for (auto &kv : resources.samplers) {
       bindUniform(*kv.second);
     }
   }

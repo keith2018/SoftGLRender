@@ -28,6 +28,10 @@ QuadFilter::QuadFilter(int width, int height, const std::shared_ptr<Renderer> &r
   quadMesh_.indices = {0, 1, 2, 1, 2, 3};
   quadMesh_.InitVertexes();
 
+  quadMesh_.material = std::make_shared<Material>();
+  quadMesh_.material->materialObj = std::make_shared<MaterialObject>();
+  auto &materialObj = quadMesh_.material->materialObj;
+
   // renderer
   renderer_ = renderer;
 
@@ -44,19 +48,22 @@ QuadFilter::QuadFilter(int width, int height, const std::shared_ptr<Renderer> &r
     LOGE("create shader program failed");
     return;
   }
-  quadMesh_.materialTextured.shaderProgram = program;
-  quadMesh_.materialTextured.shaderUniforms = std::make_shared<ShaderUniforms>();
+  materialObj->shaderProgram = program;
+  materialObj->shaderResources = std::make_shared<ShaderResources>();
 
   // uniforms
   TextureUsage usage = TextureUsage_QUAD_FILTER;
   const char *samplerName = Material::samplerName(usage);
-  uniformTexIn_ =
-      renderer_->createUniformSampler(samplerName, {width_, height_, TextureType_2D, TextureFormat_RGBA8, false});
-  quadMesh_.materialTextured.shaderUniforms->samplers[usage] = uniformTexIn_;
+  uniformTexIn_ = renderer_->createUniformSampler(samplerName,
+                                                  {width_, height_, TextureType_2D, TextureFormat_RGBA8, false});
+  materialObj->shaderResources->samplers[usage] = uniformTexIn_;
 
   uniformBlockFilter_ = renderer_->createUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
   uniformBlockFilter_->setData(&uniformFilter_, sizeof(UniformsQuadFilter));
-  quadMesh_.materialTextured.shaderUniforms->blocks[UniformBlock_QuadFilter] = uniformBlockFilter_;
+  materialObj->shaderResources->blocks[UniformBlock_QuadFilter] = uniformBlockFilter_;
+
+  // pipeline
+  materialObj->pipelineStates = renderer_->createPipelineStates({});
 
   initReady_ = true;
 }
@@ -83,15 +90,16 @@ void QuadFilter::draw() {
   if (!initReady_) {
     return;
   }
+  auto &materialObj = quadMesh_.material->materialObj;
 
   renderer_->setFrameBuffer(fbo_);
   renderer_->setViewPort(0, 0, width_, height_);
 
   renderer_->clear({});
   renderer_->setVertexArrayObject(quadMesh_.vao);
-  renderer_->setRenderState(quadMesh_.materialTextured.renderState);
-  renderer_->setShaderProgram(quadMesh_.materialTextured.shaderProgram);
-  renderer_->setShaderUniforms(quadMesh_.materialTextured.shaderUniforms);
+  renderer_->setShaderProgram(materialObj->shaderProgram);
+  renderer_->setShaderResources(materialObj->shaderResources);
+  renderer_->setPipelineStates(materialObj->pipelineStates);
   renderer_->draw(quadMesh_.primitiveType);
 }
 

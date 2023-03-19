@@ -41,7 +41,7 @@ class FileUtils {
       return "";
     }
 
-    return (char *) data.data();
+    return {(char *) data.data(), data.size()};
   }
 
 };

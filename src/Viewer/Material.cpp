@@ -13,6 +13,7 @@ namespace View {
 
 const char *Material::shadingModelStr(ShadingModel model) {
   switch (model) {
+    CASE_ENUM_STR(Shading_Unknown);
     CASE_ENUM_STR(Shading_BaseColor);
     CASE_ENUM_STR(Shading_BlinnPhong);
     CASE_ENUM_STR(Shading_PBR);

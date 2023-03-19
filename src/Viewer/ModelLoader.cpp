@@ -36,7 +36,7 @@ ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
   configPanel_.setUpdateLightFunc([&](glm::vec3 &position, glm::vec3 &color) -> void {
     scene_.pointLight.vertexes[0].a_position = position;
     scene_.pointLight.UpdateVertexes();
-    scene_.pointLight.material.baseColor = glm::vec4(color, 1.f);
+    scene_.pointLight.material->baseColor = glm::vec4(color, 1.f);
   });
 }
 
@@ -76,10 +76,10 @@ void ModelLoader::loadWorldAxis() {
 
   scene_.worldAxis.primitiveType = Primitive_LINE;
   scene_.worldAxis.primitiveCnt = scene_.worldAxis.indices.size() / 2;
-  scene_.worldAxis.material.reset();
-  scene_.worldAxis.material.shading = Shading_BaseColor;
-  scene_.worldAxis.material.baseColor = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
-  scene_.worldAxis.lineWidth = 1.f;
+  scene_.worldAxis.material = std::make_shared<Material>();
+  scene_.worldAxis.material->shadingModel = Shading_BaseColor;
+  scene_.worldAxis.material->baseColor = glm::vec4(0.25f, 0.25f, 0.25f, 1.f);
+  scene_.worldAxis.material->lineWidth = 1.f;
 }
 
 void ModelLoader::loadLights() {
@@ -90,10 +90,10 @@ void ModelLoader::loadLights() {
 
   scene_.pointLight.vertexes[0] = {config_.pointLightPosition};
   scene_.pointLight.indices[0] = 0;
-  scene_.pointLight.material.reset();
-  scene_.pointLight.material.shading = Shading_BaseColor;
-  scene_.pointLight.material.baseColor = glm::vec4(config_.pointLightColor, 1.f);
-  scene_.pointLight.pointSize = 10.f;
+  scene_.pointLight.material = std::make_shared<Material>();
+  scene_.pointLight.material->shadingModel = Shading_BaseColor;
+  scene_.pointLight.material->baseColor = glm::vec4(config_.pointLightColor, 1.f);
+  scene_.pointLight.material->pointSize = 10.f;
   scene_.pointLight.InitVertexes();
 }
 
@@ -118,14 +118,10 @@ void ModelLoader::loadFloor() {
   scene_.floor.primitiveType = Primitive_TRIANGLE;
   scene_.floor.primitiveCnt = 2;
 
-  scene_.floor.materialBaseColor.reset();
-  scene_.floor.materialBaseColor.shading = Shading_BaseColor;
-  scene_.floor.materialBaseColor.baseColor = glm::vec4(0.5f);
-  scene_.floor.materialBaseColor.doubleSided = true;
-
-  scene_.floor.materialTextured.reset();
-  scene_.floor.materialTextured.shading = Shading_BlinnPhong;
-  scene_.floor.materialTextured.doubleSided = true;
+  scene_.floor.material = std::make_shared<Material>();
+  scene_.floor.material->shadingModel = Shading_BlinnPhong;
+  scene_.floor.material->baseColor = glm::vec4(0.5f);
+  scene_.floor.material->doubleSided = true;
 
   scene_.floor.aabb = BoundingBox(glm::vec3(-2, 0, -2), glm::vec3(2, 0, 2));
   scene_.floor.InitVertexes();
@@ -139,16 +135,15 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     loadCubeMesh(scene_.skybox);
   }
 
-  auto it = scene_.skybox.materialCache.find(filepath);
-  if (it != scene_.skybox.materialCache.end()) {
-    scene_.skybox.material = &it->second;
+  auto it = skyboxMaterialCache_.find(filepath);
+  if (it != skyboxMaterialCache_.end()) {
+    scene_.skybox.material = it->second;
     return true;
   }
 
   LOGD("load skybox, path: %s", filepath.c_str());
-  SkyboxMaterial material;
-  material.reset();
-  material.shading = Shading_Skybox;
+  auto material = std::make_shared<SkyboxMaterial>();
+  material->shadingModel = Shading_Skybox;
 
   std::vector<std::shared_ptr<Buffer<RGBA>>> skyboxTex;
   if (StringUtils::endsWith(filepath, "/")) {
@@ -163,7 +158,7 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     pool.pushTask([&](int thread_id) { skyboxTex[5] = loadTextureFile(filepath + "back.jpg"); });
     pool.waitTasksFinish();
 
-    auto &texData = material.textureData[TextureUsage_CUBE];
+    auto &texData = material->textureData[TextureUsage_CUBE];
     texData.width = skyboxTex[0]->getWidth();
     texData.height = skyboxTex[0]->getHeight();
     texData.data = std::move(skyboxTex);
@@ -172,20 +167,20 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     skyboxTex.resize(1);
     skyboxTex[0] = loadTextureFile(filepath);
 
-    auto &texData = material.textureData[TextureUsage_EQUIRECTANGULAR];
+    auto &texData = material->textureData[TextureUsage_EQUIRECTANGULAR];
     texData.width = skyboxTex[0]->getWidth();
     texData.height = skyboxTex[0]->getHeight();
     texData.data = std::move(skyboxTex);
     texData.wrapMode = Wrap_CLAMP_TO_EDGE;
   }
 
-  scene_.skybox.materialCache[filepath] = std::move(material);
-  scene_.skybox.material = &scene_.skybox.materialCache[filepath];
+  skyboxMaterialCache_[filepath] = material;
+  scene_.skybox.material = material;
   return true;
 }
 
 bool ModelLoader::loadModel(const std::string &filepath) {
-  std::lock_guard<std::mutex> lk(loadMutex_);
+  std::lock_guard<std::mutex> lk(modelLoadMutex_);
   if (filepath.empty()) {
     return false;
   }
@@ -218,10 +213,10 @@ bool ModelLoader::loadModel(const std::string &filepath) {
     LOGE("ModelLoader::loadModel, description: %s", importer.GetErrorString());
     return false;
   }
-  scene_.model->resDir = filepath.substr(0, filepath.find_last_of('/'));
+  scene_.model->resourcePath = filepath.substr(0, filepath.find_last_of('/'));
 
   // preload textures
-  preloadTextureFiles(scene, scene_.model->resDir);
+  preloadTextureFiles(scene, scene_.model->resourcePath);
 
   auto currTransform = glm::mat4(1.f);
   if (!processNode(scene->mRootNode, scene, scene_.model->rootNode, currTransform)) {
@@ -312,34 +307,31 @@ bool ModelLoader::processMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
     }
   }
 
-  outMesh.materialTextured.reset();
+  outMesh.material = std::make_shared<Material>();
+  outMesh.material->baseColor = glm::vec4(1.f);
   if (ai_mesh->mMaterialIndex >= 0) {
     const aiMaterial *material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
     aiString alphaMode;
     material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode);
     // "MASK" not support
     if (aiString("BLEND") == alphaMode) {
-      outMesh.materialTextured.alphaMode = Alpha_Blend;
+      outMesh.material->alphaMode = Alpha_Blend;
     } else {
-      outMesh.materialTextured.alphaMode = Alpha_Opaque;
+      outMesh.material->alphaMode = Alpha_Opaque;
     }
-    material->Get(AI_MATKEY_TWOSIDED, outMesh.materialTextured.doubleSided);
+    material->Get(AI_MATKEY_TWOSIDED, outMesh.material->doubleSided);
 
     aiShadingMode shading_mode;
     material->Get(AI_MATKEY_SHADING_MODEL, shading_mode);
-    outMesh.materialTextured.shading = Shading_BlinnPhong;  // default
+    outMesh.material->shadingModel = Shading_BlinnPhong;  // default
     if (aiShadingMode_PBR_BRDF == shading_mode) {
-      outMesh.materialTextured.shading = Shading_PBR;
+      outMesh.material->shadingModel = Shading_PBR;
     }
 
     for (int i = 0; i <= AI_TEXTURE_TYPE_MAX; i++) {
-      processMaterial(material, static_cast<aiTextureType>(i), outMesh.materialTextured);
+      processMaterial(material, static_cast<aiTextureType>(i), *outMesh.material);
     }
   }
-
-  outMesh.materialBaseColor.reset();
-  outMesh.materialBaseColor.shading = Shading_BaseColor;
-  outMesh.materialBaseColor.baseColor = glm::vec4(1.f);
 
   outMesh.primitiveType = Primitive_TRIANGLE;
   outMesh.primitiveCnt = ai_mesh->mNumFaces;
@@ -353,7 +345,7 @@ bool ModelLoader::processMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
 
 void ModelLoader::processMaterial(const aiMaterial *ai_material,
                                   aiTextureType textureType,
-                                  TexturedMaterial &material) {
+                                  Material &material) {
   if (ai_material->GetTextureCount(textureType) <= 0) {
     return;
   }
@@ -367,7 +359,7 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
       LOGW("load texture type=%d, index=%d failed with return value=%d", textureType, i, retStatus);
       continue;
     }
-    std::string absolutePath = scene_.model->resDir + "/" + texPath.C_Str();
+    std::string absolutePath = scene_.model->resourcePath + "/" + texPath.C_Str();
     TextureUsage usage = TextureUsage_NONE;
     switch (textureType) {
       case aiTextureType_BASE_COLOR:
@@ -477,8 +469,8 @@ void ModelLoader::preloadTextureFiles(const aiScene *scene, const std::string &r
 
 std::shared_ptr<Buffer<RGBA>> ModelLoader::loadTextureFile(const std::string &path) {
   texCacheMutex_.lock();
-  if (textureCache_.find(path) != textureCache_.end()) {
-    auto &buffer = textureCache_[path];
+  if (textureDataCache_.find(path) != textureDataCache_.end()) {
+    auto &buffer = textureDataCache_[path];
     texCacheMutex_.unlock();
     return buffer;
   }
@@ -493,7 +485,7 @@ std::shared_ptr<Buffer<RGBA>> ModelLoader::loadTextureFile(const std::string &pa
   }
 
   texCacheMutex_.lock();
-  textureCache_[path] = buffer;
+  textureDataCache_[path] = buffer;
   texCacheMutex_.unlock();
 
   return buffer;

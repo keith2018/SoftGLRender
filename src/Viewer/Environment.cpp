@@ -26,9 +26,9 @@ bool Environment::convertEquirectangular(const std::shared_ptr<Renderer> &render
     return false;
   }
 
-  CubeRenderContext context;
-  context.renderer = renderer;
-  bool success = createCubeRenderContext(context,
+  CubeRenderContext ctx;
+  ctx.renderer = renderer;
+  bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
                                          TextureUsage_EQUIRECTANGULAR);
@@ -37,7 +37,7 @@ bool Environment::convertEquirectangular(const std::shared_ptr<Renderer> &render
     return false;
   }
 
-  drawCubeFaces(context, texOut->width, texOut->height, texOut);
+  drawCubeFaces(ctx, texOut->width, texOut->height, texOut);
   return true;
 }
 
@@ -50,9 +50,9 @@ bool Environment::generateIrradianceMap(const std::shared_ptr<Renderer> &rendere
     return false;
   }
 
-  CubeRenderContext context;
-  context.renderer = renderer;
-  bool success = createCubeRenderContext(context,
+  CubeRenderContext ctx;
+  ctx.renderer = renderer;
+  bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
                                          TextureUsage_CUBE);
@@ -61,7 +61,7 @@ bool Environment::generateIrradianceMap(const std::shared_ptr<Renderer> &rendere
     return false;
   }
 
-  drawCubeFaces(context, texOut->width, texOut->height, texOut);
+  drawCubeFaces(ctx, texOut->width, texOut->height, texOut);
   return true;
 }
 
@@ -74,9 +74,9 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
     return false;
   }
 
-  CubeRenderContext context;
-  context.renderer = renderer;
-  bool success = createCubeRenderContext(context,
+  CubeRenderContext ctx;
+  ctx.renderer = renderer;
+  bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
                                          TextureUsage_CUBE);
@@ -85,9 +85,8 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
     return false;
   }
 
-  auto uniformsBlockPrefilter =
-      context.renderer->createUniformBlock("UniformsPrefilter", sizeof(UniformsIBLPrefilter));
-  context.modelSkybox.material->shaderUniforms->blocks[UniformBlock_IBLPrefilter] = uniformsBlockPrefilter;
+  auto uniformsBlockPrefilter = ctx.renderer->createUniformBlock("UniformsPrefilter", sizeof(UniformsIBLPrefilter));
+  ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_IBLPrefilter] = uniformsBlockPrefilter;
 
   UniformsIBLPrefilter uniformsPrefilter{};
 
@@ -95,7 +94,7 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
     int mipWidth = (int) (texOut->width * glm::pow(0.5f, mip));
     int mipHeight = (int) (texOut->height * glm::pow(0.5f, mip));
 
-    drawCubeFaces(context, mipWidth, mipHeight, texOut, mip, [&]() -> void {
+    drawCubeFaces(ctx, mipWidth, mipHeight, texOut, mip, [&]() -> void {
       uniformsPrefilter.u_srcResolution = (float) texIn->width;
       uniformsPrefilter.u_roughness = (float) mip / (float) (kPrefilterMaxMipLevels - 1);
       uniformsBlockPrefilter->setData(&uniformsPrefilter, sizeof(UniformsIBLPrefilter));
@@ -104,52 +103,54 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
   return true;
 }
 
-bool Environment::createCubeRenderContext(CubeRenderContext &context,
+bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
                                           const std::function<bool(ShaderProgram &program)> &shaderFunc,
                                           const std::shared_ptr<Texture> &texIn,
                                           TextureUsage texUsage) {
   // camera
-  context.camera.setPerspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
+  ctx.camera.setPerspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
 
   // model
   const std::string texName = "Environment";
-  ModelLoader::loadCubeMesh(context.modelSkybox);
-  context.modelSkybox.materialCache[texName] = {};
-  context.modelSkybox.material = &context.modelSkybox.materialCache[texName];
-  context.modelSkybox.material->reset();
-  context.modelSkybox.material->shading = Shading_Skybox;
+  ModelLoader::loadCubeMesh(ctx.modelSkybox);
+  ctx.modelSkybox.material = std::make_shared<Material>();
+  ctx.modelSkybox.material->shadingModel = Shading_Skybox;
+  ctx.modelSkybox.material->materialObj = std::make_shared<MaterialObject>();
 
   // fbo
-  context.fbo = context.renderer->createFrameBuffer();
+  ctx.fbo = ctx.renderer->createFrameBuffer();
 
   // vao
-  context.modelSkybox.vao = context.renderer->createVertexArrayObject(context.modelSkybox);
+  ctx.modelSkybox.vao = ctx.renderer->createVertexArrayObject(ctx.modelSkybox);
 
   // shader program
   std::set<std::string> shaderDefines = {Material::samplerDefine(texUsage)};
-  auto program = context.renderer->createShaderProgram();
+  auto program = ctx.renderer->createShaderProgram();
   program->addDefines(shaderDefines);
   bool success = shaderFunc(*program);
   if (!success) {
     LOGE("create shader program failed");
     return false;
   }
-  context.modelSkybox.material->shaderProgram = program;
-  context.modelSkybox.material->shaderUniforms = std::make_shared<ShaderUniforms>();
+  ctx.modelSkybox.material->materialObj->shaderProgram = program;
+  ctx.modelSkybox.material->materialObj->shaderResources = std::make_shared<ShaderResources>();
 
   // uniforms
   const char *samplerName = Material::samplerName(texUsage);
-  auto uniform = context.renderer->createUniformSampler(samplerName, *texIn);
+  auto uniform = ctx.renderer->createUniformSampler(samplerName, *texIn);
   uniform->setTexture(texIn);
-  context.modelSkybox.material->shaderUniforms->samplers[texUsage] = uniform;
+  ctx.modelSkybox.material->materialObj->shaderResources->samplers[texUsage] = uniform;
 
-  context.uniformsBlockModel = context.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
-  context.modelSkybox.material->shaderUniforms->blocks[UniformBlock_Model] = context.uniformsBlockModel;
+  ctx.uniformsBlockModel = ctx.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
+  ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_Model] = ctx.uniformsBlockModel;
+
+  // pipeline
+  ctx.modelSkybox.material->materialObj->pipelineStates = ctx.renderer->createPipelineStates({});
 
   return true;
 }
 
-void Environment::drawCubeFaces(CubeRenderContext &context, int width, int height, std::shared_ptr<Texture> &texOut,
+void Environment::drawCubeFaces(CubeRenderContext &ctx, int width, int height, std::shared_ptr<Texture> &texOut,
                                 int texOutLevel, const std::function<void()> &beforeDraw) {
   static LookAtParam captureViews[] = {
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
@@ -164,30 +165,32 @@ void Environment::drawCubeFaces(CubeRenderContext &context, int width, int heigh
   glm::mat4 modelMatrix(1.f);
 
   // draw
-  context.renderer->setFrameBuffer(context.fbo);
-  context.renderer->setViewPort(0, 0, width, height);
+  ctx.renderer->setFrameBuffer(ctx.fbo);
+  ctx.renderer->setViewPort(0, 0, width, height);
 
   for (int i = 0; i < 6; i++) {
     auto &param = captureViews[i];
-    context.camera.lookAt(param.eye, param.center, param.up);
+    ctx.camera.lookAt(param.eye, param.center, param.up);
 
     // update mvp
-    glm::mat4 viewMatrix = glm::mat3(context.camera.viewMatrix());  // only rotation
-    uniformsModel.u_modelViewProjectionMatrix = context.camera.projectionMatrix() * viewMatrix * modelMatrix;
-    context.uniformsBlockModel->setData(&uniformsModel, sizeof(UniformsModel));
+    glm::mat4 viewMatrix = glm::mat3(ctx.camera.viewMatrix());  // only rotation
+    uniformsModel.u_modelViewProjectionMatrix = ctx.camera.projectionMatrix() * viewMatrix * modelMatrix;
+    ctx.uniformsBlockModel->setData(&uniformsModel, sizeof(UniformsModel));
 
     if (beforeDraw) {
       beforeDraw();
     }
 
     // draw
-    context.fbo->setColorAttachment(texOut, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), texOutLevel);
-    context.renderer->clear({});
-    context.renderer->setVertexArrayObject(context.modelSkybox.vao);
-    context.renderer->setRenderState(context.modelSkybox.material->renderState);
-    context.renderer->setShaderProgram(context.modelSkybox.material->shaderProgram);
-    context.renderer->setShaderUniforms(context.modelSkybox.material->shaderUniforms);
-    context.renderer->draw(context.modelSkybox.primitiveType);
+    auto &materialObj = ctx.modelSkybox.material->materialObj;
+    ctx.fbo->setColorAttachment(texOut, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), texOutLevel);
+
+    ctx.renderer->clear({});
+    ctx.renderer->setVertexArrayObject(ctx.modelSkybox.vao);
+    ctx.renderer->setShaderProgram(materialObj->shaderProgram);
+    ctx.renderer->setShaderResources(materialObj->shaderResources);
+    ctx.renderer->setPipelineStates(materialObj->pipelineStates);
+    ctx.renderer->draw(ctx.modelSkybox.primitiveType);
   }
 }
 

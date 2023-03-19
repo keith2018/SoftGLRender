@@ -10,17 +10,10 @@
 #include "Render/Renderer.h"
 #include "FramebufferVulkan.h"
 #include "ShaderProgramVulkan.h"
+#include "PipelineStatesVulkan.h"
 #include "VulkanUtils.h"
 
 namespace SoftGL {
-
-struct QueueFamilyIndices {
-  int32_t graphicsFamily = -1;
-
-  bool isComplete() const {
-    return graphicsFamily >= 0;
-  }
-};
 
 class RendererVulkan : public Renderer {
  public:
@@ -39,6 +32,9 @@ class RendererVulkan : public Renderer {
   // shader program
   std::shared_ptr<ShaderProgram> createShaderProgram() override;
 
+  // pipeline states
+  std::shared_ptr<PipelineStates> createPipelineStates(const RenderStates &renderStates) override;
+
   // uniform
   std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
   std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
@@ -46,51 +42,32 @@ class RendererVulkan : public Renderer {
   // pipeline
   void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;
   void setViewPort(int x, int y, int width, int height) override;
-  void clear(const ClearState &state) override;
-  void setRenderState(const RenderState &state) override;
+  void clear(const ClearStates &states) override;
   void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
   void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
-  void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
+  void setShaderResources(std::shared_ptr<ShaderResources> &resources) override;
+  void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
   void draw(PrimitiveType type) override;
 
  private:
-  bool initVulkan();
-  void cleanupVulkan();
-
-  bool createInstance();
-  bool setupDebugMessenger();
-  bool pickPhysicalDevice();
-  bool createLogicalDevice();
-  bool createRenderPass();
-  bool createGraphicsPipeline();
-  bool createCommandPool();
   bool createCommandBuffer();
 
   void recordDraw(VkCommandBuffer commandBuffer);
   void recordCopy(VkCommandBuffer commandBuffer);
   void submitWork(VkCommandBuffer cmdBuffer, VkQueue queue);
 
-  bool checkValidationLayerSupport();
-  void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
-  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-
  private:
   FrameBufferVulkan *fbo_ = nullptr;
+  PipelineStatesVulkan *pipelineStates_ = nullptr;
   ShaderProgramVulkan *shaderProgram_ = nullptr;
 
-  VkClearValue clearValue_;
   VkViewport viewport_;
+  std::vector<VkClearValue> clearValues_;
 
-  bool enableValidationLayers_ = false;
-  VkDebugUtilsMessengerEXT debugMessenger_;
   VKContext vkCtx_;
+  VkDevice device_ = VK_NULL_HANDLE;
 
-  VkRenderPass renderPass_;
-  VkPipelineLayout pipelineLayout_;
-  VkPipeline graphicsPipeline_;
-
-  VkCommandPool commandPool_;
-
+  VkRenderPass renderPass_ = VK_NULL_HANDLE;
   VkCommandBuffer drawCmd_;
   VkCommandBuffer copyCmd_;
 };

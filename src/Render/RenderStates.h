@@ -70,7 +70,7 @@ struct BlendParameters {
   }
 };
 
-struct RenderState {
+struct RenderStates {
   bool blend = false;
   BlendParameters blendParams;
 
@@ -85,7 +85,7 @@ struct RenderState {
   float pointSize = 1.f;
 };
 
-struct ClearState {
+struct ClearStates {
   bool depthFlag = true;
   bool colorFlag = true;
   glm::vec4 clearColor = glm::vec4(0.f);

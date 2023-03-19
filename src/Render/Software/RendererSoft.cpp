@@ -7,7 +7,6 @@
 #include "RendererSoft.h"
 #include "Base/SIMD.h"
 #include "Base/HashUtils.h"
-#include "Render/Geometry.h"
 #include "FramebufferSoft.h"
 #include "TextureSoft.h"
 #include "UniformSoft.h"
@@ -52,6 +51,11 @@ std::shared_ptr<ShaderProgram> RendererSoft::createShaderProgram() {
   return std::make_shared<ShaderProgramSoft>();
 }
 
+// pipeline states
+std::shared_ptr<PipelineStates> RendererSoft::createPipelineStates(const RenderStates &renderStates) {
+  return std::make_shared<PipelineStates>(renderStates);
+}
+
 // uniform
 std::shared_ptr<UniformBlock> RendererSoft::createUniformBlock(const std::string &name, int size) {
   return std::make_shared<UniformBlockSoft>(name, size);
@@ -93,7 +97,7 @@ void RendererSoft::setViewPort(int x, int y, int width, int height) {
   viewport_.innerP.w = 1.f;
 }
 
-void RendererSoft::clear(const ClearState &state) {
+void RendererSoft::clear(const ClearStates &states) {
   if (!fbo_) {
     return;
   }
@@ -101,11 +105,11 @@ void RendererSoft::clear(const ClearState &state) {
   fboColor_ = fbo_->getColorBuffer();
   fboDepth_ = fbo_->getDepthBuffer();
 
-  if (state.colorFlag && fboColor_) {
-    RGBA color = RGBA(state.clearColor.r * 255,
-                      state.clearColor.g * 255,
-                      state.clearColor.b * 255,
-                      state.clearColor.a * 255);
+  if (states.colorFlag && fboColor_) {
+    RGBA color = RGBA(states.clearColor.r * 255,
+                      states.clearColor.g * 255,
+                      states.clearColor.b * 255,
+                      states.clearColor.a * 255);
     if (fboColor_->multiSample) {
       fboColor_->bufferMs4x->setAll(glm::tvec4<RGBA>(color));
     } else {
@@ -113,7 +117,7 @@ void RendererSoft::clear(const ClearState &state) {
     }
   }
 
-  if (state.depthFlag && fboDepth_) {
+  if (states.depthFlag && fboDepth_) {
     float depth = viewport_.depthFar;
     if (fboDepth_->multiSample) {
       fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(depth));
@@ -121,10 +125,6 @@ void RendererSoft::clear(const ClearState &state) {
       fboDepth_->buffer->setAll(depth);
     }
   }
-}
-
-void RendererSoft::setRenderState(const RenderState &state) {
-  renderState_ = &state;
 }
 
 void RendererSoft::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
@@ -135,13 +135,17 @@ void RendererSoft::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
   shaderProgram_ = dynamic_cast<ShaderProgramSoft *>(program.get());
 }
 
-void RendererSoft::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
-  if (!uniforms) {
+void RendererSoft::setShaderResources(std::shared_ptr<ShaderResources> &resources) {
+  if (!resources) {
     return;
   }
   if (shaderProgram_) {
-    shaderProgram_->bindUniforms(*uniforms);
+    shaderProgram_->bindResources(*resources);
   }
+}
+
+void RendererSoft::setPipelineStates(std::shared_ptr<PipelineStates> &states) {
+  renderState_ = &states->renderStates;
 }
 
 void RendererSoft::draw(PrimitiveType type) {

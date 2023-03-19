@@ -8,6 +8,7 @@
 
 #include "Base/UUID.h"
 #include "Render/Texture.h"
+#include "VKContext.h"
 #include "EnumsVulkan.h"
 
 namespace SoftGL {
@@ -15,6 +16,8 @@ namespace SoftGL {
 class TextureVulkan : public Texture {
  public:
   TextureVulkan(VKContext &ctx, const TextureDesc &desc) : vkCtx_(ctx) {
+    device_ = ctx.getDevice();
+
     width = desc.width;
     height = desc.height;
     type = desc.type;
@@ -23,9 +26,9 @@ class TextureVulkan : public Texture {
   }
 
   virtual ~TextureVulkan() {
-    vkDestroyImageView(vkCtx_.device, view_, nullptr);
-    vkDestroyImage(vkCtx_.device, image_, nullptr);
-    vkFreeMemory(vkCtx_.device, memory_, nullptr);
+    vkDestroyImageView(device_, view_, nullptr);
+    vkDestroyImage(device_, image_, nullptr);
+    vkFreeMemory(device_, memory_, nullptr);
   }
 
   int getId() const override {
@@ -39,7 +42,7 @@ class TextureVulkan : public Texture {
 
   void createImageView(VkImageAspectFlagBits aspectMask) {
     if (view_ != VK_NULL_HANDLE) {
-      vkDestroyImageView(vkCtx_.device, view_, nullptr);
+      vkDestroyImageView(device_, view_, nullptr);
       view_ = VK_NULL_HANDLE;
     }
 
@@ -54,7 +57,7 @@ class TextureVulkan : public Texture {
     imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     imageViewCreateInfo.subresourceRange.layerCount = 1;
     imageViewCreateInfo.image = image_;
-    VK_CHECK(vkCreateImageView(vkCtx_.device, &imageViewCreateInfo, nullptr, &view_));
+    VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &view_));
   }
 
  protected:
@@ -76,7 +79,7 @@ class TextureVulkan : public Texture {
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    VK_CHECK(vkCreateImage(vkCtx_.device, &imageInfo, nullptr, &image_));
+    VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_));
   }
 
   void createMemory() {
@@ -85,15 +88,15 @@ class TextureVulkan : public Texture {
     }
 
     VkMemoryRequirements memReqs;
-    vkGetImageMemoryRequirements(vkCtx_.device, image_, &memReqs);
+    vkGetImageMemoryRequirements(device_, image_, &memReqs);
 
     VkMemoryAllocateInfo memAllocInfo{};
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memAllocInfo.allocationSize = memReqs.size;
-    memAllocInfo.memoryTypeIndex = VK::getMemoryTypeIndex(vkCtx_.physicalDevice, memReqs.memoryTypeBits,
-                                                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VK_CHECK(vkAllocateMemory(vkCtx_.device, &memAllocInfo, nullptr, &memory_));
-    VK_CHECK(vkBindImageMemory(vkCtx_.device, image_, memory_, 0));
+    memAllocInfo.memoryTypeIndex = vkCtx_.getMemoryTypeIndex(memReqs.memoryTypeBits,
+                                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &memory_));
+    VK_CHECK(vkBindImageMemory(device_, image_, memory_, 0));
   }
 
  public:
@@ -104,6 +107,7 @@ class TextureVulkan : public Texture {
  protected:
   UUID<TextureVulkan> uuid_;
   VKContext &vkCtx_;
+  VkDevice device_ = VK_NULL_HANDLE;
 };
 
 class Texture2DVulkan : public TextureVulkan {

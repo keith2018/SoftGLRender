@@ -26,6 +26,9 @@ class RendererOpenGL : public Renderer {
   // shader program
   std::shared_ptr<ShaderProgram> createShaderProgram() override;
 
+  // pipeline states
+  std::shared_ptr<PipelineStates> createPipelineStates(const RenderStates &renderStates) override;
+
   // uniform
   std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
   std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
@@ -33,11 +36,11 @@ class RendererOpenGL : public Renderer {
   // pipeline
   void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;
   void setViewPort(int x, int y, int width, int height) override;
-  void clear(const ClearState &state) override;
-  void setRenderState(const RenderState &state) override;
+  void clear(const ClearStates &states) override;
   void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
   void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
-  void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
+  void setShaderResources(std::shared_ptr<ShaderResources> &resources) override;
+  void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
   void draw(PrimitiveType type) override;
 
  private:
