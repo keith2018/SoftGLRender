@@ -16,14 +16,14 @@ const std::vector<const char *> kValidationLayers = {
 
 const std::vector<const char *> kRequiredInstanceExtensions = {
 #ifdef PLATFORM_OSX
-    "VK_KHR_portability_enumeration",
-    "VK_KHR_get_physical_deviceproperties2",
+    VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 #endif
 };
 
 const std::vector<const char *> kRequiredDeviceExtensions = {
 #ifdef PLATFORM_OSX
-    "VK_KHR_portability_subset",
+    VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 #endif
 };
 

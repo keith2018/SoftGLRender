@@ -20,7 +20,7 @@ bool RendererVulkan::create() {
 #endif
   success = vkCtx_.create(false);
   if (success) {
-    device_ = vkCtx_.getDevice();
+    device_ = vkCtx_.device();
     createCommandBuffer();
   }
   return success;
@@ -110,7 +110,7 @@ void RendererVulkan::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &va
     return;
   }
 
-  // TODO
+  vao_ = dynamic_cast<VertexArrayObjectVulkan *>(vao.get());
 }
 
 void RendererVulkan::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
@@ -127,7 +127,7 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
 
 void RendererVulkan::setPipelineStates(std::shared_ptr<PipelineStates> &states) {
   pipelineStates_ = dynamic_cast<PipelineStatesVulkan *>(states.get());
-  pipelineStates_->create(shaderProgram_, renderPass_);
+  pipelineStates_->create(vao_->getVertexInputInfo(), shaderProgram_, renderPass_);
 }
 
 void RendererVulkan::draw(PrimitiveType type) {

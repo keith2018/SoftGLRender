@@ -25,7 +25,7 @@ class VKContext {
   bool create(bool debugOutput = false);
   void destroy();
 
-  inline VkDevice getDevice() const {
+  inline VkDevice device() const {
     return device_;
   }
 

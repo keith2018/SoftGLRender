@@ -19,6 +19,8 @@ include_directories(
         "${THIRD_PARTY_DIR}/json11"
         "${THIRD_PARTY_DIR}/stb/include"
         "${THIRD_PARTY_DIR}/vulkan/include"
+        "${THIRD_PARTY_DIR}/glslang/glslang"
+        "${THIRD_PARTY_DIR}/glslang/glslang"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
@@ -38,6 +40,13 @@ set(ASSIMP_BUILD_GLTF_IMPORTER TRUE)
 add_subdirectory(${THIRD_PARTY_DIR}/assimp)
 
 
+# glslang
+set(SKIP_GLSLANG_INSTALL ON)
+set(ENABLE_GLSLANG_BINARIES OFF)
+set(ENABLE_CTEST OFF)
+set(BUILD_TESTING OFF)
+add_subdirectory("${THIRD_PARTY_DIR}/glslang")
+
 # main src
 file(GLOB SOFTGL_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Base/*.cpp
@@ -45,6 +54,7 @@ file(GLOB SOFTGL_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/Software/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/OpenGL/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/Vulkan/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Render/Vulkan/SPIRV/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/Shader/GLSL/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/Shader/Software/*.cpp
@@ -65,6 +75,9 @@ add_executable(SoftGLRender
 if (WIN32)
     target_link_libraries(SoftGLRender
             assimp
+            glslang
+            glslang-default-resource-limits
+            SPIRV
             "${THIRD_PARTY_DIR}/vulkan/lib-win-x64/vulkan-1.lib"
             )
     if (MSVC)
@@ -85,6 +98,9 @@ if (APPLE)
     add_compile_definitions(GL_SILENCE_DEPRECATION)
     target_link_libraries(SoftGLRender
             assimp
+            glslang
+            glslang-default-resource-limits
+            SPIRV
             "${THIRD_PARTY_DIR}/glfw/lib-macos-universal/libglfw3.a"
             "${THIRD_PARTY_DIR}/vulkan/lib-macos-universal/libvulkan.1.dylib"
             )
@@ -94,6 +110,9 @@ if (UNIX AND NOT APPLE)
     find_package(OpenGL REQUIRED)
     target_link_libraries(SoftGLRender
             assimp
+            glslang
+            glslang-default-resource-limits
+            SPIRV
             glfw
             OpenGL::GL
             pthread

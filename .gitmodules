@@ -4,3 +4,6 @@
 [submodule "third_party/assimp"]
 	path = third_party/assimp
 	url = git@github.com:assimp/assimp.git
+[submodule "third_party/glslang"]
+	path = third_party/glslang
+	url = git@github.com:KhronosGroup/glslang.git

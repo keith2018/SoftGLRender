@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "Base/Platform.h"
+
 #ifdef PLATFORM_OSX
 #include "MoltenVK/mvk_vulkan.h"
 #else

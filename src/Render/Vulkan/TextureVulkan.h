@@ -16,7 +16,7 @@ namespace SoftGL {
 class TextureVulkan : public Texture {
  public:
   TextureVulkan(VKContext &ctx, const TextureDesc &desc) : vkCtx_(ctx) {
-    device_ = ctx.getDevice();
+    device_ = ctx.device();
 
     width = desc.width;
     height = desc.height;

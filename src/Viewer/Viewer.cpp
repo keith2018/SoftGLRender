@@ -767,22 +767,22 @@ size_t Viewer::getShaderProgramCacheKey(ShadingModel shading, const std::set<std
 size_t Viewer::getPipelineCacheKey(Material &material, const RenderStates &rs) {
   size_t seed = 0;
 
-  HashUtils::hashCombine(seed, material.materialObj->shadingModel);
+  HashUtils::hashCombine(seed, (int) material.materialObj->shadingModel);
 
   HashUtils::hashCombine(seed, rs.blend);
-  HashUtils::hashCombine(seed, rs.blendParams.blendFuncRgb);
-  HashUtils::hashCombine(seed, rs.blendParams.blendSrcRgb);
-  HashUtils::hashCombine(seed, rs.blendParams.blendDstRgb);
-  HashUtils::hashCombine(seed, rs.blendParams.blendFuncAlpha);
-  HashUtils::hashCombine(seed, rs.blendParams.blendSrcAlpha);
-  HashUtils::hashCombine(seed, rs.blendParams.blendDstAlpha);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendFuncRgb);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendSrcRgb);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendDstRgb);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendFuncAlpha);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendSrcAlpha);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendDstAlpha);
 
   HashUtils::hashCombine(seed, rs.depthTest);
   HashUtils::hashCombine(seed, rs.depthMask);
-  HashUtils::hashCombine(seed, rs.depthFunc);
+  HashUtils::hashCombine(seed, (int) rs.depthFunc);
 
   HashUtils::hashCombine(seed, rs.cullFace);
-  HashUtils::hashCombine(seed, rs.polygonMode);
+  HashUtils::hashCombine(seed, (int) rs.polygonMode);
 
   HashUtils::hashCombine(seed, rs.lineWidth);
   HashUtils::hashCombine(seed, rs.pointSize);

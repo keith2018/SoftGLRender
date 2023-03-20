@@ -21,9 +21,9 @@ class VertexArrayObjectSoft : public VertexArrayObject {
     memcpy(vertexes.data(), vertexArray.vertexesBuffer, vertexArray.vertexesBufferLength);
 
     // init indices
-    indicesCnt = vertexArray.indicesBufferLength / sizeof(int32_t);
+    indicesCnt = vertexArray.indexBufferLength / sizeof(int32_t);
     indices.resize(indicesCnt);
-    memcpy(indices.data(), vertexArray.indicesBuffer, vertexArray.indicesBufferLength);
+    memcpy(indices.data(), vertexArray.indexBuffer, vertexArray.indexBufferLength);
   }
 
   void updateVertexData(void *data, size_t length) override {

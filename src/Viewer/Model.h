@@ -39,6 +39,8 @@ struct ModelVertexes : VertexArray {
   };
 
   void InitVertexes() {
+    vertexSize = sizeof(Vertex);
+
     vertexesDesc.resize(4);
     vertexesDesc[0] = {3, sizeof(Vertex), offsetof(Vertex, a_position)};
     vertexesDesc[1] = {2, sizeof(Vertex), offsetof(Vertex, a_texCoord)};
@@ -48,8 +50,8 @@ struct ModelVertexes : VertexArray {
     vertexesBuffer = vertexes.empty() ? nullptr : (uint8_t *) &vertexes[0];
     vertexesBufferLength = vertexes.size() * sizeof(Vertex);
 
-    indicesBuffer = indices.empty() ? nullptr : &indices[0];
-    indicesBufferLength = indices.size() * sizeof(int32_t);
+    indexBuffer = indices.empty() ? nullptr : &indices[0];
+    indexBufferLength = indices.size() * sizeof(int32_t);
   }
 };
 

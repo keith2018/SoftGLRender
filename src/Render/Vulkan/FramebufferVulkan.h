@@ -16,7 +16,7 @@ namespace SoftGL {
 class FrameBufferVulkan : public FrameBuffer {
  public:
   explicit FrameBufferVulkan(VKContext &ctx) : vkCtx_(ctx) {
-    device_ = ctx.getDevice();
+    device_ = ctx.device();
   }
 
   virtual ~FrameBufferVulkan() {

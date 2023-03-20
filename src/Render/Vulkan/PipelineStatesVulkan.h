@@ -17,7 +17,7 @@ class PipelineStatesVulkan : public PipelineStates {
  public:
   PipelineStatesVulkan(VKContext &ctx, const RenderStates &states)
       : vkCtx_(ctx), PipelineStates(states) {
-    device_ = ctx.getDevice();
+    device_ = ctx.device();
   }
 
   ~PipelineStatesVulkan() override {
@@ -25,8 +25,10 @@ class PipelineStatesVulkan : public PipelineStates {
     vkDestroyPipelineLayout(device_, pipelineLayout_, nullptr);
   }
 
-  void create(ShaderProgramVulkan *program, VkRenderPass renderPass) {
-    createGraphicsPipeline(program, renderPass);
+  void create(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
+              ShaderProgramVulkan *program,
+              VkRenderPass renderPass) {
+    createGraphicsPipeline(vertexInputInfo, program, renderPass);
   }
 
   inline VkPipeline getGraphicsPipeline() {
@@ -34,15 +36,12 @@ class PipelineStatesVulkan : public PipelineStates {
   }
 
  private:
-  void createGraphicsPipeline(ShaderProgramVulkan *program, VkRenderPass renderPass) {
+  void createGraphicsPipeline(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
+                              ShaderProgramVulkan *program,
+                              VkRenderPass renderPass) {
     if (graphicsPipeline_ != VK_NULL_HANDLE) {
       return;
     }
-
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

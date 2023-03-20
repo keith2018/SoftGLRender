@@ -14,11 +14,11 @@ namespace SoftGL {
 
 class VertexArrayObjectOpenGL : public VertexArrayObject {
  public:
-  explicit VertexArrayObjectOpenGL(const VertexArray &vertex_array) {
-    if (!vertex_array.vertexesBuffer || !vertex_array.indicesBuffer) {
+  explicit VertexArrayObjectOpenGL(const VertexArray &vertexArr) {
+    if (!vertexArr.vertexesBuffer || !vertexArr.indexBuffer) {
       return;
     }
-    indicesCnt_ = vertex_array.indicesBufferLength / sizeof(int32_t);
+    indicesCnt_ = vertexArr.indexBufferLength / sizeof(int32_t);
 
     // vao
     GL_CHECK(glGenVertexArrays(1, &vao_));
@@ -28,12 +28,12 @@ class VertexArrayObjectOpenGL : public VertexArrayObject {
     GL_CHECK(glGenBuffers(1, &vbo_));
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER,
-                          vertex_array.vertexesBufferLength,
-                          vertex_array.vertexesBuffer,
+                          vertexArr.vertexesBufferLength,
+                          vertexArr.vertexesBuffer,
                           GL_STATIC_DRAW));
 
-    for (int i = 0; i < vertex_array.vertexesDesc.size(); i++) {
-      auto &desc = vertex_array.vertexesDesc[i];
+    for (int i = 0; i < vertexArr.vertexesDesc.size(); i++) {
+      auto &desc = vertexArr.vertexesDesc[i];
       GL_CHECK(glVertexAttribPointer(i, desc.size, GL_FLOAT, GL_FALSE, desc.stride, (void *) desc.offset));
       GL_CHECK(glEnableVertexAttribArray(i));
     }
@@ -42,8 +42,8 @@ class VertexArrayObjectOpenGL : public VertexArrayObject {
     GL_CHECK(glGenBuffers(1, &ebo_));
     GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_));
     GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                          vertex_array.indicesBufferLength,
-                          vertex_array.indicesBuffer,
+                          vertexArr.indexBufferLength,
+                          vertexArr.indexBuffer,
                           GL_STATIC_DRAW));
   }
 

@@ -10,7 +10,7 @@ class UniformBlockVulkan : public UniformBlock {
  public:
   UniformBlockVulkan(VKContext &ctx, const std::string &name, int size)
       : vkCtx_(ctx), UniformBlock(name, size) {
-    device_ = ctx.getDevice();
+    device_ = ctx.device();
   }
 
   int getLocation(ShaderProgram &program) override {
@@ -35,7 +35,7 @@ class UniformSamplerVulkan : public UniformSampler {
  public:
   UniformSamplerVulkan(VKContext &ctx, const std::string &name, TextureType type, TextureFormat format)
       : vkCtx_(ctx), UniformSampler(name, type, format) {
-    device_ = ctx.getDevice();
+    device_ = ctx.device();
   }
 
   int getLocation(ShaderProgram &program) override {

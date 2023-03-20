@@ -53,7 +53,7 @@ class ViewerVulkan : public Viewer {
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
     auto *programVK = dynamic_cast<ShaderProgramVulkan *>(&program);
-    return programVK->compileAndLink("assets/Shaders/vert.spv", "assets/Shaders/frag.spv");
+    return programVK->compileAndLinkSpv("assets/Shaders/vert.spv", "assets/Shaders/frag.spv");
   }
 
  private:

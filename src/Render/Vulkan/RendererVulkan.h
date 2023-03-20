@@ -9,6 +9,7 @@
 #include "Base/Platform.h"
 #include "Render/Renderer.h"
 #include "FramebufferVulkan.h"
+#include "VertexVulkan.h"
 #include "ShaderProgramVulkan.h"
 #include "PipelineStatesVulkan.h"
 #include "VulkanUtils.h"
@@ -58,8 +59,9 @@ class RendererVulkan : public Renderer {
 
  private:
   FrameBufferVulkan *fbo_ = nullptr;
-  PipelineStatesVulkan *pipelineStates_ = nullptr;
+  VertexArrayObjectVulkan *vao_ = nullptr;
   ShaderProgramVulkan *shaderProgram_ = nullptr;
+  PipelineStatesVulkan *pipelineStates_ = nullptr;
 
   VkViewport viewport_;
   std::vector<VkClearValue> clearValues_;

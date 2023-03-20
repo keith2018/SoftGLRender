@@ -32,12 +32,14 @@ struct VertexAttributeDesc {
 };
 
 struct VertexArray {
+  size_t vertexSize = 0;
   std::vector<VertexAttributeDesc> vertexesDesc;
+
   uint8_t *vertexesBuffer = nullptr;
   size_t vertexesBufferLength = 0;
 
-  int32_t *indicesBuffer = nullptr;
-  size_t indicesBufferLength = 0;
+  int32_t *indexBuffer = nullptr;
+  size_t indexBufferLength = 0;
 };
 
 }

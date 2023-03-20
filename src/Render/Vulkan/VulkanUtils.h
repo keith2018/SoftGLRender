@@ -7,7 +7,7 @@
 #pragma once
 
 #include "Base/Logger.h"
-#include "VulkanInc.h"
+#include "VKContext.h"
 
 namespace SoftGL {
 
@@ -22,5 +22,62 @@ namespace SoftGL {
 #else
 #define VK_CHECK(stmt) stmt
 #endif
+
+class VulkanUtils {
+ public:
+  static void createBuffer(VKContext &ctx,
+                           VkDeviceSize size,
+                           VkBufferUsageFlags usage,
+                           VkMemoryPropertyFlags properties,
+                           VkBuffer &buffer,
+                           VkDeviceMemory &bufferMemory) {
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VK_CHECK(vkCreateBuffer(ctx.device(), &bufferInfo, nullptr, &buffer));
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(ctx.device(), buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = ctx.getMemoryTypeIndex(memRequirements.memoryTypeBits, properties);
+
+    VK_CHECK(vkAllocateMemory(ctx.device(), &allocInfo, nullptr, &bufferMemory));
+    vkBindBufferMemory(ctx.device(), buffer, bufferMemory, 0);
+  }
+
+  static void copyBuffer(VKContext &ctx, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    VkCommandBuffer commandBuffer = ctx.beginSingleTimeCommands();
+
+    VkBufferCopy copyRegion{};
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    ctx.endSingleTimeCommands(commandBuffer);
+  }
+
+  static void uploadBufferData(VKContext &ctx, VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize) {
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(ctx, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer, stagingBufferMemory);
+
+    void *dataPtr = nullptr;
+    vkMapMemory(ctx.device(), stagingBufferMemory, 0, bufferSize, 0, &dataPtr);
+    memcpy(dataPtr, bufferData, (size_t) bufferSize);
+    vkUnmapMemory(ctx.device(), stagingBufferMemory);
+
+    copyBuffer(ctx, stagingBuffer, buffer, bufferSize);
+
+    vkDestroyBuffer(ctx.device(), stagingBuffer, nullptr);
+    vkFreeMemory(ctx.device(), stagingBufferMemory, nullptr);
+  }
+};
 
 }
