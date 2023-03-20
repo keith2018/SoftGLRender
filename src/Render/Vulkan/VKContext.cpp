@@ -91,27 +91,27 @@ VkCommandBuffer VKContext::beginSingleTimeCommands() {
   allocInfo.commandBufferCount = 1;
 
   VkCommandBuffer commandBuffer;
-  vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
+  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer));
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(commandBuffer, &beginInfo);
+  VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
   return commandBuffer;
 }
 
 void VKContext::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-  vkEndCommandBuffer(commandBuffer);
+  VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffer;
 
-  vkQueueSubmit(graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(graphicsQueue_);
+  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE));
+  VK_CHECK(vkQueueWaitIdle(graphicsQueue_));
 
   vkFreeCommandBuffers(device_, commandPool_, 1, &commandBuffer);
 }
@@ -195,7 +195,7 @@ bool VKContext::setupDebugMessenger() {
 
 bool VKContext::pickPhysicalDevice() {
   uint32_t deviceCount = 0;
-  vkEnumeratePhysicalDevices(instance_, &deviceCount, nullptr);
+  VK_CHECK(vkEnumeratePhysicalDevices(instance_, &deviceCount, nullptr));
 
   if (deviceCount == 0) {
     LOGE("failed to find GPUs with Vulkan support");
@@ -203,7 +203,7 @@ bool VKContext::pickPhysicalDevice() {
   }
 
   std::vector<VkPhysicalDevice> devices(deviceCount);
-  vkEnumeratePhysicalDevices(instance_, &deviceCount, devices.data());
+  VK_CHECK(vkEnumeratePhysicalDevices(instance_, &deviceCount, devices.data()));
 
   for (const auto &device : devices) {
     QueueFamilyIndices indices = findQueueFamilies(device);
@@ -266,10 +266,10 @@ bool VKContext::createCommandPool() {
 
 bool VKContext::checkValidationLayerSupport() {
   uint32_t layerCount;
-  vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+  VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, nullptr));
 
   std::vector<VkLayerProperties> availableLayers(layerCount);
-  vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+  VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data()));
 
   for (const char *layerName : kValidationLayers) {
     bool layerFound = false;

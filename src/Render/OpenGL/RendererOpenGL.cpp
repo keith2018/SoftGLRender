@@ -105,6 +105,8 @@ void RendererOpenGL::setPipelineStates(std::shared_ptr<PipelineStates> &states) 
   if (!states) {
     return;
   }
+  pipelineStates_ = states.get();
+
   auto &renderStates = states->renderStates;
   // blend
   GL_STATE_SET(renderStates.blend, GL_BLEND)
@@ -127,8 +129,8 @@ void RendererOpenGL::setPipelineStates(std::shared_ptr<PipelineStates> &states) 
   GL_CHECK(glPointSize(renderStates.pointSize));
 }
 
-void RendererOpenGL::draw(PrimitiveType type) {
-  GLenum mode = OpenGL::cvtDrawMode(type);
+void RendererOpenGL::draw() {
+  GLenum mode = OpenGL::cvtDrawMode(pipelineStates_->renderStates.primitiveType);
   GL_CHECK(glDrawElements(mode, (GLsizei) vao_->getIndicesCnt(), GL_UNSIGNED_INT, nullptr));
 }
 

@@ -70,6 +70,12 @@ struct BlendParameters {
   }
 };
 
+enum PrimitiveType {
+  Primitive_POINT,
+  Primitive_LINE,
+  Primitive_TRIANGLE,
+};
+
 struct RenderStates {
   bool blend = false;
   BlendParameters blendParams;
@@ -79,6 +85,7 @@ struct RenderStates {
   DepthFunction depthFunc = DepthFunc_LESS;
 
   bool cullFace = false;
+  PrimitiveType primitiveType = Primitive_TRIANGLE;
   PolygonMode polygonMode = PolygonMode_FILL;
 
   float lineWidth = 1.f;

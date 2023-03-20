@@ -58,8 +58,8 @@ class Viewer {
   void setupTextures(Material &material);
   bool setupShaderProgram(Material &material, ShadingModel shading);
   void setupSamplerUniforms(Material &material);
-  void setupPipelineStates(Material &material, const std::function<void(RenderStates &rs)> &extraStates);
-  void setupMaterial(Material &material, ShadingModel shading,
+  void setupPipelineStates(ModelBase &model, const std::function<void(RenderStates &rs)> &extraStates);
+  void setupMaterial(ModelBase &model, ShadingModel shading,
                      const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks,
                      const std::function<void(RenderStates &rs)> &extraStates);
 

@@ -12,12 +12,6 @@
 
 namespace SoftGL {
 
-enum PrimitiveType {
-  Primitive_POINT,
-  Primitive_LINE,
-  Primitive_TRIANGLE,
-};
-
 class VertexArrayObject {
  public:
   virtual int getId() const = 0;

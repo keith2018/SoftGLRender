@@ -37,5 +37,23 @@ static inline VkImageViewType cvtImageViewType(TextureType type) {
   return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 }
 
+static inline VkPrimitiveTopology cvtPrimitiveTopology(PrimitiveType type) {
+  switch (type) {
+    case Primitive_POINT:       return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    case Primitive_LINE:        return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    case Primitive_TRIANGLE:    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  }
+  return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+}
+
+static inline VkPolygonMode cvtPolygonMode(PolygonMode mode) {
+  switch (mode) {
+    case PolygonMode_POINT:     return VK_POLYGON_MODE_POINT;
+    case PolygonMode_LINE:      return VK_POLYGON_MODE_LINE;
+    case PolygonMode_FILL:      return VK_POLYGON_MODE_FILL;
+  }
+  return VK_POLYGON_MODE_MAX_ENUM;
+}
+
 }
 }

@@ -66,7 +66,7 @@ class Renderer {
   virtual void setShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
   virtual void setShaderResources(std::shared_ptr<ShaderResources> &uniforms) = 0;
   virtual void setPipelineStates(std::shared_ptr<PipelineStates> &states) = 0;
-  virtual void draw(PrimitiveType type) = 0;
+  virtual void draw() = 0;
 };
 ```
 

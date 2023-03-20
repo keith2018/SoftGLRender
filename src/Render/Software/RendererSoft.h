@@ -51,7 +51,7 @@ class RendererSoft : public Renderer {
   void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
   void setShaderResources(std::shared_ptr<ShaderResources> &resources) override;
   void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
-  void draw(PrimitiveType type) override;
+  void draw() override;
 
  private:
   void processVertexShader();

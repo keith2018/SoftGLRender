@@ -8,6 +8,7 @@
 
 #include "Viewer.h"
 #include "Render/Vulkan/RendererVulkan.h"
+#include "Shader/GLSL/ShaderGLSL.h"
 
 namespace SoftGL {
 namespace View {
@@ -53,7 +54,7 @@ class ViewerVulkan : public Viewer {
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
     auto *programVK = dynamic_cast<ShaderProgramVulkan *>(&program);
-    return programVK->compileAndLinkSpv("assets/Shaders/vert.spv", "assets/Shaders/frag.spv");
+    return programVK->compileAndLinkGLSL(BASIC_VS, BASIC_FS);
   }
 
  private:

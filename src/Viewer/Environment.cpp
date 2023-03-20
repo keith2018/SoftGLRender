@@ -190,7 +190,7 @@ void Environment::drawCubeFaces(CubeRenderContext &ctx, int width, int height, s
     ctx.renderer->setShaderProgram(materialObj->shaderProgram);
     ctx.renderer->setShaderResources(materialObj->shaderResources);
     ctx.renderer->setPipelineStates(materialObj->pipelineStates);
-    ctx.renderer->draw(ctx.modelSkybox.primitiveType);
+    ctx.renderer->draw();
   }
 }
 

@@ -148,14 +148,14 @@ void RendererSoft::setPipelineStates(std::shared_ptr<PipelineStates> &states) {
   renderState_ = &states->renderStates;
 }
 
-void RendererSoft::draw(PrimitiveType type) {
+void RendererSoft::draw() {
   if (!fbo_ || !vao_ || !shaderProgram_) {
     return;
   }
 
   fboColor_ = fbo_->getColorBuffer();
   fboDepth_ = fbo_->getDepthBuffer();
-  primitiveType_ = type;
+  primitiveType_ = renderState_->primitiveType;
 
   if (fboColor_) {
     rasterSamples_ = fboColor_->sampleCnt;

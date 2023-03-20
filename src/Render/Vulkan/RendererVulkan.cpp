@@ -130,7 +130,11 @@ void RendererVulkan::setPipelineStates(std::shared_ptr<PipelineStates> &states) 
   pipelineStates_->create(vao_->getVertexInputInfo(), shaderProgram_, renderPass_);
 }
 
-void RendererVulkan::draw(PrimitiveType type) {
+void RendererVulkan::draw() {
+  if (pipelineStates_->getGraphicsPipeline() == VK_NULL_HANDLE) {
+    return;
+  }
+
   recordDraw(drawCmd_);
   submitWork(drawCmd_, vkCtx_.getGraphicsQueue());
 

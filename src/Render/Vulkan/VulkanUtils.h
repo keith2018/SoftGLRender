@@ -15,7 +15,7 @@ namespace SoftGL {
 #define VK_CHECK(stmt) do {                                                                 \
             VkResult result = (stmt);                                                       \
             if (result != VK_SUCCESS) {                                                     \
-              LOGE("VK_CHECK: VkResult: %d, %s:%d, %s", result, __FILE__, __LINE__, stmt);  \
+              LOGE("VK_CHECK: VkResult: %d, %s:%d, %s", result, __FILE__, __LINE__, #stmt); \
               abort();                                                                      \
             }                                                                               \
         } while (0)
@@ -48,7 +48,7 @@ class VulkanUtils {
     allocInfo.memoryTypeIndex = ctx.getMemoryTypeIndex(memRequirements.memoryTypeBits, properties);
 
     VK_CHECK(vkAllocateMemory(ctx.device(), &allocInfo, nullptr, &bufferMemory));
-    vkBindBufferMemory(ctx.device(), buffer, bufferMemory, 0);
+    VK_CHECK(vkBindBufferMemory(ctx.device(), buffer, bufferMemory, 0));
   }
 
   static void copyBuffer(VKContext &ctx, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -69,7 +69,7 @@ class VulkanUtils {
                  stagingBuffer, stagingBufferMemory);
 
     void *dataPtr = nullptr;
-    vkMapMemory(ctx.device(), stagingBufferMemory, 0, bufferSize, 0, &dataPtr);
+    VK_CHECK(vkMapMemory(ctx.device(), stagingBufferMemory, 0, bufferSize, 0, &dataPtr));
     memcpy(dataPtr, bufferData, (size_t) bufferSize);
     vkUnmapMemory(ctx.device(), stagingBufferMemory);
 

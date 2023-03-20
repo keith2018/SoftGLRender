@@ -41,11 +41,12 @@ class RendererOpenGL : public Renderer {
   void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
   void setShaderResources(std::shared_ptr<ShaderResources> &resources) override;
   void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
-  void draw(PrimitiveType type) override;
+  void draw() override;
 
  private:
   VertexArrayObjectOpenGL *vao_ = nullptr;
   ShaderProgramOpenGL *shaderProgram_ = nullptr;
+  PipelineStates *pipelineStates_ = nullptr;
 };
 
 }

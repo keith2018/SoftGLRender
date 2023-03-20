@@ -100,7 +100,7 @@ void QuadFilter::draw() {
   renderer_->setShaderProgram(materialObj->shaderProgram);
   renderer_->setShaderResources(materialObj->shaderResources);
   renderer_->setPipelineStates(materialObj->pipelineStates);
-  renderer_->draw(quadMesh_.primitiveType);
+  renderer_->draw();
 }
 
 }

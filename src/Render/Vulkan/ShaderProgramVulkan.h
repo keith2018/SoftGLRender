@@ -18,6 +18,7 @@ class ShaderProgramVulkan : public ShaderProgram {
  public:
   explicit ShaderProgramVulkan(VKContext &ctx) : vkCtx_(ctx) {
     device_ = ctx.device();
+    glslHeader_ = "#version 450\n";
   }
 
   ~ShaderProgramVulkan() {
@@ -30,16 +31,23 @@ class ShaderProgramVulkan : public ShaderProgram {
   }
 
   void addDefine(const std::string &def) override {
+    if (def.empty()) {
+      return;
+    }
+    glslDefines_ += ("#define " + def + " \n");
   }
 
   bool compileAndLinkGLSL(const std::string &vsSource, const std::string &fsSource) {
-    auto vsData = SpvCompiler::compileVertexShader(vsSource.c_str());
+    std::string vsStr = glslHeader_ + glslDefines_ + vsSource;
+    std::string fsStr = glslHeader_ + glslDefines_ + fsSource;
+
+    auto vsData = SpvCompiler::compileVertexShader(vsStr.c_str());
     if (vsData.empty()) {
       LOGE("load vertex shader file failed");
       return false;
     }
 
-    auto fsData = SpvCompiler::compileFragmentShader(fsSource.c_str());
+    auto fsData = SpvCompiler::compileFragmentShader(fsStr.c_str());
     if (fsData.empty()) {
       LOGE("load fragment shader file failed");
       return false;
@@ -109,6 +117,9 @@ class ShaderProgramVulkan : public ShaderProgram {
   VkShaderModule vertexShader_ = VK_NULL_HANDLE;
   VkShaderModule fragmentShader_ = VK_NULL_HANDLE;
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages_;
+
+  std::string glslHeader_;
+  std::string glslDefines_;
 };
 
 }

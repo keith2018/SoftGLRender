@@ -336,7 +336,7 @@ void Viewer::pipelineSetup(ModelBase &model, ShadingModel shading,
     }
   }
 
-  setupMaterial(*model.material, shading, uniformBlocks, extraStates);
+  setupMaterial(model, shading, uniformBlocks, extraStates);
 }
 
 void Viewer::pipelineDraw(ModelBase &model) {
@@ -346,7 +346,7 @@ void Viewer::pipelineDraw(ModelBase &model) {
   renderer_->setShaderProgram(materialObj->shaderProgram);
   renderer_->setShaderResources(materialObj->shaderResources);
   renderer_->setPipelineStates(materialObj->pipelineStates);
-  renderer_->draw(model.primitiveType);
+  renderer_->draw();
 }
 
 void Viewer::setupMainBuffers() {
@@ -514,7 +514,8 @@ bool Viewer::setupShaderProgram(Material &material, ShadingModel shading) {
   return success;
 }
 
-void Viewer::setupPipelineStates(Material &material, const std::function<void(RenderStates &rs)> &extraStates) {
+void Viewer::setupPipelineStates(ModelBase &model, const std::function<void(RenderStates &rs)> &extraStates) {
+  auto &material = *model.material;
   RenderStates rs;
   rs.blend = material.alphaMode == Alpha_Blend;
   rs.blendParams.SetBlendFactor(BlendFactor_SRC_ALPHA, BlendFactor_ONE_MINUS_SRC_ALPHA);
@@ -524,6 +525,7 @@ void Viewer::setupPipelineStates(Material &material, const std::function<void(Re
   rs.depthFunc = config_.reverseZ ? DepthFunc_GEQUAL : DepthFunc_LESS;
 
   rs.cullFace = config_.cullFace && (!material.doubleSided);
+  rs.primitiveType = model.primitiveType;
   rs.polygonMode = PolygonMode_FILL;
 
   rs.lineWidth = material.lineWidth;
@@ -544,9 +546,10 @@ void Viewer::setupPipelineStates(Material &material, const std::function<void(Re
   }
 }
 
-void Viewer::setupMaterial(Material &material, ShadingModel shading,
+void Viewer::setupMaterial(ModelBase &model, ShadingModel shading,
                            const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks,
                            const std::function<void(RenderStates &rs)> &extraStates) {
+  auto &material = *model.material;
   if (material.textures.empty()) {
     setupTextures(material);
     material.shaderDefines = generateShaderDefines(material);
@@ -564,7 +567,7 @@ void Viewer::setupMaterial(Material &material, ShadingModel shading,
     }
   }
 
-  setupPipelineStates(material, extraStates);
+  setupPipelineStates(model, extraStates);
 }
 
 void Viewer::updateUniformScene() {
@@ -782,6 +785,7 @@ size_t Viewer::getPipelineCacheKey(Material &material, const RenderStates &rs) {
   HashUtils::hashCombine(seed, (int) rs.depthFunc);
 
   HashUtils::hashCombine(seed, rs.cullFace);
+  HashUtils::hashCombine(seed, (int) rs.primitiveType);
   HashUtils::hashCombine(seed, (int) rs.polygonMode);
 
   HashUtils::hashCombine(seed, rs.lineWidth);
