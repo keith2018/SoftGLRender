@@ -2,7 +2,8 @@
 
 #include "Base/Logger.h"
 #include "Render/Uniform.h"
-#include "Render/Vulkan/VKContext.h"
+#include "VKContext.h"
+#include "ShaderProgramVulkan.h"
 
 namespace SoftGL {
 
@@ -26,10 +27,17 @@ class UniformBlockVulkan : public UniformBlock {
   }
 
   int getLocation(ShaderProgram &program) override {
-    return 0;
+    auto programVulkan = dynamic_cast<ShaderProgramVulkan *>(&program);
+    return programVulkan->getUniformLocation(name);
   }
 
   void bindProgram(ShaderProgram &program, int location) override {
+    auto programVulkan = dynamic_cast<ShaderProgramVulkan *>(&program);
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = buffer_;
+    bufferInfo.offset = 0;
+    bufferInfo.range = blockSize;
+    programVulkan->bindUniformBuffer(bufferInfo, location);
   }
 
   void setSubData(void *data, int len, int offset) override {

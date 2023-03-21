@@ -14,36 +14,57 @@ namespace SoftGL {
 
 class ReflectionTraverser : public glslang::TIntermTraverser {
  public:
+  explicit ReflectionTraverser(std::unordered_map<std::string, ShaderUniformDesc> &uniformsDesc)
+      : uniformsDesc(uniformsDesc) {}
+
   void visitSymbol(glslang::TIntermSymbol *symbol) override {
-    if (symbol->getQualifier().isUniformOrBuffer()) {
+    if (symbol->getQualifier().isUniform()) {
       auto accessName = symbol->getAccessName();
       auto qualifier = symbol->getQualifier();
 
-      LOGD("%s:", accessName.c_str());
-      LOGD("  type: %d", symbol->getBasicType());
-      LOGD("  storage: %s", glslang::GetStorageQualifierString(qualifier.storage));
+      ShaderUniformDesc desc;
+      desc.name = accessName.c_str();
+      switch (symbol->getBasicType()) {
+        case glslang::EbtSampler:
+          desc.type = UniformType_Sampler;
+          break;
+        case glslang::EbtBlock:
+          desc.type = UniformType_Block;
+          break;
+        default:
+          desc.type = UniformType_Unknown;
+          break;
+      }
+
+      desc.location = 0;
+      desc.binding = 0;
+      desc.set = 0;
+
       if (qualifier.hasLocation()) {
-        LOGD("  location: %d", qualifier.layoutLocation);
+        desc.location = qualifier.layoutLocation;
       }
       if (qualifier.hasBinding()) {
-        LOGD("  binding: %d", qualifier.layoutBinding);
+        desc.binding = qualifier.layoutBinding;
       }
       if (qualifier.hasSet()) {
-        LOGD("  set: %d", qualifier.layoutSet);
+        desc.set = qualifier.layoutSet;
       }
-      if (qualifier.hasPacking()) {
-        LOGD("  packing: %s", glslang::TQualifier::getLayoutPackingString(qualifier.layoutPacking));
-      }
+
+      uniformsDesc[desc.name] = std::move(desc);
     }
   }
+
+  std::unordered_map<std::string, ShaderUniformDesc> &uniformsDesc;
 };
 
-static std::vector<uint32_t> compileShaderInternal(EShLanguage stage, const char *shaderSource) {
+static ShaderCompilerResult compileShaderInternal(EShLanguage stage, const char *shaderSource) {
 #ifdef DEBUG
   bool debug = true;
 #else
   bool debug = false;
 #endif
+
+  ShaderCompilerResult compilerResult;
 
   glslang::InitializeProcess();
   auto messages = (EShMessages) (EShMsgSpvRules | EShMsgVulkanRules | EShMsgDefault);
@@ -61,6 +82,8 @@ static std::vector<uint32_t> compileShaderInternal(EShLanguage stage, const char
   shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, glslVersion);
   shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
   shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_0);
+  shader.setAutoMapLocations(true);
+  shader.setAutoMapBindings(true);
 
   // compile
   auto resources = GetDefaultResources();
@@ -72,7 +95,7 @@ static std::vector<uint32_t> compileShaderInternal(EShLanguage stage, const char
   }
 
   // reflect input & output
-  ReflectionTraverser traverser;
+  ReflectionTraverser traverser(compilerResult.uniformsDesc);
   auto root = shader.getIntermediate()->getTreeRoot();
   root->traverse(&traverser);
 
@@ -85,7 +108,6 @@ static std::vector<uint32_t> compileShaderInternal(EShLanguage stage, const char
     return {};
   }
 
-  std::vector<uint32_t> spirv;
   spv::SpvBuildLogger logger;
   glslang::SpvOptions spvOptions;
 
@@ -99,17 +121,17 @@ static std::vector<uint32_t> compileShaderInternal(EShLanguage stage, const char
     spvOptions.disableOptimizer = false;
   }
 
-  glslang::GlslangToSpv(*program.getIntermediate((EShLanguage) stage), spirv, &logger, &spvOptions);
-
+  glslang::GlslangToSpv(*program.getIntermediate((EShLanguage) stage), compilerResult.spvCodes, &logger, &spvOptions);
   glslang::FinalizeProcess();
-  return spirv;
+
+  return compilerResult;
 }
 
-std::vector<uint32_t> SpvCompiler::compileVertexShader(const char *shaderSource) {
+ShaderCompilerResult SpvCompiler::compileVertexShader(const char *shaderSource) {
   return compileShaderInternal(EShLangVertex, shaderSource);
 }
 
-std::vector<uint32_t> SpvCompiler::compileFragmentShader(const char *shaderSource) {
+ShaderCompilerResult SpvCompiler::compileFragmentShader(const char *shaderSource) {
   return compileShaderInternal(EShLangFragment, shaderSource);
 }
 
