@@ -84,6 +84,14 @@ class ShaderProgramVulkan : public ShaderProgram {
     return shaderStages_;
   }
 
+  inline std::vector<VkDescriptorSetLayout> &getDescriptorSetLayouts() {
+    return descriptorSetLayouts_;
+  }
+
+  inline std::vector<VkDescriptorSet> &getVkDescriptorSet() {
+    return descriptorSets_;
+  }
+
  private:
   void createShaderStages() {
     shaderStages_.resize(2);
@@ -117,6 +125,8 @@ class ShaderProgramVulkan : public ShaderProgram {
   VkShaderModule vertexShader_ = VK_NULL_HANDLE;
   VkShaderModule fragmentShader_ = VK_NULL_HANDLE;
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages_;
+  std::vector<VkDescriptorSetLayout> descriptorSetLayouts_;
+  std::vector<VkDescriptorSet> descriptorSets_;
 
   std::string glslHeader_;
   std::string glslDefines_;

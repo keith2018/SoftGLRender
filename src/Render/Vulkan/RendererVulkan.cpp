@@ -122,7 +122,9 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
     return;
   }
 
-  // TODO
+  if (shaderProgram_) {
+    shaderProgram_->bindResources(*resources);
+  }
 }
 
 void RendererVulkan::setPipelineStates(std::shared_ptr<PipelineStates> &states) {
@@ -158,6 +160,7 @@ void RendererVulkan::recordDraw(VkCommandBuffer commandBuffer) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
+  // render pass
   VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
   VkRenderPassBeginInfo renderPassInfo{};
@@ -172,19 +175,29 @@ void RendererVulkan::recordDraw(VkCommandBuffer commandBuffer) {
 
   vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+  // pipe line
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineStates_->getGraphicsPipeline());
 
+  // view port
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport_);
 
-  VkRect2D scissor{};
-  scissor.offset = {0, 0};
-  scissor.extent = {(uint32_t) viewport_.width, (uint32_t) viewport_.height};
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+  // vertex buffer
+  VkBuffer vertexBuffers[] = {vao_->getVertexBuffer()};
+  VkDeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+  // index buffer
+  vkCmdBindIndexBuffer(commandBuffer, vao_->getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+  // descriptor sets
+  auto &descriptorSets = shaderProgram_->getVkDescriptorSet();
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineStates_->getGraphicsPipelineLayout(),
+                          0, descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
+  // draw
+  vkCmdDrawIndexed(commandBuffer, vao_->getIndicesCnt(), 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
-
   VK_CHECK(vkEndCommandBuffer(commandBuffer));
 }
 

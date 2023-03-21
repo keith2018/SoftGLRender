@@ -19,8 +19,7 @@ include_directories(
         "${THIRD_PARTY_DIR}/json11"
         "${THIRD_PARTY_DIR}/stb/include"
         "${THIRD_PARTY_DIR}/vulkan/include"
-        "${THIRD_PARTY_DIR}/glslang/glslang"
-        "${THIRD_PARTY_DIR}/glslang/glslang"
+        "${THIRD_PARTY_DIR}/glslang"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
@@ -42,9 +41,11 @@ add_subdirectory(${THIRD_PARTY_DIR}/assimp)
 
 # glslang
 set(SKIP_GLSLANG_INSTALL ON)
+set(ENABLE_SPVREMAPPER OFF)
 set(ENABLE_GLSLANG_BINARIES OFF)
 set(ENABLE_CTEST OFF)
 set(BUILD_TESTING OFF)
+set(USE_CCACHE ON)
 add_subdirectory("${THIRD_PARTY_DIR}/glslang")
 
 # main src

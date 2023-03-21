@@ -20,6 +20,7 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
     if (!vertexArr.vertexesBuffer || !vertexArr.indexBuffer) {
       return;
     }
+    indicesCnt_ = vertexArr.indexBufferLength / sizeof(int32_t);
 
     // init vertex input info
     bindingDescription_.binding = 0;
@@ -81,14 +82,10 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
   // only Float element
   static VkFormat vertexAttributeFormat(size_t size) {
     switch (size) {
-      case 1:
-        return VK_FORMAT_R32_SFLOAT;
-      case 2:
-        return VK_FORMAT_R32G32_SFLOAT;
-      case 3:
-        return VK_FORMAT_R32G32B32_SFLOAT;
-      case 4:
-        return VK_FORMAT_R32G32B32A32_SFLOAT;
+      case 1: return VK_FORMAT_R32_SFLOAT;
+      case 2: return VK_FORMAT_R32G32_SFLOAT;
+      case 3: return VK_FORMAT_R32G32B32_SFLOAT;
+      case 4: return VK_FORMAT_R32G32B32A32_SFLOAT;
       default:
         break;
     }
@@ -99,8 +96,22 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
     return vertexInputInfo_;
   }
 
+  inline uint32_t getIndicesCnt() const {
+    return indicesCnt_;
+  }
+
+  inline VkBuffer &getVertexBuffer() {
+    return vertexBuffer_;
+  }
+
+  inline VkBuffer &getIndexBuffer() {
+    return indexBuffer_;
+  }
+
  private:
   UUID<VertexArrayObjectVulkan> uuid_;
+  uint32_t indicesCnt_ = 0;
+
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
 

@@ -68,13 +68,13 @@ class VertexArrayObjectOpenGL : public VertexArrayObject {
     return (int) vao_;
   }
 
-  void bind() const {
+  inline void bind() const {
     if (vao_) {
       GL_CHECK(glBindVertexArray(vao_));
     }
   }
 
-  size_t getIndicesCnt() const {
+  inline size_t getIndicesCnt() const {
     return indicesCnt_;
   }
 

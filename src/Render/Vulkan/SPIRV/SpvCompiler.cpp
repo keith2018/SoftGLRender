@@ -5,89 +5,112 @@
  */
 
 #include "SpvCompiler.h"
-#include "Include/glslang_c_interface.h"
-#include "Public/ResourceLimits.h"
+#include "glslang/Public/ShaderLang.h"
+#include "glslang/Public/ResourceLimits.h"
+#include "SPIRV/GlslangToSpv.h"
 #include "Base/Logger.h"
 
 namespace SoftGL {
 
-static std::vector<uint32_t> compileShaderInternal(glslang_stage_t stage, const char *shaderSource) {
-  const glslang_input_t input = {
-      .language = GLSLANG_SOURCE_GLSL,
-      .stage = stage,
-      .client = GLSLANG_CLIENT_VULKAN,
-      .client_version = GLSLANG_TARGET_VULKAN_1_0,
-      .target_language = GLSLANG_TARGET_SPV,
-      .target_language_version = GLSLANG_TARGET_SPV_1_0,
-      .code = shaderSource,
-      .default_version = 450,
-      .default_profile = GLSLANG_NO_PROFILE,
-      .force_default_version_and_profile = false,
-      .forward_compatible = false,
-      .messages = GLSLANG_MSG_DEFAULT_BIT,
-      .resource = reinterpret_cast<const glslang_resource_t *>(GetDefaultResources()),
-  };
+class ReflectionTraverser : public glslang::TIntermTraverser {
+ public:
+  void visitSymbol(glslang::TIntermSymbol *symbol) override {
+    if (symbol->getQualifier().isUniformOrBuffer()) {
+      auto accessName = symbol->getAccessName();
+      auto qualifier = symbol->getQualifier();
 
-  glslang_shader_t *shader = glslang_shader_create(&input);
+      LOGD("%s:", accessName.c_str());
+      LOGD("  type: %d", symbol->getBasicType());
+      LOGD("  storage: %s", glslang::GetStorageQualifierString(qualifier.storage));
+      if (qualifier.hasLocation()) {
+        LOGD("  location: %d", qualifier.layoutLocation);
+      }
+      if (qualifier.hasBinding()) {
+        LOGD("  binding: %d", qualifier.layoutBinding);
+      }
+      if (qualifier.hasSet()) {
+        LOGD("  set: %d", qualifier.layoutSet);
+      }
+      if (qualifier.hasPacking()) {
+        LOGD("  packing: %s", glslang::TQualifier::getLayoutPackingString(qualifier.layoutPacking));
+      }
+    }
+  }
+};
 
-  if (!glslang_shader_preprocess(shader, &input)) {
-    LOGE("GLSL preprocessing failed:");
-    LOGE("%s", glslang_shader_get_info_log(shader));
-    LOGE("%s", glslang_shader_get_info_debug_log(shader));
-    LOGE("%s", input.code);
-    glslang_shader_delete(shader);
-    return {};
+static std::vector<uint32_t> compileShaderInternal(EShLanguage stage, const char *shaderSource) {
+#ifdef DEBUG
+  bool debug = true;
+#else
+  bool debug = false;
+#endif
+
+  glslang::InitializeProcess();
+  auto messages = (EShMessages) (EShMsgSpvRules | EShMsgVulkanRules | EShMsgDefault);
+
+  glslang::TProgram program;
+  glslang::TShader shader(stage);
+
+  if (debug) {
+    messages = (EShMessages) (messages | EShMsgDebugInfo);
   }
 
-  if (!glslang_shader_parse(shader, &input)) {
+  const char *fileName = "";
+  const int glslVersion = 450;
+  shader.setStringsWithLengthsAndNames(&shaderSource, nullptr, &fileName, 1);
+  shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, glslVersion);
+  shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+  shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_0);
+
+  // compile
+  auto resources = GetDefaultResources();
+  if (!shader.parse(resources, glslVersion, false, messages)) {
     LOGE("GLSL parsing failed:");
-    LOGE("%s", glslang_shader_get_info_log(shader));
-    LOGE("%s", glslang_shader_get_info_debug_log(shader));
-    LOGE("%s", glslang_shader_get_preprocessed_code(shader));
-    glslang_shader_delete(shader);
+    LOGE("%s", shader.getInfoLog());
+    LOGE("%s", shader.getInfoDebugLog());
     return {};
   }
 
-  glslang_program_t *program = glslang_program_create();
-  glslang_program_add_shader(program, shader);
+  // reflect input & output
+  ReflectionTraverser traverser;
+  auto root = shader.getIntermediate()->getTreeRoot();
+  root->traverse(&traverser);
 
-  if (!glslang_program_link(program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT)) {
+  // link
+  program.addShader(&shader);
+  if (!program.link(messages)) {
     LOGE("GLSL linking failed:");
-    LOGE("%s", glslang_program_get_info_log(program));
-    LOGE("%s", glslang_program_get_info_debug_log(program));
-    glslang_program_delete(program);
-    glslang_shader_delete(shader);
+    LOGE("%s", program.getInfoLog());
+    LOGE("%s", program.getInfoDebugLog());
     return {};
   }
 
-  glslang_program_SPIRV_generate(program, stage);
+  std::vector<uint32_t> spirv;
+  spv::SpvBuildLogger logger;
+  glslang::SpvOptions spvOptions;
 
-  std::vector<uint32_t> outShaderModule(glslang_program_SPIRV_get_size(program));
-  glslang_program_SPIRV_get(program, outShaderModule.data());
-
-  const char *spirv_messages = glslang_program_SPIRV_get_messages(program);
-  if (spirv_messages) {
-    LOGI("GLSLang: %s", spirv_messages);
+  if (debug) {
+    spvOptions.disableOptimizer = true;
+    spvOptions.optimizeSize = false;
+    spvOptions.generateDebugInfo = true;
+  } else {
+    spvOptions.generateDebugInfo = false;
+    spvOptions.optimizeSize = true;
+    spvOptions.disableOptimizer = false;
   }
 
-  glslang_program_delete(program);
-  glslang_shader_delete(shader);
+  glslang::GlslangToSpv(*program.getIntermediate((EShLanguage) stage), spirv, &logger, &spvOptions);
 
-  return outShaderModule;
+  glslang::FinalizeProcess();
+  return spirv;
 }
 
 std::vector<uint32_t> SpvCompiler::compileVertexShader(const char *shaderSource) {
-  glslang_initialize_process();
-  auto ret = compileShaderInternal(GLSLANG_STAGE_VERTEX, shaderSource);
-  glslang_finalize_process();
-  return ret;
+  return compileShaderInternal(EShLangVertex, shaderSource);
 }
 
 std::vector<uint32_t> SpvCompiler::compileFragmentShader(const char *shaderSource) {
-  glslang_initialize_process();
-  auto ret = compileShaderInternal(GLSLANG_STAGE_FRAGMENT, shaderSource);
-  glslang_finalize_process();
-  return ret;
+  return compileShaderInternal(EShLangFragment, shaderSource);
 }
 
 }
