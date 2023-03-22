@@ -25,8 +25,8 @@ class Uniform {
     return uuid_.get();
   }
 
-  virtual int getLocation(ShaderProgram &program) = 0;
-  virtual void bindProgram(ShaderProgram &program, int location) = 0;
+  virtual int getBinding(ShaderProgram &program) = 0;
+  virtual void bindProgram(ShaderProgram &program, int binding) = 0;
 
  public:
   std::string name;

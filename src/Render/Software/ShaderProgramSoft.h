@@ -58,13 +58,13 @@ class ShaderProgramSoft : public ShaderProgram {
     vertexShader_->bindShaderAttributes(ptr);
   }
 
-  inline void bindUniformBlockBuffer(void *data, size_t len, int location) {
-    int offset = vertexShader_->GetUniformOffset(location);
+  inline void bindUniformBlockBuffer(void *data, size_t len, int binding) {
+    int offset = vertexShader_->GetUniformOffset(binding);
     memcpy(uniformBuffer_.get() + offset, data, len);
   }
 
-  inline void bindUniformSampler(std::shared_ptr<SamplerSoft> &sampler, int location) {
-    int offset = vertexShader_->GetUniformOffset(location);
+  inline void bindUniformSampler(std::shared_ptr<SamplerSoft> &sampler, int binding) {
+    int offset = vertexShader_->GetUniformOffset(binding);
     auto **ptr = reinterpret_cast<SamplerSoft **>(uniformBuffer_.get() + offset);
     *ptr = sampler.get();
   }

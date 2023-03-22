@@ -82,8 +82,6 @@ static ShaderCompilerResult compileShaderInternal(EShLanguage stage, const char 
   shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, glslVersion);
   shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
   shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_0);
-  shader.setAutoMapLocations(true);
-  shader.setAutoMapBindings(true);
 
   // compile
   auto resources = GetDefaultResources();

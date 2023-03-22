@@ -107,14 +107,11 @@ class ShaderProgramVulkan : public ShaderProgram {
     writeDescriptorSets_.push_back(writeDesc);
   }
 
-  bool bindUniformsBegin(size_t uniformCnt = 0) {
-    if (!writeDescriptorSets_.empty()) {
-      return false;
-    }
+  void bindUniformsBegin(size_t uniformCnt = 0) {
+    writeDescriptorSets_.clear();
     if (uniformCnt > 0) {
       writeDescriptorSets_.reserve(uniformCnt);
     }
-    return true;
   }
 
   void bindUniformsEnd() {
@@ -130,17 +127,16 @@ class ShaderProgramVulkan : public ShaderProgram {
     for (auto &kv : uniformsDescVertex) {
       uniformsInfo_[kv.first].type = kv.second.type;
       uniformsInfo_[kv.first].stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+      uniformsInfo_[kv.first].binding = kv.second.binding;
     }
     for (auto &kv : uniformsDescFragment) {
       uniformsInfo_[kv.first].type = kv.second.type;
       uniformsInfo_[kv.first].stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+      uniformsInfo_[kv.first].binding = kv.second.binding;
     }
 
     std::vector<VkDescriptorSetLayoutBinding> bindings;
-    uint32_t binding = 0;
     for (auto &kv : uniformsInfo_) {
-      kv.second.binding = binding++;
-
       VkDescriptorSetLayoutBinding layoutBinding{};
       layoutBinding.binding = kv.second.binding;
       layoutBinding.descriptorCount = 1;
@@ -197,7 +193,7 @@ class ShaderProgramVulkan : public ShaderProgram {
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.poolSizeCount = poolSizes.size();
     poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = descriptorSetLayouts_.size();
 
@@ -247,6 +243,8 @@ class ShaderProgramVulkan : public ShaderProgram {
   VkShaderModule vertexShader_ = VK_NULL_HANDLE;
   VkShaderModule fragmentShader_ = VK_NULL_HANDLE;
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages_;
+  std::unordered_map<std::string, UniformInfoVulkan> uniformsInfo_;
+
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts_;
   VkDescriptorPool descriptorPool_ = VK_NULL_HANDLE;
   std::vector<VkDescriptorSet> descriptorSets_;
@@ -254,7 +252,6 @@ class ShaderProgramVulkan : public ShaderProgram {
 
   std::string glslHeader_;
   std::string glslDefines_;
-  std::unordered_map<std::string, UniformInfoVulkan> uniformsInfo_;
 };
 
 }
