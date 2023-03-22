@@ -104,7 +104,24 @@ class ShaderProgramVulkan : public ShaderProgram {
     writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writeDesc.descriptorCount = 1;
     writeDesc.pBufferInfo = &info;
-    vkUpdateDescriptorSets(device_, 1, &writeDesc, 0, nullptr);
+    writeDescriptorSets_.push_back(writeDesc);
+  }
+
+  bool bindUniformsBegin(size_t uniformCnt = 0) {
+    if (!writeDescriptorSets_.empty()) {
+      return false;
+    }
+    if (uniformCnt > 0) {
+      writeDescriptorSets_.reserve(uniformCnt);
+    }
+    return true;
+  }
+
+  void bindUniformsEnd() {
+    if (writeDescriptorSets_.empty()) {
+      return;
+    }
+    vkUpdateDescriptorSets(device_, writeDescriptorSets_.size(), writeDescriptorSets_.data(), 0, nullptr);
   }
 
  private:
@@ -233,6 +250,7 @@ class ShaderProgramVulkan : public ShaderProgram {
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts_;
   VkDescriptorPool descriptorPool_ = VK_NULL_HANDLE;
   std::vector<VkDescriptorSet> descriptorSets_;
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets_;
 
   std::string glslHeader_;
   std::string glslDefines_;

@@ -123,7 +123,11 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
   }
 
   if (shaderProgram_) {
-    shaderProgram_->bindResources(*resources);
+    bool needBind = shaderProgram_->bindUniformsBegin(resources->blocks.size() + resources->samplers.size());
+    if (needBind) {
+      shaderProgram_->bindResources(*resources);
+      shaderProgram_->bindUniformsEnd();
+    }
   }
 }
 
