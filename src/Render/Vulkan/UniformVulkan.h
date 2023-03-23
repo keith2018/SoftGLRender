@@ -31,14 +31,14 @@ class UniformBlockVulkan : public UniformBlock {
     vkFreeMemory(device_, memory_, nullptr);
   }
 
-  int getBinding(ShaderProgram &program) override {
+  int getLocation(ShaderProgram &program) override {
     auto programVulkan = dynamic_cast<ShaderProgramVulkan *>(&program);
     return programVulkan->getUniformLocation(name);
   }
 
-  void bindProgram(ShaderProgram &program, int binding) override {
+  void bindProgram(ShaderProgram &program, int location) override {
     auto programVulkan = dynamic_cast<ShaderProgramVulkan *>(&program);
-    programVulkan->bindUniformBuffer(descriptorBufferInfo_, binding);
+    programVulkan->bindUniformBuffer(descriptorBufferInfo_, location);
   }
 
   void setSubData(void *data, int len, int offset) override {
@@ -66,11 +66,11 @@ class UniformSamplerVulkan : public UniformSampler {
     device_ = ctx.device();
   }
 
-  int getBinding(ShaderProgram &program) override {
+  int getLocation(ShaderProgram &program) override {
     return 0;
   }
 
-  void bindProgram(ShaderProgram &program, int binding) override {
+  void bindProgram(ShaderProgram &program, int location) override {
   }
 
   void setTexture(const std::shared_ptr<Texture> &tex) override {

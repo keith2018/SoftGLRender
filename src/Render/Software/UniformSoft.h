@@ -18,14 +18,14 @@ class UniformBlockSoft : public UniformBlock {
     buffer_.resize(size);
   }
 
-  int getBinding(ShaderProgram &program) override {
+  int getLocation(ShaderProgram &program) override {
     auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
     return programSoft->getUniformLocation(name);
   }
 
-  void bindProgram(ShaderProgram &program, int binding) override {
+  void bindProgram(ShaderProgram &program, int location) override {
     auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
-    programSoft->bindUniformBlockBuffer(buffer_.data(), buffer_.size(), binding);
+    programSoft->bindUniformBlockBuffer(buffer_.data(), buffer_.size(), location);
   }
 
   void setSubData(void *data, int len, int offset) override {
@@ -71,14 +71,14 @@ class UniformSamplerSoft : public UniformSampler {
     }
   }
 
-  int getBinding(ShaderProgram &program) override {
+  int getLocation(ShaderProgram &program) override {
     auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
     return programSoft->getUniformLocation(name);
   }
 
-  void bindProgram(ShaderProgram &program, int binding) override {
+  void bindProgram(ShaderProgram &program, int location) override {
     auto programSoft = dynamic_cast<ShaderProgramSoft *>(&program);
-    programSoft->bindUniformSampler(sampler_, binding);
+    programSoft->bindUniformSampler(sampler_, location);
   }
 
   void setTexture(const std::shared_ptr<Texture> &tex) override {

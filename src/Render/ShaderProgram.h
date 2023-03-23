@@ -37,24 +37,24 @@ class ShaderProgram {
  protected:
   virtual bool bindUniform(Uniform &uniform) {
     int hash = uniform.getHash();
-    int binding = -1;
-    if (uniformBindings_.find(hash) == uniformBindings_.end()) {
-      binding = uniform.getBinding(*this);
-      uniformBindings_[hash] = binding;
+    int location = -1;
+    if (uniformLocations_.find(hash) == uniformLocations_.end()) {
+      location = uniform.getLocation(*this);
+      uniformLocations_[hash] = location;
     } else {
-      binding = uniformBindings_[hash];
+      location = uniformLocations_[hash];
     }
 
-    if (binding < 0) {
+    if (location < 0) {
       return false;
     }
 
-    uniform.bindProgram(*this, binding);
+    uniform.bindProgram(*this, location);
     return true;
   };
 
  protected:
-  std::unordered_map<int, int> uniformBindings_;
+  std::unordered_map<int, int> uniformLocations_;
 };
 
 }

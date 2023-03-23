@@ -6,6 +6,7 @@
 
 #include "GLSLUtils.h"
 #include <vector>
+#include <regex>
 #include "Base/FileUtils.h"
 #include "Render/OpenGL/OpenGLUtils.h"
 
@@ -21,7 +22,17 @@ void ShaderGLSL::addDefines(const std::string &def) {
 
 bool ShaderGLSL::loadSource(const std::string &source) {
   id_ = glCreateShader(type_);
-  std::string shaderStr = header_ + defines_ + source;
+  std::string shaderStr;
+  if (type_ == GL_VERTEX_SHADER) {
+    shaderStr = compatibleVertexPreprocess(header_ + defines_ + source);
+  } else if (type_ == GL_FRAGMENT_SHADER) {
+    shaderStr = compatibleFragmentPreprocess(header_ + defines_ + source);
+  }
+  if (shaderStr.empty()) {
+    LOGE("ShaderGLSL::loadSource failed: empty source");
+    return false;
+  }
+
   const char *shaderStrPtr = shaderStr.c_str();
   auto length = (GLint) shaderStr.length();
   GL_CHECK(glShaderSource(id_, 1, &shaderStrPtr, &length));
@@ -58,6 +69,32 @@ void ShaderGLSL::destroy() {
     GL_CHECK(glDeleteShader(id_));
     id_ = 0;
   }
+}
+
+std::string ShaderGLSL::compatibleVertexPreprocess(const std::string &source) {
+  std::regex outLocationRegex(R"(layout\s*\(\s*location\s*=\s*\d+\s*\)\s*out\s*)");
+  std::regex std140Regex(R"(layout\s*\(.*std140.*\)\s*uniform\s*)");
+  std::regex uniformBindingRegex(R"(layout\s*\(.*binding\s*=.*\)\s*uniform\s*)");
+
+  std::string result = std::regex_replace(source, outLocationRegex, "out ");
+  result = std::regex_replace(result, std140Regex, "layout (std140) uniform ");
+  result = std::regex_replace(result, uniformBindingRegex, "uniform ");
+
+  return result;
+}
+
+std::string ShaderGLSL::compatibleFragmentPreprocess(const std::string &source) {
+  std::regex inLocationRegex(R"(layout\s*\(\s*location\s*=\s*\d+\s*\)\s*in\s*)");
+  std::regex outLocationRegex(R"(layout\s*\(\s*location\s*=\s*\d+\s*\)\s*out\s*)");
+  std::regex std140Regex(R"(layout\s*\(.*std140.*\)\s*uniform\s*)");
+  std::regex uniformBindingRegex(R"(layout\s*\(.*binding\s*=.*\)\s*uniform\s*)");
+
+  std::string result = std::regex_replace(source, inLocationRegex, "in ");
+  result = std::regex_replace(result, outLocationRegex, "out ");
+  result = std::regex_replace(result, std140Regex, "layout (std140) uniform ");
+  result = std::regex_replace(result, uniformBindingRegex, "uniform ");
+
+  return result;
 }
 
 void ProgramGLSL::addDefine(const std::string &def) {

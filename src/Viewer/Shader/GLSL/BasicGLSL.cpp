@@ -13,7 +13,7 @@ layout (location = 1) in vec2 a_texCoord;
 layout (location = 2) in vec3 a_normal;
 layout (location = 3) in vec3 a_tangent;
 
-layout (std140) uniform UniformsModel {
+layout (binding = 0, std140) uniform UniformsModel {
     bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
@@ -27,9 +27,9 @@ void main() {
 )";
 
 const char *BASIC_FS = R"(
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
 
-layout (std140) uniform UniformsMaterial {
+layout (binding = 1, std140) uniform UniformsMaterial {
     bool u_enableLight;
     bool u_enableIBL;
     bool u_enableShadow;

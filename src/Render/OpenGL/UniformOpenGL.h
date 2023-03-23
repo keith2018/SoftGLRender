@@ -22,7 +22,7 @@ class UniformBlockOpenGL : public UniformBlock {
     GL_CHECK(glDeleteBuffers(1, &ubo_));
   }
 
-  int getBinding(ShaderProgram &program) override {
+  int getLocation(ShaderProgram &program) override {
     return glGetUniformBlockIndex(program.getId(), name.c_str());
   }
 
@@ -56,7 +56,7 @@ class UniformSamplerOpenGL : public UniformSampler {
   explicit UniformSamplerOpenGL(const std::string &name, TextureType type, TextureFormat format)
       : UniformSampler(name, type, format) {}
 
-  int getBinding(ShaderProgram &program) override {
+  int getLocation(ShaderProgram &program) override {
     return glGetUniformLocation(program.getId(), name.c_str());
   }
 

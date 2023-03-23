@@ -13,9 +13,9 @@ layout (location = 1) in vec2 a_texCoord;
 layout (location = 2) in vec3 a_normal;
 layout (location = 3) in vec3 a_tangent;
 
-out vec3 v_worldPos;
+layout (location = 0) out vec3 v_worldPos;
 
-layout (std140) uniform UniformsModel {
+layout (binding = 0, std140) uniform UniformsModel {
     bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
@@ -32,16 +32,16 @@ void main() {
 )";
 
 const char *IBL_PREFILTER_FS = R"(
-in vec3 v_worldPos;
+layout (location = 0) in vec3 v_worldPos;
 
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
 
-layout (std140) uniform UniformsPrefilter {
+layout (binding = 1, std140) uniform UniformsPrefilter {
     float u_srcResolution;
     float u_roughness;
 };
 
-uniform samplerCube u_cubeMap;
+layout (binding = 2) uniform samplerCube u_cubeMap;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------

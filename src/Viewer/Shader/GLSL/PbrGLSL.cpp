@@ -8,23 +8,23 @@
 namespace SoftGL {
 
 const char *PBR_IBL_VS = R"(
-layout(location = 0) in vec3 a_position;
-layout(location = 1) in vec2 a_texCoord;
-layout(location = 2) in vec3 a_normal;
-layout(location = 3) in vec3 a_tangent;
+layout (location = 0) in vec3 a_position;
+layout (location = 1) in vec2 a_texCoord;
+layout (location = 2) in vec3 a_normal;
+layout (location = 3) in vec3 a_tangent;
 
-out vec2 v_texCoord;
-out vec3 v_normalVector;
-out vec3 v_worldPos;
-out vec3 v_cameraDirection;
-out vec3 v_lightDirection;
+layout (location = 0) out vec2 v_texCoord;
+layout (location = 1) out vec3 v_normalVector;
+layout (location = 2) out vec3 v_worldPos;
+layout (location = 3) out vec3 v_cameraDirection;
+layout (location = 4) out vec3 v_lightDirection;
 
 #if defined(NORMAL_MAP)
-out vec3 v_normal;
-out vec3 v_tangent;
+layout (location = 5) out vec3 v_normal;
+layout (location = 6) out vec3 v_tangent;
 #endif
 
-layout (std140) uniform UniformsModel {
+layout (binding = 0, std140) uniform UniformsModel {
     bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
@@ -32,7 +32,7 @@ layout (std140) uniform UniformsModel {
     mat4 u_shadowMVPMatrix;
 };
 
-layout(std140) uniform UniformsScene {
+layout (binding = 1, std140) uniform UniformsScene {
     vec3 u_ambientColor;
     vec3 u_cameraPosition;
     vec3 u_pointLightPosition;
@@ -60,20 +60,20 @@ void main() {
 )";
 
 const char *PBR_IBL_FS = R"(
-in vec2 v_texCoord;
-in vec3 v_normalVector;
-in vec3 v_worldPos;
-in vec3 v_cameraDirection;
-in vec3 v_lightDirection;
+layout (location = 0) in vec2 v_texCoord;
+layout (location = 1) in vec3 v_normalVector;
+layout (location = 2) in vec3 v_worldPos;
+layout (location = 3) in vec3 v_cameraDirection;
+layout (location = 4) in vec3 v_lightDirection;
 
 #if defined(NORMAL_MAP)
-in vec3 v_normal;
-in vec3 v_tangent;
+layout (location = 5) in vec3 v_normal;
+layout (location = 6) in vec3 v_tangent;
 #endif
 
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
 
-layout (std140) uniform UniformsModel {
+layout (binding = 0, std140) uniform UniformsModel {
     bool u_reverseZ;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
@@ -81,14 +81,14 @@ layout (std140) uniform UniformsModel {
     mat4 u_shadowMVPMatrix;
 };
 
-layout(std140) uniform UniformsScene {
+layout (binding = 1, std140) uniform UniformsScene {
     vec3 u_ambientColor;
     vec3 u_cameraPosition;
     vec3 u_pointLightPosition;
     vec3 u_pointLightColor;
 };
 
-layout (std140) uniform UniformsMaterial {
+layout (binding = 2, std140) uniform UniformsMaterial {
     bool u_enableLight;
     bool u_enableIBL;
     bool u_enableShadow;
@@ -98,27 +98,27 @@ layout (std140) uniform UniformsMaterial {
 };
 
 #if defined(ALBEDO_MAP)
-uniform sampler2D u_albedoMap;
+layout (binding = 3) uniform sampler2D u_albedoMap;
 #endif
 
 #if defined(NORMAL_MAP)
-uniform sampler2D u_normalMap;
+layout (binding = 4) uniform sampler2D u_normalMap;
 #endif
 
 #if defined(EMISSIVE_MAP)
-uniform sampler2D u_emissiveMap;
+layout (binding = 5) uniform sampler2D u_emissiveMap;
 #endif
 
 #if defined(AO_MAP)
-uniform sampler2D u_aoMap;
+layout (binding = 6) uniform sampler2D u_aoMap;
 #endif
 
 #if defined(METALROUGHNESS_MAP)
-uniform sampler2D u_metalRoughnessMap;
+layout (binding = 7) uniform sampler2D u_metalRoughnessMap;
 #endif
 
-uniform samplerCube u_irradianceMap;
-uniform samplerCube u_prefilterMap;
+layout (binding = 8) uniform samplerCube u_irradianceMap;
+layout (binding = 9) uniform samplerCube u_prefilterMap;
 
 const float PI = 3.14159265359;
 

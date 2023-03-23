@@ -28,6 +28,10 @@ class ShaderGLSL {
   inline GLuint getId() const { return id_; };
 
  private:
+  static std::string compatibleVertexPreprocess(const std::string &source);
+  static std::string compatibleFragmentPreprocess(const std::string &source);
+
+ private:
   GLenum type_;
   GLuint id_ = 0;
   std::string header_;

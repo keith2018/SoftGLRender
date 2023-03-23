@@ -13,7 +13,7 @@ layout (location = 1) in vec2 a_texCoord;
 layout (location = 2) in vec3 a_normal;
 layout (location = 3) in vec3 a_tangent;
 
-out vec2 v_texCoord;
+layout (location = 0) out vec2 v_texCoord;
 
 void main() {
     gl_Position = vec4(a_position, 1.0);
@@ -22,15 +22,15 @@ void main() {
 )";
 
 const char *FXAA_FS = R"(
-in vec2 v_texCoord;
+layout (location = 0) in vec2 v_texCoord;
 
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
 
-layout(std140) uniform UniformsQuadFilter {
+layout (binding = 0, std140) uniform UniformsQuadFilter {
     vec2 u_screenSize;
 };
 
-uniform sampler2D u_screenTexture;
+layout (binding = 1) uniform sampler2D u_screenTexture;
 
 // Ref: https://github.com/kosua20/Rendu/blob/master/resources/common/shaders/screens/fxaa.frag
 
