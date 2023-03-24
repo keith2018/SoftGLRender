@@ -32,24 +32,24 @@ enum ShadingModel {
   Shading_FXAA,
 };
 
-enum TextureUsage {
-  TextureUsage_NONE = 0,
+enum MaterialTexType {
+  MaterialTexType_NONE = 0,
 
-  TextureUsage_ALBEDO,
-  TextureUsage_NORMAL,
-  TextureUsage_EMISSIVE,
-  TextureUsage_AMBIENT_OCCLUSION,
-  TextureUsage_METAL_ROUGHNESS,
+  MaterialTexType_ALBEDO,
+  MaterialTexType_NORMAL,
+  MaterialTexType_EMISSIVE,
+  MaterialTexType_AMBIENT_OCCLUSION,
+  MaterialTexType_METAL_ROUGHNESS,
 
-  TextureUsage_CUBE,
-  TextureUsage_EQUIRECTANGULAR,
+  MaterialTexType_CUBE,
+  MaterialTexType_EQUIRECTANGULAR,
 
-  TextureUsage_IBL_IRRADIANCE,
-  TextureUsage_IBL_PREFILTER,
+  MaterialTexType_IBL_IRRADIANCE,
+  MaterialTexType_IBL_PREFILTER,
 
-  TextureUsage_QUAD_FILTER,
+  MaterialTexType_QUAD_FILTER,
 
-  TextureUsage_SHADOWMAP,
+  MaterialTexType_SHADOWMAP,
 };
 
 enum UniformBlockType {
@@ -111,9 +111,9 @@ class MaterialObject {
 class Material {
  public:
   static const char *shadingModelStr(ShadingModel model);
-  static const char *textureUsageStr(TextureUsage usage);
-  static const char *samplerDefine(TextureUsage usage);
-  static const char *samplerName(TextureUsage usage);
+  static const char *materialTexTypeStr(MaterialTexType usage);
+  static const char *samplerDefine(MaterialTexType usage);
+  static const char *samplerName(MaterialTexType usage);
 
  public:
   virtual void reset() {

@@ -158,7 +158,7 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     pool.pushTask([&](int thread_id) { skyboxTex[5] = loadTextureFile(filepath + "back.jpg"); });
     pool.waitTasksFinish();
 
-    auto &texData = material->textureData[TextureUsage_CUBE];
+    auto &texData = material->textureData[MaterialTexType_CUBE];
     texData.width = skyboxTex[0]->getWidth();
     texData.height = skyboxTex[0]->getHeight();
     texData.data = std::move(skyboxTex);
@@ -167,7 +167,7 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     skyboxTex.resize(1);
     skyboxTex[0] = loadTextureFile(filepath);
 
-    auto &texData = material->textureData[TextureUsage_EQUIRECTANGULAR];
+    auto &texData = material->textureData[MaterialTexType_EQUIRECTANGULAR];
     texData.width = skyboxTex[0]->getWidth();
     texData.height = skyboxTex[0]->getHeight();
     texData.data = std::move(skyboxTex);
@@ -360,23 +360,23 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
       continue;
     }
     std::string absolutePath = scene_.model->resourcePath + "/" + texPath.C_Str();
-    TextureUsage usage = TextureUsage_NONE;
+    MaterialTexType texType = MaterialTexType_NONE;
     switch (textureType) {
       case aiTextureType_BASE_COLOR:
       case aiTextureType_DIFFUSE:
-        usage = TextureUsage_ALBEDO;
+        texType = MaterialTexType_ALBEDO;
         break;
       case aiTextureType_NORMALS:
-        usage = TextureUsage_NORMAL;
+        texType = MaterialTexType_NORMAL;
         break;
       case aiTextureType_EMISSIVE:
-        usage = TextureUsage_EMISSIVE;
+        texType = MaterialTexType_EMISSIVE;
         break;
       case aiTextureType_LIGHTMAP:
-        usage = TextureUsage_AMBIENT_OCCLUSION;
+        texType = MaterialTexType_AMBIENT_OCCLUSION;
         break;
       case aiTextureType_UNKNOWN:
-        usage = TextureUsage_METAL_ROUGHNESS;
+        texType = MaterialTexType_METAL_ROUGHNESS;
         break;
       default:
 //        LOGW("texture type: %s not support", aiTextureTypeToString(textureType));
@@ -400,13 +400,13 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
           mode = Wrap_REPEAT;
           break;
       }
-      auto &texData = material.textureData[usage];
+      auto &texData = material.textureData[texType];
       texData.width = buffer->getWidth();
       texData.height = buffer->getHeight();
       texData.data = {buffer};
       texData.wrapMode = mode;
     } else {
-      LOGE("load texture failed: %s, path: %s", Material::textureUsageStr(usage), absolutePath.c_str());
+      LOGE("load texture failed: %s, path: %s", Material::materialTexTypeStr(texType), absolutePath.c_str());
     }
   }
 }

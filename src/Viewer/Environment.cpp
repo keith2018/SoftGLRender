@@ -31,7 +31,7 @@ bool Environment::convertEquirectangular(const std::shared_ptr<Renderer> &render
   bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
-                                         TextureUsage_EQUIRECTANGULAR);
+                                         MaterialTexType_EQUIRECTANGULAR);
   if (!success) {
     LOGE("create render context failed");
     return false;
@@ -55,7 +55,7 @@ bool Environment::generateIrradianceMap(const std::shared_ptr<Renderer> &rendere
   bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
-                                         TextureUsage_CUBE);
+                                         MaterialTexType_CUBE);
   if (!success) {
     LOGE("create render context failed");
     return false;
@@ -79,7 +79,7 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
   bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
-                                         TextureUsage_CUBE);
+                                         MaterialTexType_CUBE);
   if (!success) {
     LOGE("create render context failed");
     return false;
@@ -106,7 +106,7 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
 bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
                                           const std::function<bool(ShaderProgram &program)> &shaderFunc,
                                           const std::shared_ptr<Texture> &texIn,
-                                          TextureUsage texUsage) {
+                                          MaterialTexType texType) {
   // camera
   ctx.camera.setPerspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
 
@@ -124,7 +124,7 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
   ctx.modelSkybox.vao = ctx.renderer->createVertexArrayObject(ctx.modelSkybox);
 
   // shader program
-  std::set<std::string> shaderDefines = {Material::samplerDefine(texUsage)};
+  std::set<std::string> shaderDefines = {Material::samplerDefine(texType)};
   auto program = ctx.renderer->createShaderProgram();
   program->addDefines(shaderDefines);
   bool success = shaderFunc(*program);
@@ -136,10 +136,10 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
   ctx.modelSkybox.material->materialObj->shaderResources = std::make_shared<ShaderResources>();
 
   // uniforms
-  const char *samplerName = Material::samplerName(texUsage);
+  const char *samplerName = Material::samplerName(texType);
   auto uniform = ctx.renderer->createUniformSampler(samplerName, *texIn);
   uniform->setTexture(texIn);
-  ctx.modelSkybox.material->materialObj->shaderResources->samplers[texUsage] = uniform;
+  ctx.modelSkybox.material->materialObj->shaderResources->samplers[texType] = uniform;
 
   ctx.uniformsBlockModel = ctx.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
   ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_Model] = ctx.uniformsBlockModel;

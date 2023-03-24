@@ -22,6 +22,8 @@ class TextureVulkan : public Texture {
     height = desc.height;
     type = desc.type;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
   }
 
@@ -35,6 +37,9 @@ class TextureVulkan : public Texture {
   int getId() const override {
     return uuid_.get();
   }
+  void setSamplerDesc(SamplerDesc &sampler) override {
+    samplerDesc_ = sampler;
+  };
 
   void initImageData() override {
     createImage();
@@ -71,6 +76,7 @@ class TextureVulkan : public Texture {
       return sampler_;
     }
 
+    // TODO samplerDesc_
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -130,6 +136,8 @@ class TextureVulkan : public Texture {
   }
 
  protected:
+  SamplerDesc samplerDesc_;
+
   VkImage image_ = VK_NULL_HANDLE;
   VkDeviceMemory memory_ = VK_NULL_HANDLE;
   VkImageView view_ = VK_NULL_HANDLE;
@@ -144,10 +152,6 @@ class Texture2DVulkan : public TextureVulkan {
  public:
   Texture2DVulkan(VKContext &ctx, const TextureDesc &desc)
       : TextureVulkan(ctx, desc) {}
-
-  void setSamplerDesc(SamplerDesc &sampler) override {
-    samplerDesc_ = dynamic_cast<Sampler2DDesc &>(sampler);
-  };
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
     auto &dataBuffer = buffers[0];
@@ -196,22 +200,12 @@ class Texture2DVulkan : public TextureVulkan {
     vkDestroyBuffer(device_, stagingBuffer, nullptr);
     vkFreeMemory(device_, stagingBufferMemory, nullptr);
   }
-
- private:
-  Sampler2DDesc samplerDesc_;
 };
 
 class TextureCubeVulkan : public TextureVulkan {
  public:
   TextureCubeVulkan(VKContext &ctx, const TextureDesc &desc)
       : TextureVulkan(ctx, desc) {}
-
-  void setSamplerDesc(SamplerDesc &sampler) override {
-    samplerDesc_ = dynamic_cast<SamplerCubeDesc &>(sampler);
-  };
-
- private:
-  SamplerCubeDesc samplerDesc_;
 };
 
 }

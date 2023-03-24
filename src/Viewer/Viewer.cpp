@@ -41,10 +41,10 @@ bool Viewer::create(int width, int height, int outTexId) {
   texDepthMain_ = nullptr;
   fboShadow_ = nullptr;
   texDepthShadow_ = nullptr;
-  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32);
+  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32, TextureUsage_Depth);
   fxaaFilter_ = nullptr;
   texColorFxaa_ = nullptr;
-  iblPlaceholder_ = createTextureCubeDefault(1, 1);
+  iblPlaceholder_ = createTextureCubeDefault(1, 1, TextureUsage_Color);
   programCache_.clear();
   pipelineCache_.clear();
 
@@ -166,12 +166,21 @@ void Viewer::drawFrame(DemoScene &scene) {
 
 void Viewer::processFXAASetup() {
   if (!texColorFxaa_) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
-    sampler.filterMin = Filter_LINEAR;
+    TextureDesc texDesc{};
+    texDesc.width = width_;
+    texDesc.height = height_;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_RGBA8;
+    texDesc.usage = TextureUsage_Color;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = false;
+    texColorFxaa_ = renderer_->createTexture(texDesc);
 
-    texColorFxaa_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_RGBA8, false});
+    SamplerDesc sampler{};
+    sampler.filterMin = Filter_LINEAR;
+    sampler.filterMag = Filter_LINEAR;
     texColorFxaa_->setSamplerDesc(sampler);
+
     texColorFxaa_->initImageData();
   }
 
@@ -375,18 +384,25 @@ void Viewer::setupShadowMapBuffers() {
   }
 
   if (!texDepthShadow_) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
+    TextureDesc texDesc{};
+    texDesc.width = SHADOW_MAP_WIDTH;
+    texDesc.height = SHADOW_MAP_HEIGHT;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_FLOAT32;
+    texDesc.usage = TextureUsage_Depth;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = false;
+    texDepthShadow_ = renderer_->createTexture(texDesc);
+
+    SamplerDesc sampler{};
     sampler.filterMin = Filter_NEAREST;
     sampler.filterMag = Filter_NEAREST;
     sampler.wrapS = Wrap_CLAMP_TO_BORDER;
     sampler.wrapT = Wrap_CLAMP_TO_BORDER;
     sampler.borderColor = glm::vec4(config_.reverseZ ? 0.f : 1.f);
-    texDepthShadow_ = renderer_->createTexture(
-        {SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT, TextureType_2D, TextureFormat_FLOAT32, false});
     texDepthShadow_->setSamplerDesc(sampler);
-    texDepthShadow_->initImageData();
 
+    texDepthShadow_->initImageData();
     fboShadow_->setDepthAttachment(texDepthShadow_);
 
     if (!fboShadow_->isValid()) {
@@ -397,23 +413,42 @@ void Viewer::setupShadowMapBuffers() {
 
 void Viewer::setupMainColorBuffer(bool multiSample) {
   if (!texColorMain_ || texColorMain_->multiSample != multiSample) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
+    TextureDesc texDesc{};
+    texDesc.width = width_;
+    texDesc.height = height_;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_RGBA8;
+    texDesc.usage = TextureUsage_Color;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = multiSample;
+    texColorMain_ = renderer_->createTexture(texDesc);
+
+    SamplerDesc sampler{};
     sampler.filterMin = Filter_LINEAR;
-    texColorMain_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_RGBA8, multiSample});
+    sampler.filterMag = Filter_LINEAR;
     texColorMain_->setSamplerDesc(sampler);
+
     texColorMain_->initImageData();
   }
 }
 
 void Viewer::setupMainDepthBuffer(bool multiSample) {
   if (!texDepthMain_ || texDepthMain_->multiSample != multiSample) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
+    TextureDesc texDesc{};
+    texDesc.width = width_;
+    texDesc.height = height_;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_FLOAT32;
+    texDesc.usage = TextureUsage_Depth;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = multiSample;
+    texDepthMain_ = renderer_->createTexture(texDesc);
+
+    SamplerDesc sampler{};
     sampler.filterMin = Filter_NEAREST;
     sampler.filterMag = Filter_NEAREST;
-    texDepthMain_ = renderer_->createTexture({width_, height_, TextureType_2D, TextureFormat_FLOAT32, multiSample});
     texDepthMain_->setSamplerDesc(sampler);
+
     texDepthMain_->initImageData();
   }
 }
@@ -426,59 +461,61 @@ void Viewer::setupVertexArray(ModelVertexes &vertexes) {
 
 void Viewer::setupTextures(Material &material) {
   for (auto &kv : material.textureData) {
-    int width = (int) kv.second.width;
-    int height = (int) kv.second.height;
+    TextureDesc texDesc{};
+    texDesc.width = (int) kv.second.width;
+    texDesc.height = (int) kv.second.height;
+    texDesc.format = TextureFormat_RGBA8;
+    texDesc.usage = TextureUsage_Color;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = false;
+
+    SamplerDesc sampler{};
+    sampler.wrapS = kv.second.wrapMode;
+    sampler.wrapT = kv.second.wrapMode;
+    sampler.filterMin = Filter_LINEAR;
+    sampler.filterMag = Filter_LINEAR;
+
     std::shared_ptr<Texture> texture = nullptr;
     switch (kv.first) {
-      case TextureUsage_IBL_IRRADIANCE:
-      case TextureUsage_IBL_PREFILTER: {
+      case MaterialTexType_IBL_IRRADIANCE:
+      case MaterialTexType_IBL_PREFILTER: {
         // skip ibl textures
         break;
       }
-      case TextureUsage_CUBE: {
-        texture = renderer_->createTexture({width, height, TextureType_CUBE, TextureFormat_RGBA8, false});
-        SamplerCubeDesc samplerCube;
-        samplerCube.wrapS = kv.second.wrapMode;
-        samplerCube.wrapT = kv.second.wrapMode;
-        samplerCube.wrapR = kv.second.wrapMode;
-        texture->setSamplerDesc(samplerCube);
+      case MaterialTexType_CUBE: {
+        texDesc.type = TextureType_CUBE;
+        sampler.wrapR = kv.second.wrapMode;
         break;
       }
       default: {
-        texture = renderer_->createTexture({width, height, TextureType_2D, TextureFormat_RGBA8, false});
-        Sampler2DDesc sampler2d;
-        sampler2d.wrapS = kv.second.wrapMode;
-        sampler2d.wrapT = kv.second.wrapMode;
-        if (config_.mipmaps) {
-          sampler2d.useMipmaps = true;
-          sampler2d.filterMin = Filter_LINEAR_MIPMAP_LINEAR;
-        }
-        texture->setSamplerDesc(sampler2d);
+        texDesc.type = TextureType_2D;
+        texDesc.useMipmaps = config_.mipmaps;
+        sampler.filterMin = config_.mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
         break;
       }
     }
-
-    // upload image data
+    texture = renderer_->createTexture(texDesc);
+    texture->setSamplerDesc(sampler);
     texture->setImageData(kv.second.data);
     material.textures[kv.first] = texture;
   }
 
   // default shadow depth texture
   if (material.shadingModel != Shading_Skybox) {
-    material.textures[TextureUsage_SHADOWMAP] = shadowPlaceholder_;
+    material.textures[MaterialTexType_SHADOWMAP] = shadowPlaceholder_;
   }
 
   // default IBL texture
   if (material.shadingModel == Shading_PBR) {
-    material.textures[TextureUsage_IBL_IRRADIANCE] = iblPlaceholder_;
-    material.textures[TextureUsage_IBL_PREFILTER] = iblPlaceholder_;
+    material.textures[MaterialTexType_IBL_IRRADIANCE] = iblPlaceholder_;
+    material.textures[MaterialTexType_IBL_PREFILTER] = iblPlaceholder_;
   }
 }
 
 void Viewer::setupSamplerUniforms(Material &material) {
   for (auto &kv : material.textures) {
     // create sampler uniform
-    const char *samplerName = Material::samplerName((TextureUsage) kv.first);
+    const char *samplerName = Material::samplerName((MaterialTexType) kv.first);
     if (samplerName) {
       auto uniform = renderer_->createUniformSampler(samplerName, *kv.second);
       uniform->setTexture(kv.second);
@@ -616,13 +653,13 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
   std::shared_ptr<Texture> textureCube = nullptr;
 
   // convert equirectangular to cube map if needed
-  auto texCubeIt = skybox.material->textures.find(TextureUsage_CUBE);
+  auto texCubeIt = skybox.material->textures.find(MaterialTexType_CUBE);
   if (texCubeIt == skybox.material->textures.end()) {
-    auto texEqIt = skybox.material->textures.find(TextureUsage_EQUIRECTANGULAR);
+    auto texEqIt = skybox.material->textures.find(MaterialTexType_EQUIRECTANGULAR);
     if (texEqIt != skybox.material->textures.end()) {
       auto tex2d = std::dynamic_pointer_cast<Texture>(texEqIt->second);
       auto cubeSize = std::min(tex2d->width, tex2d->height);
-      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize);
+      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize, TextureUsage_Color);
       auto success = Environment::convertEquirectangular(renderer_,
                                                          [&](ShaderProgram &program) -> bool {
                                                            return loadShaders(program, Shading_Skybox);
@@ -631,10 +668,10 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
                                                          texCvt);
       if (success) {
         textureCube = texCvt;
-        skybox.material->textures[TextureUsage_CUBE] = texCvt;
+        skybox.material->textures[MaterialTexType_CUBE] = texCvt;
 
         // update skybox material
-        skybox.material->textures.erase(TextureUsage_EQUIRECTANGULAR);
+        skybox.material->textures.erase(MaterialTexType_EQUIRECTANGULAR);
         skybox.material->shaderDefines = generateShaderDefines(*skybox.material);
         skybox.material->materialObj = nullptr;
       }
@@ -650,14 +687,14 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
 
   // generate irradiance map
   LOGD("generate ibl irradiance map ...");
-  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize);
+  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize, TextureUsage_Color);
   if (Environment::generateIrradianceMap(renderer_,
                                          [&](ShaderProgram &program) -> bool {
                                            return loadShaders(program, Shading_IBL_Irradiance);
                                          },
                                          textureCube,
                                          texIrradiance)) {
-    skybox.material->textures[TextureUsage_IBL_IRRADIANCE] = std::move(texIrradiance);
+    skybox.material->textures[MaterialTexType_IBL_IRRADIANCE] = std::move(texIrradiance);
   } else {
     LOGE("initSkyboxIBL failed: generate irradiance map failed");
     return false;
@@ -666,14 +703,14 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
 
   // generate prefilter map
   LOGD("generate ibl prefilter map ...");
-  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, true);
+  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, TextureUsage_Color, true);
   if (Environment::generatePrefilterMap(renderer_,
                                         [&](ShaderProgram &program) -> bool {
                                           return loadShaders(program, Shading_IBL_Prefilter);
                                         },
                                         textureCube,
                                         texPrefilter)) {
-    skybox.material->textures[TextureUsage_IBL_PREFILTER] = std::move(texPrefilter);
+    skybox.material->textures[MaterialTexType_IBL_PREFILTER] = std::move(texPrefilter);
   } else {
     LOGE("initSkyboxIBL failed: generate prefilter map failed");
     return false;
@@ -700,11 +737,11 @@ void Viewer::updateIBLTextures(MaterialObject *materialObj) {
   auto &samplers = materialObj->shaderResources->samplers;
   if (iBLEnabled()) {
     auto &skyboxTextures = scene_->skybox.material->textures;
-    samplers[TextureUsage_IBL_IRRADIANCE]->setTexture(skyboxTextures[TextureUsage_IBL_IRRADIANCE]);
-    samplers[TextureUsage_IBL_PREFILTER]->setTexture(skyboxTextures[TextureUsage_IBL_PREFILTER]);
+    samplers[MaterialTexType_IBL_IRRADIANCE]->setTexture(skyboxTextures[MaterialTexType_IBL_IRRADIANCE]);
+    samplers[MaterialTexType_IBL_PREFILTER]->setTexture(skyboxTextures[MaterialTexType_IBL_PREFILTER]);
   } else {
-    samplers[TextureUsage_IBL_IRRADIANCE]->setTexture(iblPlaceholder_);
-    samplers[TextureUsage_IBL_PREFILTER]->setTexture(iblPlaceholder_);
+    samplers[MaterialTexType_IBL_IRRADIANCE]->setTexture(iblPlaceholder_);
+    samplers[MaterialTexType_IBL_PREFILTER]->setTexture(iblPlaceholder_);
   }
 }
 
@@ -715,42 +752,63 @@ void Viewer::updateShadowTextures(MaterialObject *materialObj) {
 
   auto &samplers = materialObj->shaderResources->samplers;
   if (config_.shadowMap) {
-    samplers[TextureUsage_SHADOWMAP]->setTexture(texDepthShadow_);
+    samplers[MaterialTexType_SHADOWMAP]->setTexture(texDepthShadow_);
   } else {
-    samplers[TextureUsage_SHADOWMAP]->setTexture(shadowPlaceholder_);
+    samplers[MaterialTexType_SHADOWMAP]->setTexture(shadowPlaceholder_);
   }
 }
 
-std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height, bool mipmaps) {
-  SamplerCubeDesc samplerCube;
-  samplerCube.useMipmaps = mipmaps;
-  samplerCube.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
-
-  auto textureCube = renderer_->createTexture({width, height, TextureType_CUBE, TextureFormat_RGBA8, false});
-  if (textureCube) {
-    textureCube->setSamplerDesc(samplerCube);
-    textureCube->initImageData();
+std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height, TextureUsage usage, bool mipmaps) {
+  TextureDesc texDesc{};
+  texDesc.width = width;
+  texDesc.height = height;
+  texDesc.type = TextureType_CUBE;
+  texDesc.format = TextureFormat_RGBA8;
+  texDesc.usage = usage;
+  texDesc.useMipmaps = mipmaps;
+  texDesc.multiSample = false;
+  auto textureCube = renderer_->createTexture(texDesc);
+  if (!textureCube) {
+    return nullptr;
   }
+
+  SamplerDesc sampler{};
+  sampler.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
+  sampler.filterMag = Filter_LINEAR;
+  textureCube->setSamplerDesc(sampler);
+
+  textureCube->initImageData();
   return textureCube;
 }
 
-std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps) {
-  Sampler2DDesc sampler2d;
-  sampler2d.useMipmaps = mipmaps;
-  sampler2d.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
-
-  auto texture2d = renderer_->createTexture({width, height, TextureType_2D, format, false});
-  if (texture2d) {
-    texture2d->setSamplerDesc(sampler2d);
-    texture2d->initImageData();
+std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, TextureFormat format, TextureUsage usage,
+                                                        bool mipmaps) {
+  TextureDesc texDesc{};
+  texDesc.width = width;
+  texDesc.height = height;
+  texDesc.type = TextureType_2D;
+  texDesc.format = format;
+  texDesc.usage = usage;
+  texDesc.useMipmaps = mipmaps;
+  texDesc.multiSample = false;
+  auto texture2d = renderer_->createTexture(texDesc);
+  if (!texture2d) {
+    return nullptr;
   }
+
+  SamplerDesc sampler{};
+  sampler.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
+  sampler.filterMag = Filter_LINEAR;
+  texture2d->setSamplerDesc(sampler);
+
+  texture2d->initImageData();
   return texture2d;
 }
 
 std::set<std::string> Viewer::generateShaderDefines(Material &material) {
   std::set<std::string> shaderDefines;
   for (auto &kv : material.textures) {
-    const char *samplerDefine = Material::samplerDefine((TextureUsage) kv.first);
+    const char *samplerDefine = Material::samplerDefine((MaterialTexType) kv.first);
     if (samplerDefine) {
       shaderDefines.insert(samplerDefine);
     }

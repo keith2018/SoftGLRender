@@ -48,7 +48,7 @@ class Environment {
   static bool createCubeRenderContext(CubeRenderContext &context,
                                       const std::function<bool(ShaderProgram &program)> &shaderFunc,
                                       const std::shared_ptr<Texture> &texIn,
-                                      TextureUsage texUsage);
+                                      MaterialTexType texType);
 
   static void drawCubeFaces(CubeRenderContext &context, int width, int height, std::shared_ptr<Texture> &texOut,
                             int texOutLevel = 0, const std::function<void()> &beforeDraw = nullptr);

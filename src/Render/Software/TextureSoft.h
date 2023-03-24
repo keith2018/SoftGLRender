@@ -90,6 +90,8 @@ class Texture2DSoft : public Texture {
     height = desc.height;
     type = TextureType_2D;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
   }
 
@@ -98,7 +100,7 @@ class Texture2DSoft : public Texture {
   }
 
   void setSamplerDesc(SamplerDesc &sampler) override {
-    samplerDesc_ = dynamic_cast<Sampler2DDesc &>(sampler);
+    samplerDesc_ = sampler;
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<T>>> &buffers) override {
@@ -115,7 +117,7 @@ class Texture2DSoft : public Texture {
     image_.levels.resize(1);
     image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(buffers[0]);
 
-    if (samplerDesc_.useMipmaps) {
+    if (useMipmaps) {
       image_.generateMipmap();
     }
   }
@@ -123,7 +125,7 @@ class Texture2DSoft : public Texture {
   void initImageData() override {
     image_.levels.resize(1);
     image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(width, height, multiSample ? SOFT_MS_CNT : 1);
-    if (samplerDesc_.useMipmaps) {
+    if (useMipmaps) {
       image_.generateMipmap(false);
     }
   }
@@ -147,7 +149,7 @@ class Texture2DSoft : public Texture {
     }
   }
 
-  inline Sampler2DDesc &getSamplerDesc() {
+  inline SamplerDesc &getSamplerDesc() {
     return samplerDesc_;
   }
 
@@ -166,7 +168,7 @@ class Texture2DSoft : public Texture {
 
  private:
   UUID<Texture2DSoft<T>> uuid_;
-  Sampler2DDesc samplerDesc_;
+  SamplerDesc samplerDesc_;
   TextureImageSoft<T> image_;
 };
 
@@ -181,6 +183,8 @@ class TextureCubeSoft : public Texture {
     height = desc.height;
     type = TextureType_CUBE;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
   }
 
@@ -189,7 +193,7 @@ class TextureCubeSoft : public Texture {
   }
 
   void setSamplerDesc(SamplerDesc &sampler) override {
-    samplerDesc_ = dynamic_cast<SamplerCubeDesc &>(sampler);
+    samplerDesc_ = sampler;
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<T>>> &buffers) override {
@@ -207,7 +211,7 @@ class TextureCubeSoft : public Texture {
       images_[i].levels.resize(1);
       images_[i].levels[0] = std::make_shared<ImageBufferSoft<T>>(buffers[i]);
 
-      if (samplerDesc_.useMipmaps) {
+      if (useMipmaps) {
         images_[i].generateMipmap();
       }
     }
@@ -217,13 +221,13 @@ class TextureCubeSoft : public Texture {
     for (auto &image : images_) {
       image.levels.resize(1);
       image.levels[0] = std::make_shared<ImageBufferSoft<T>>(width, height);
-      if (samplerDesc_.useMipmaps) {
+      if (useMipmaps) {
         image.generateMipmap(false);
       }
     }
   }
 
-  inline SamplerCubeDesc &getSamplerDesc() {
+  inline SamplerDesc &getSamplerDesc() {
     return samplerDesc_;
   }
 
@@ -242,7 +246,7 @@ class TextureCubeSoft : public Texture {
 
  private:
   UUID<TextureCubeSoft<T>> uuid_;
-  SamplerCubeDesc samplerDesc_;
+  SamplerDesc samplerDesc_;
   TextureImageSoft<T> images_[6];
 };
 

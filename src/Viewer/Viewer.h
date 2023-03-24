@@ -77,8 +77,9 @@ class Viewer {
   static size_t getShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
   static size_t getPipelineCacheKey(Material &material, const RenderStates &rs);
 
-  std::shared_ptr<Texture> createTextureCubeDefault(int width, int height, bool mipmaps = false);
-  std::shared_ptr<Texture> createTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps = false);
+  std::shared_ptr<Texture> createTextureCubeDefault(int width, int height, TextureUsage usage, bool mipmaps = false);
+  std::shared_ptr<Texture> createTexture2DDefault(int width, int height, TextureFormat format, TextureUsage usage,
+                                                  bool mipmaps = false);
   bool checkMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
 
  protected:

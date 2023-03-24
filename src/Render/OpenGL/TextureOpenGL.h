@@ -53,6 +53,8 @@ class Texture2DOpenGL : public TextureOpenGL {
     height = desc.height;
     type = TextureType_2D;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
     target_ = multiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
@@ -73,15 +75,12 @@ class Texture2DOpenGL : public TextureOpenGL {
       return;
     }
 
-    auto &sampler2d = dynamic_cast<Sampler2DDesc &>(sampler);
     GL_CHECK(glBindTexture(target_, texId_));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(sampler2d.wrapS)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(sampler2d.wrapT)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::cvtFilter(sampler2d.filterMin)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::cvtFilter(sampler2d.filterMag)));
-    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler2d.borderColor[0]));
-
-    useMipmaps = sampler2d.useMipmaps;
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(sampler.wrapS)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(sampler.wrapT)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::cvtFilter(sampler.filterMin)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::cvtFilter(sampler.filterMag)));
+    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler.borderColor[0]));
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
@@ -153,7 +152,6 @@ class Texture2DOpenGL : public TextureOpenGL {
  private:
   GLuint texId_ = 0;
   GLenum target_ = 0;
-  bool useMipmaps = false;
   TextureOpenGLDesc glDesc_{};
 };
 
@@ -166,6 +164,8 @@ class TextureCubeOpenGL : public TextureOpenGL {
     height = desc.height;
     type = TextureType_CUBE;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
 
     glDesc_ = GetOpenGLDesc(format);
@@ -185,18 +185,15 @@ class TextureCubeOpenGL : public TextureOpenGL {
       return;
     }
 
-    auto &samplerCube = dynamic_cast<SamplerCubeDesc &>(sampler);
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(samplerCube.wrapS)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(samplerCube.wrapT)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::cvtWrap(samplerCube.wrapR)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(sampler.wrapS)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(sampler.wrapT)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::cvtWrap(sampler.wrapR)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
-                             OpenGL::cvtFilter(samplerCube.filterMin)));
+                             OpenGL::cvtFilter(sampler.filterMin)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
-                             OpenGL::cvtFilter(samplerCube.filterMag)));
-    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &samplerCube.borderColor[0]));
-
-    useMipmaps = samplerCube.useMipmaps;
+                             OpenGL::cvtFilter(sampler.filterMag)));
+    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &sampler.borderColor[0]));
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
@@ -238,7 +235,6 @@ class TextureCubeOpenGL : public TextureOpenGL {
 
  private:
   GLuint texId_ = 0;
-  bool useMipmaps = false;
   TextureOpenGLDesc glDesc_{};
 };
 

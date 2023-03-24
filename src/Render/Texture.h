@@ -40,37 +40,14 @@ enum CubeMapFace {
 };
 
 struct SamplerDesc {
-  bool useMipmaps = false;
-  virtual ~SamplerDesc() = default;
-};
+  FilterMode filterMin = Filter_NEAREST;
+  FilterMode filterMag = Filter_NEAREST;
 
-struct Sampler2DDesc : SamplerDesc {
-  WrapMode wrapS;
-  WrapMode wrapT;
-  FilterMode filterMin;
-  FilterMode filterMag;
-  glm::vec4 borderColor{0.f};
+  WrapMode wrapS = Wrap_CLAMP_TO_EDGE;
+  WrapMode wrapT = Wrap_CLAMP_TO_EDGE;
+  WrapMode wrapR = Wrap_CLAMP_TO_EDGE;
 
-  Sampler2DDesc() {
-    useMipmaps = false;
-    wrapS = Wrap_CLAMP_TO_EDGE;
-    wrapT = Wrap_CLAMP_TO_EDGE;
-    filterMin = Filter_LINEAR;
-    filterMag = Filter_LINEAR;
-  }
-};
-
-struct SamplerCubeDesc : Sampler2DDesc {
-  WrapMode wrapR;
-
-  SamplerCubeDesc() {
-    useMipmaps = false;
-    wrapS = Wrap_CLAMP_TO_EDGE;
-    wrapT = Wrap_CLAMP_TO_EDGE;
-    wrapR = Wrap_CLAMP_TO_EDGE;
-    filterMin = Filter_LINEAR;
-    filterMag = Filter_LINEAR;
-  }
+  glm::vec4 borderColor = glm::vec4{0.f};
 };
 
 enum TextureType {
@@ -79,21 +56,22 @@ enum TextureType {
 };
 
 enum TextureFormat {
-  TextureFormat_RGBA8 = 0,    // RGBA8888
+  TextureFormat_RGBA8 = 0,      // RGBA8888
   TextureFormat_FLOAT32 = 1,    // Float32
 };
 
-class TextureDesc {
- public:
-  TextureDesc() = default;
-  TextureDesc(int width, int height, TextureType type, TextureFormat format, bool multi_sample)
-      : width(width), height(height), type(type), format(format), multiSample(multi_sample) {}
+enum TextureUsage {
+  TextureUsage_Color,
+  TextureUsage_Depth,
+};
 
- public:
+struct TextureDesc {
   int width = 0;
   int height = 0;
   TextureType type = TextureType_2D;
   TextureFormat format = TextureFormat_RGBA8;
+  TextureUsage usage = TextureUsage_Color;
+  bool useMipmaps = false;
   bool multiSample = false;
 };
 

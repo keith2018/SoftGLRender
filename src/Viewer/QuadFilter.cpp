@@ -52,11 +52,18 @@ QuadFilter::QuadFilter(int width, int height, const std::shared_ptr<Renderer> &r
   materialObj->shaderResources = std::make_shared<ShaderResources>();
 
   // uniforms
-  TextureUsage usage = TextureUsage_QUAD_FILTER;
-  const char *samplerName = Material::samplerName(usage);
-  uniformTexIn_ = renderer_->createUniformSampler(samplerName,
-                                                  {width_, height_, TextureType_2D, TextureFormat_RGBA8, false});
-  materialObj->shaderResources->samplers[usage] = uniformTexIn_;
+  MaterialTexType texType = MaterialTexType_QUAD_FILTER;
+  const char *samplerName = Material::samplerName(texType);
+  TextureDesc texDesc{};
+  texDesc.width = width_;
+  texDesc.height = height_;
+  texDesc.type = TextureType_2D;
+  texDesc.format = TextureFormat_RGBA8;
+  texDesc.usage = TextureUsage_Color;
+  texDesc.useMipmaps = false;
+  texDesc.multiSample = false;
+  uniformTexIn_ = renderer_->createUniformSampler(samplerName, texDesc);
+  materialObj->shaderResources->samplers[texType] = uniformTexIn_;
 
   uniformBlockFilter_ = renderer_->createUniformBlock("UniformsQuadFilter", sizeof(UniformsQuadFilter));
   uniformBlockFilter_->setData(&uniformFilter_, sizeof(UniformsQuadFilter));
