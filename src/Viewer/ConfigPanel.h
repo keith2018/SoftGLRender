@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <vector>
 #include <functional>
 #include <unordered_map>
 #include "Config.h"
@@ -65,6 +66,9 @@ class ConfigPanel {
 
   std::unordered_map<std::string, std::string> modelPaths_;
   std::unordered_map<std::string, std::string> skyboxPaths_;
+
+  std::vector<const char *> modelNames_;
+  std::vector<const char *> skyboxNames_;
 
   std::function<bool(const std::string &path)> reloadModelFunc_;
   std::function<bool(const std::string &path)> reloadSkyboxFunc_;

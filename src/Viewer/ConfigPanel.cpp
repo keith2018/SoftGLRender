@@ -90,13 +90,15 @@ void ConfigPanel::drawSettings() {
   // model
   ImGui::Separator();
   ImGui::Text("load model");
-  std::vector<const char *> modelNames;
-  for (const auto &kv : modelPaths_) {
-    modelNames.emplace_back(kv.first.c_str());
+
+  int modelIdx = 0;
+  for (; modelIdx < modelNames_.size(); modelIdx++) {
+    if (config_.modelName == modelNames_[modelIdx]) {
+      break;
+    }
   }
-  int model_idx = 0;
-  if (ImGui::Combo("##load model", &model_idx, modelNames.data(), (int) modelNames.size())) {
-    reloadModel(modelNames[model_idx]);
+  if (ImGui::Combo("##load model", &modelIdx, modelNames_.data(), (int) modelNames_.size())) {
+    reloadModel(modelNames_[modelIdx]);
   }
 
   // skybox
@@ -107,13 +109,14 @@ void ConfigPanel::drawSettings() {
     // pbr ibl
     ImGui::Checkbox("enable IBL", &config_.pbrIbl);
 
-    std::vector<const char *> skyboxNames;
-    for (const auto &kv : skyboxPaths_) {
-      skyboxNames.emplace_back(kv.first.c_str());
+    int skyboxIdx = 0;
+    for (; skyboxIdx < skyboxNames_.size(); skyboxIdx++) {
+      if (config_.skyboxName == skyboxNames_[skyboxIdx]) {
+        break;
+      }
     }
-    int skybox_idx = 0;
-    if (ImGui::Combo("##skybox", &skybox_idx, skyboxNames.data(), (int) skyboxNames.size())) {
-      reloadSkybox(skyboxNames[skybox_idx]);
+    if (ImGui::Combo("##skybox", &skyboxIdx, skyboxNames_.data(), (int) skyboxNames_.size())) {
+      reloadSkybox(skyboxNames_[skyboxIdx]);
     }
   }
 
@@ -245,6 +248,13 @@ bool ConfigPanel::loadConfig() {
   if (modelPaths_.empty()) {
     LOGE("load models failed: %s", err.c_str());
     return false;
+  }
+
+  for (const auto &kv : modelPaths_) {
+    modelNames_.emplace_back(kv.first.c_str());
+  }
+  for (const auto &kv : skyboxPaths_) {
+    skyboxNames_.emplace_back(kv.first.c_str());
   }
 
   // load default model & skybox
