@@ -44,23 +44,21 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
     vertexInputInfo_.pVertexAttributeDescriptions = attributeDescriptions_.data();
 
     // create buffers
-    VulkanUtils::createBuffer(vkCtx_,
-                              vertexArr.vertexesBufferLength,
-                              VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                              vertexBuffer_,
-                              vertexBufferMemory_);
+    vkCtx_.createBuffer(vertexArr.vertexesBufferLength,
+                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                        vertexBuffer_,
+                        vertexBufferMemory_);
 
-    VulkanUtils::createBuffer(vkCtx_,
-                              vertexArr.indexBufferLength,
-                              VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                              indexBuffer_,
-                              indexBufferMemory_);
+    vkCtx_.createBuffer(vertexArr.indexBufferLength,
+                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                        indexBuffer_,
+                        indexBufferMemory_);
 
     // upload data
-    VulkanUtils::uploadBufferData(vkCtx_, vertexBuffer_, vertexArr.vertexesBuffer, vertexArr.vertexesBufferLength);
-    VulkanUtils::uploadBufferData(vkCtx_, indexBuffer_, vertexArr.indexBuffer, vertexArr.indexBufferLength);
+    vkCtx_.uploadBufferData(vertexBuffer_, vertexArr.vertexesBuffer, vertexArr.vertexesBufferLength);
+    vkCtx_.uploadBufferData(indexBuffer_, vertexArr.indexBuffer, vertexArr.indexBufferLength);
   }
 
   ~VertexArrayObjectVulkan() {
@@ -76,7 +74,7 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
   }
 
   void updateVertexData(void *data, size_t length) override {
-    VulkanUtils::uploadBufferData(vkCtx_, vertexBuffer_, data, length);
+    vkCtx_.uploadBufferData(vertexBuffer_, data, length);
   }
 
   // only Float element

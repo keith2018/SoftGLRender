@@ -221,6 +221,7 @@ bool VKContext::pickPhysicalDevice() {
   }
 
   if (physicalDevice_ != VK_NULL_HANDLE) {
+    vkGetPhysicalDeviceProperties(physicalDevice_, &deviceProperties_);
     vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &deviceMemoryProperties_);
   }
 
@@ -322,6 +323,98 @@ QueueFamilyIndices VKContext::findQueueFamilies(VkPhysicalDevice physicalDevice)
   }
 
   return indices;
+}
+
+void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
+                                      VkImageLayout oldLayout, VkImageLayout newLayout,
+                                      VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
+  VkImageMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.oldLayout = oldLayout;
+  barrier.newLayout = newLayout;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image = image;
+  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  barrier.subresourceRange.baseMipLevel = 0;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.baseArrayLayer = 0;
+  barrier.subresourceRange.layerCount = 1;
+
+  if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+      && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_GENERAL) {
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+  } else {
+    LOGE("unsupported layout transition!");
+    return;
+  }
+
+  vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+}
+
+void VKContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                             VkBuffer &buffer, VkDeviceMemory &bufferMemory) {
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size = size;
+  bufferInfo.usage = usage;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  VK_CHECK(vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer));
+
+  VkMemoryRequirements memRequirements;
+  vkGetBufferMemoryRequirements(device_, buffer, &memRequirements);
+
+  VkMemoryAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocInfo.allocationSize = memRequirements.size;
+  allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits, properties);
+
+  VK_CHECK(vkAllocateMemory(device_, &allocInfo, nullptr, &bufferMemory));
+  VK_CHECK(vkBindBufferMemory(device_, buffer, bufferMemory, 0));
+}
+
+void VKContext::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+  VkBufferCopy copyRegion{};
+  copyRegion.size = size;
+  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+  endSingleTimeCommands(commandBuffer);
+}
+
+void VKContext::uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize) {
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+               stagingBuffer, stagingBufferMemory);
+
+  void *dataPtr = nullptr;
+  VK_CHECK(vkMapMemory(device_, stagingBufferMemory, 0, bufferSize, 0, &dataPtr));
+  memcpy(dataPtr, bufferData, (size_t) bufferSize);
+  vkUnmapMemory(device_, stagingBufferMemory);
+
+  copyBuffer(stagingBuffer, buffer, bufferSize);
+
+  vkDestroyBuffer(device_, stagingBuffer, nullptr);
+  vkFreeMemory(device_, stagingBufferMemory, nullptr);
+}
+
+void VKContext::submitWork(VkCommandBuffer cmdBuffer, VkFence fence) {
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &cmdBuffer;
+  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, fence));
 }
 
 }

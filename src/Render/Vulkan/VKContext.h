@@ -25,22 +25,37 @@ class VKContext {
   bool create(bool debugOutput = false);
   void destroy();
 
-  inline VkDevice device() const {
+  inline VkDevice &device() {
     return device_;
   }
 
-  inline VkQueue getGraphicsQueue() const {
+  inline VkQueue &getGraphicsQueue() {
     return graphicsQueue_;
   }
 
-  inline VkCommandPool getCommandPool() const {
+  inline VkCommandPool &getCommandPool() {
     return commandPool_;
   }
+
+  inline VkPhysicalDeviceProperties &getPhysicalDeviceProperties() {
+    return deviceProperties_;
+  }
+
+  uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
 
   VkCommandBuffer beginSingleTimeCommands();
   void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
-  uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
+  void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                    VkBuffer &buffer, VkDeviceMemory &bufferMemory);
+  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+  void uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize);
+
+  void submitWork(VkCommandBuffer cmdBuffer, VkFence fence);
+
+  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
+                                    VkImageLayout oldLayout, VkImageLayout newLayout,
+                                    VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
 
  private:
   bool createInstance();
@@ -65,6 +80,7 @@ class VKContext {
   VkQueue graphicsQueue_ = VK_NULL_HANDLE;
   VkCommandPool commandPool_ = VK_NULL_HANDLE;
 
+  VkPhysicalDeviceProperties deviceProperties_{};
   VkPhysicalDeviceMemoryProperties deviceMemoryProperties_{};
 };
 

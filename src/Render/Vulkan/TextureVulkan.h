@@ -26,6 +26,7 @@ class TextureVulkan : public Texture {
   }
 
   virtual ~TextureVulkan() {
+    vkDestroySampler(device_, sampler_, nullptr);
     vkDestroyImageView(device_, view_, nullptr);
     vkDestroyImage(device_, image_, nullptr);
     vkFreeMemory(device_, memory_, nullptr);
@@ -40,10 +41,13 @@ class TextureVulkan : public Texture {
     createMemory();
   };
 
-  void createImageView(VkImageAspectFlagBits aspectMask) {
+  inline VkImage &getVkImage() {
+    return image_;
+  }
+
+  VkImageView &createImageView(VkImageAspectFlagBits aspectMask = VK_IMAGE_ASPECT_COLOR_BIT) {
     if (view_ != VK_NULL_HANDLE) {
-      vkDestroyImageView(device_, view_, nullptr);
-      view_ = VK_NULL_HANDLE;
+      return view_;
     }
 
     VkImageViewCreateInfo imageViewCreateInfo{};
@@ -58,6 +62,32 @@ class TextureVulkan : public Texture {
     imageViewCreateInfo.subresourceRange.layerCount = 1;
     imageViewCreateInfo.image = image_;
     VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &view_));
+
+    return view_;
+  }
+
+  VkSampler &createSampler() {
+    if (sampler_ != VK_NULL_HANDLE) {
+      return sampler_;
+    }
+
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = vkCtx_.getPhysicalDeviceProperties().limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    VK_CHECK(vkCreateSampler(device_, &samplerInfo, nullptr, &sampler_));
+
+    return sampler_;
   }
 
  protected:
@@ -77,7 +107,7 @@ class TextureVulkan : public Texture {
     imageInfo.arrayLayers = 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
     VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_));
   }
@@ -99,12 +129,12 @@ class TextureVulkan : public Texture {
     VK_CHECK(vkBindImageMemory(device_, image_, memory_, 0));
   }
 
- public:
+ protected:
   VkImage image_ = VK_NULL_HANDLE;
   VkDeviceMemory memory_ = VK_NULL_HANDLE;
   VkImageView view_ = VK_NULL_HANDLE;
+  VkSampler sampler_ = VK_NULL_HANDLE;
 
- protected:
   UUID<TextureVulkan> uuid_;
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
@@ -118,6 +148,54 @@ class Texture2DVulkan : public TextureVulkan {
   void setSamplerDesc(SamplerDesc &sampler) override {
     samplerDesc_ = dynamic_cast<Sampler2DDesc &>(sampler);
   };
+
+  void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
+    auto &dataBuffer = buffers[0];
+    VkDeviceSize imageSize = dataBuffer->getRawDataSize();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    vkCtx_.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        stagingBuffer, stagingBufferMemory);
+
+    void *dataPtr;
+    VK_CHECK(vkMapMemory(device_, stagingBufferMemory, 0, imageSize, 0, &dataPtr));
+    memcpy(dataPtr, dataBuffer->getRawDataPtr(), static_cast<size_t>(imageSize));
+    vkUnmapMemory(device_, stagingBufferMemory);
+
+    VkCommandBuffer copyCmd = vkCtx_.beginSingleTimeCommands();
+    VKContext::transitionImageLayout(copyCmd,
+                                     image_,
+                                     VK_IMAGE_LAYOUT_UNDEFINED,
+                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {(uint32_t) width, (uint32_t) height, 1};
+
+    vkCmdCopyBufferToImage(copyCmd, stagingBuffer, image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    VKContext::transitionImageLayout(copyCmd,
+                                     image_,
+                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    vkCtx_.endSingleTimeCommands(copyCmd);
+
+    vkDestroyBuffer(device_, stagingBuffer, nullptr);
+    vkFreeMemory(device_, stagingBufferMemory, nullptr);
+  }
 
  private:
   Sampler2DDesc samplerDesc_;

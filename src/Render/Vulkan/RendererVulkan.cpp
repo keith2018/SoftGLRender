@@ -123,9 +123,9 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
   }
 
   if (shaderProgram_) {
-    shaderProgram_->bindUniformsBegin(resources->blocks.size() + resources->samplers.size());
+    shaderProgram_->beginBindUniforms(resources->blocks.size() + resources->samplers.size());
     shaderProgram_->bindResources(*resources);
-    shaderProgram_->bindUniformsEnd();
+    shaderProgram_->endBindUniforms();
   }
 }
 
@@ -141,8 +141,9 @@ void RendererVulkan::draw() {
 
   vkWaitForFences(device_, 1, &drawFence_, VK_TRUE, UINT64_MAX);
   vkResetFences(device_, 1, &drawFence_);
+  vkResetCommandBuffer(drawCmd_, 0);
   recordDraw(drawCmd_);
-  VulkanUtils::submitWork(drawCmd_, vkCtx_.getGraphicsQueue(), drawFence_);
+  vkCtx_.submitWork(drawCmd_, drawFence_);
 
   // reset clear values
   clearValues_.clear();
@@ -172,7 +173,7 @@ void RendererVulkan::recordDraw(VkCommandBuffer commandBuffer) {
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   renderPassInfo.renderPass = renderPass_;
-  renderPassInfo.framebuffer = fbo_->getVKFramebuffer();
+  renderPassInfo.framebuffer = fbo_->getVkFramebuffer();
   renderPassInfo.renderArea.offset = {0, 0};
   renderPassInfo.renderArea.extent = {fbo_->width(), fbo_->height()};
 

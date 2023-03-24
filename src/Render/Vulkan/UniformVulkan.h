@@ -14,9 +14,9 @@ class UniformBlockVulkan : public UniformBlock {
     device_ = ctx.device();
 
     VkDeviceSize bufferSize = size;
-    VulkanUtils::createBuffer(vkCtx_, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                              buffer_, memory_);
+    vkCtx_.createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        buffer_, memory_);
 
     descriptorBufferInfo_.buffer = buffer_;
     descriptorBufferInfo_.offset = 0;
@@ -67,18 +67,27 @@ class UniformSamplerVulkan : public UniformSampler {
   }
 
   int getLocation(ShaderProgram &program) override {
-    return 0;
+    auto programVulkan = dynamic_cast<ShaderProgramVulkan *>(&program);
+    return programVulkan->getUniformLocation(name);
   }
 
   void bindProgram(ShaderProgram &program, int location) override {
+    auto programVulkan = dynamic_cast<ShaderProgramVulkan *>(&program);
+    programVulkan->bindUniformSampler(descriptorImageInfo_, location);
   }
 
   void setTexture(const std::shared_ptr<Texture> &tex) override {
+    auto *texVulkan = dynamic_cast<TextureVulkan *>(tex.get());
+    descriptorImageInfo_.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descriptorImageInfo_.imageView = texVulkan->createImageView();
+    descriptorImageInfo_.sampler = texVulkan->createSampler();
   }
 
  private:
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
+
+  VkDescriptorImageInfo descriptorImageInfo_{};
 };
 
 }

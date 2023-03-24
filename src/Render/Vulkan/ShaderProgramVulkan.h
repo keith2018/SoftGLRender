@@ -107,14 +107,26 @@ class ShaderProgramVulkan : public ShaderProgram {
     writeDescriptorSets_.push_back(writeDesc);
   }
 
-  void bindUniformsBegin(size_t uniformCnt = 0) {
+  void bindUniformSampler(VkDescriptorImageInfo &info, uint32_t binding) {
+    VkWriteDescriptorSet writeDesc{};
+    writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDesc.dstSet = descriptorSets_[0];   // all uniform bind to set 0
+    writeDesc.dstBinding = binding;
+    writeDesc.dstArrayElement = 0;
+    writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDesc.descriptorCount = 1;
+    writeDesc.pImageInfo = &info;
+    writeDescriptorSets_.push_back(writeDesc);
+  }
+
+  void beginBindUniforms(size_t uniformCnt = 0) {
     writeDescriptorSets_.clear();
     if (uniformCnt > 0) {
       writeDescriptorSets_.reserve(uniformCnt);
     }
   }
 
-  void bindUniformsEnd() {
+  void endBindUniforms() {
     if (writeDescriptorSets_.empty()) {
       return;
     }
