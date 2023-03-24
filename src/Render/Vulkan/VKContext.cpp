@@ -110,9 +110,15 @@ void VKContext::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffer;
 
-  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE));
-  VK_CHECK(vkQueueWaitIdle(graphicsQueue_));
+  VkFence fence;
+  VkFenceCreateInfo fenceInfo{};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &fence));
 
+  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, fence));
+
+  VK_CHECK(vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX));
+  vkDestroyFence(device_, fence, nullptr);
   vkFreeCommandBuffers(device_, commandPool_, 1, &commandBuffer);
 }
 

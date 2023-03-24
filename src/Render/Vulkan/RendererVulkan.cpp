@@ -21,13 +21,13 @@ bool RendererVulkan::create() {
   success = vkCtx_.create(false);
   if (success) {
     device_ = vkCtx_.device();
-    createCommandBuffer();
+    prepare();
   }
   return success;
 }
 
 void RendererVulkan::destroy() {
-  vkFreeCommandBuffers(device_, vkCtx_.getCommandPool(), 1, &copyCmd_);
+  vkDestroyFence(device_, drawFence_, nullptr);
   vkFreeCommandBuffers(device_, vkCtx_.getCommandPool(), 1, &drawCmd_);
   vkCtx_.destroy();
 }
@@ -139,23 +139,27 @@ void RendererVulkan::draw() {
     return;
   }
 
+  vkWaitForFences(device_, 1, &drawFence_, VK_TRUE, UINT64_MAX);
+  vkResetFences(device_, 1, &drawFence_);
   recordDraw(drawCmd_);
-  submitWork(drawCmd_, vkCtx_.getGraphicsQueue());
+  VulkanUtils::submitWork(drawCmd_, vkCtx_.getGraphicsQueue(), drawFence_);
 
-  recordCopy(copyCmd_);
-  submitWork(copyCmd_, vkCtx_.getGraphicsQueue());
+  // reset clear values
+  clearValues_.clear();
 }
 
-bool RendererVulkan::createCommandBuffer() {
+void RendererVulkan::prepare() {
   VkCommandBufferAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.commandPool = vkCtx_.getCommandPool();
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   allocInfo.commandBufferCount = 1;
-
   VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &drawCmd_));
-  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &copyCmd_));
-  return true;
+
+  VkFenceCreateInfo fenceInfo{};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &drawFence_));
 }
 
 void RendererVulkan::recordDraw(VkCommandBuffer commandBuffer) {
@@ -201,91 +205,6 @@ void RendererVulkan::recordDraw(VkCommandBuffer commandBuffer) {
 
   vkCmdEndRenderPass(commandBuffer);
   VK_CHECK(vkEndCommandBuffer(commandBuffer));
-}
-
-void RendererVulkan::recordCopy(VkCommandBuffer commandBuffer) {
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-  VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-
-  // Transition destination image to transfer destination layout
-  VkImageMemoryBarrier imageMemoryBarrier{};
-  imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  imageMemoryBarrier.srcAccessMask = 0;
-  imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-  imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  imageMemoryBarrier.image = fbo_->getHostImage();
-  imageMemoryBarrier.subresourceRange = VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-
-  vkCmdPipelineBarrier(commandBuffer,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       0,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr,
-                       1,
-                       &imageMemoryBarrier);
-
-  // colorAttachment.image is already in VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, and does not need to be transitioned
-
-  VkImageCopy imageCopyRegion{};
-  imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  imageCopyRegion.srcSubresource.layerCount = 1;
-  imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  imageCopyRegion.dstSubresource.layerCount = 1;
-  imageCopyRegion.extent.width = fbo_->width();
-  imageCopyRegion.extent.height = fbo_->height();
-  imageCopyRegion.extent.depth = 1;
-
-  vkCmdCopyImage(commandBuffer,
-                 fbo_->getColorAttachmentImage(),
-                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 fbo_->getHostImage(),
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                 1,
-                 &imageCopyRegion);
-
-  // Transition destination image to general layout, which is the required layout for mapping the image memory later on
-  imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-  imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-  imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-  vkCmdPipelineBarrier(commandBuffer,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       0,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr,
-                       1,
-                       &imageMemoryBarrier);
-
-  VK_CHECK(vkEndCommandBuffer(commandBuffer));
-}
-
-void RendererVulkan::submitWork(VkCommandBuffer cmdBuffer, VkQueue queue) {
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &cmdBuffer;
-
-  VkFenceCreateInfo fenceInfo{};
-  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenceInfo.flags = 0;
-
-  VkFence fence;
-  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &fence));
-
-  VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
-
-  VK_CHECK(vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX));
-  vkDestroyFence(device_, fence, nullptr);
 }
 
 }

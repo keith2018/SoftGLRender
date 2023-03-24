@@ -78,6 +78,14 @@ class VulkanUtils {
     vkDestroyBuffer(ctx.device(), stagingBuffer, nullptr);
     vkFreeMemory(ctx.device(), stagingBufferMemory, nullptr);
   }
+
+  static void submitWork(VkCommandBuffer cmdBuffer, VkQueue queue, VkFence fence) {
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cmdBuffer;
+    VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
+  }
 };
 
 }

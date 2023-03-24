@@ -51,11 +51,8 @@ class RendererVulkan : public Renderer {
   void draw() override;
 
  private:
-  bool createCommandBuffer();
-
+  void prepare();
   void recordDraw(VkCommandBuffer commandBuffer);
-  void recordCopy(VkCommandBuffer commandBuffer);
-  void submitWork(VkCommandBuffer cmdBuffer, VkQueue queue);
 
  private:
   FrameBufferVulkan *fbo_ = nullptr;
@@ -70,8 +67,8 @@ class RendererVulkan : public Renderer {
   VkDevice device_ = VK_NULL_HANDLE;
 
   VkRenderPass renderPass_ = VK_NULL_HANDLE;
-  VkCommandBuffer drawCmd_;
-  VkCommandBuffer copyCmd_;
+  VkCommandBuffer drawCmd_ = VK_NULL_HANDLE;
+  VkFence drawFence_ = VK_NULL_HANDLE;
 };
 
 }

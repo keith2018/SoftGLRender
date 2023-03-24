@@ -25,6 +25,9 @@ class FrameBufferVulkan : public FrameBuffer {
     vkFreeMemory(device_, hostImageMemory_, nullptr);
 
     vkDestroyRenderPass(device_, renderPass_, nullptr);
+
+    vkDestroyFence(device_, copyFence_, nullptr);
+    vkFreeCommandBuffers(device_, vkCtx_.getCommandPool(), 1, &copyCmd_);
   }
 
   int getId() const override {
@@ -42,6 +45,13 @@ class FrameBufferVulkan : public FrameBuffer {
 
   void readColorPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height)> &func) {
     createHostImage();
+    prepareCopy();
+
+    vkWaitForFences(device_, 1, &copyFence_, VK_TRUE, UINT64_MAX);
+    vkResetFences(device_, 1, &copyFence_);
+    recordCopy(copyCmd_);
+    VulkanUtils::submitWork(copyCmd_, vkCtx_.getGraphicsQueue(), copyFence_);
+    VK_CHECK(vkQueueWaitIdle(vkCtx_.getGraphicsQueue()));
 
     VkImageSubresource subResource{};
     subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -58,7 +68,63 @@ class FrameBufferVulkan : public FrameBuffer {
     }
 
     vkUnmapMemory(device_, hostImageMemory_);
-    vkQueueWaitIdle(vkCtx_.getGraphicsQueue());
+  }
+
+  void prepareCopy() {
+    if (copyCmd_ != VK_NULL_HANDLE) {
+      return;
+    }
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = vkCtx_.getCommandPool();
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+    VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &copyCmd_));
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &copyFence_));
+  }
+
+  void recordCopy(VkCommandBuffer commandBuffer) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+    VkImageMemoryBarrier imageMemoryBarrier{};
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.srcAccessMask = 0;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.image = hostImage_;
+    imageMemoryBarrier.subresourceRange = VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+    VkImageCopy imageCopyRegion{};
+    imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.srcSubresource.layerCount = 1;
+    imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.dstSubresource.layerCount = 1;
+    imageCopyRegion.extent.width = width_;
+    imageCopyRegion.extent.height = height_;
+    imageCopyRegion.extent.depth = 1;
+
+    vkCmdCopyImage(commandBuffer, getColorAttachmentImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImage_,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
+
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+    VK_CHECK(vkEndCommandBuffer(commandBuffer));
   }
 
   inline VkRenderPass getRenderPass() {
@@ -227,6 +293,8 @@ class FrameBufferVulkan : public FrameBuffer {
   VkDeviceMemory hostImageMemory_ = VK_NULL_HANDLE;
 
   VkRenderPass renderPass_ = VK_NULL_HANDLE;
+  VkCommandBuffer copyCmd_ = VK_NULL_HANDLE;
+  VkFence copyFence_ = VK_NULL_HANDLE;
 };
 
 }
