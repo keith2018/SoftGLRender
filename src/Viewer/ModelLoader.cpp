@@ -120,7 +120,7 @@ void ModelLoader::loadFloor() {
 
   scene_.floor.material = std::make_shared<Material>();
   scene_.floor.material->shadingModel = Shading_BlinnPhong;
-  scene_.floor.material->baseColor = glm::vec4(0.5f);
+  scene_.floor.material->baseColor = glm::vec4(1.0f);
   scene_.floor.material->doubleSided = true;
 
   scene_.floor.aabb = BoundingBox(glm::vec3(-2, 0, -2), glm::vec3(2, 0, 2));

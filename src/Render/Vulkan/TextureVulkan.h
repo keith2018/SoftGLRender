@@ -154,6 +154,9 @@ class Texture2DVulkan : public TextureVulkan {
       : TextureVulkan(ctx, desc) {}
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
+    createImage();
+    createMemory();
+
     auto &dataBuffer = buffers[0];
     VkDeviceSize imageSize = dataBuffer->getRawDataSize();
 

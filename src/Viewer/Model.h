@@ -56,7 +56,7 @@ struct ModelVertexes : VertexArray {
 };
 
 struct ModelBase : ModelVertexes {
-  BoundingBox aabb;
+  BoundingBox aabb{};
   std::shared_ptr<Material> material = nullptr;
 
   virtual void resetStates() {
@@ -76,11 +76,8 @@ struct ModelLines : ModelBase {
 struct ModelMesh : ModelBase {
 };
 
-struct ModelSkybox : ModelBase {
-};
-
 struct ModelNode {
-  glm::mat4 transform;
+  glm::mat4 transform = glm::mat4(1.f);
   std::vector<ModelMesh> meshes;
   std::vector<ModelNode> children;
 };
@@ -98,33 +95,31 @@ struct Model {
   glm::mat4 centeredTransform;
 
   void resetStates() {
-    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
-      for (auto &mesh : node.meshes) {
-        mesh.resetStates();
-      }
-      for (auto &childNode : node.children) {
-        resetNodeFunc(childNode);
-      }
-    };
-    resetNodeFunc(rootNode);
+    resetNodeStates(rootNode);
+  }
+
+  void resetNodeStates(ModelNode &node) {
+    for (auto &mesh : node.meshes) {
+      mesh.resetStates();
+    }
+    for (auto &childNode : node.children) {
+      resetNodeStates(childNode);
+    }
   }
 };
 
 struct DemoScene {
   std::shared_ptr<Model> model;
-  ModelMesh floor;
   ModelLines worldAxis;
   ModelPoints pointLight;
-  ModelSkybox skybox;
+  ModelMesh floor;
+  ModelMesh skybox;
 
   void resetStates() {
-    if (model) {
-      model->resetStates();
-    }
-
-    floor.resetStates();
+    if (model) { model->resetStates(); }
     worldAxis.resetStates();
     pointLight.resetStates();
+    floor.resetStates();
     skybox.resetStates();
   }
 };
