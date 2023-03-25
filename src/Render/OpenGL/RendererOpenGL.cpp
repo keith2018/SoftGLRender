@@ -55,25 +55,24 @@ std::shared_ptr<UniformSampler> RendererOpenGL::createUniformSampler(const std::
 }
 
 // pipeline
-void RendererOpenGL::setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) {
+void RendererOpenGL::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) {
   auto *fbo = dynamic_cast<FrameBufferOpenGL *>(frameBuffer.get());
   fbo->bind();
+
+  GLbitfield clearBit = 0;
+  if (states.colorFlag) {
+    GL_CHECK(glClearColor(states.clearColor.r, states.clearColor.g, states.clearColor.b, states.clearColor.a));
+    clearBit |= GL_COLOR_BUFFER_BIT;
+  }
+  if (states.depthFlag) {
+    glDepthMask(true);  // force depth write enabled if we need to clear depth buffer
+    clearBit |= GL_DEPTH_BUFFER_BIT;
+  }
+  GL_CHECK(glClear(clearBit));
 }
 
 void RendererOpenGL::setViewPort(int x, int y, int width, int height) {
   GL_CHECK(glViewport(x, y, width, height));
-}
-
-void RendererOpenGL::clear(const ClearStates &states) {
-  GL_CHECK(glClearColor(states.clearColor.r, states.clearColor.g, states.clearColor.b, states.clearColor.a));
-  GLbitfield clearBit = 0;
-  if (states.colorFlag) {
-    clearBit = clearBit | GL_COLOR_BUFFER_BIT;
-  }
-  if (states.depthFlag) {
-    clearBit = clearBit | GL_DEPTH_BUFFER_BIT;
-  }
-  GL_CHECK(glClear(clearBit));
 }
 
 void RendererOpenGL::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
@@ -133,5 +132,7 @@ void RendererOpenGL::draw() {
   GLenum mode = OpenGL::cvtDrawMode(pipelineStates_->renderStates.primitiveType);
   GL_CHECK(glDrawElements(mode, (GLsizei) vao_->getIndicesCnt(), GL_UNSIGNED_INT, nullptr));
 }
+
+void RendererOpenGL::endRenderPass() {}
 
 }

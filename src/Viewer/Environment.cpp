@@ -164,10 +164,6 @@ void Environment::drawCubeFaces(CubeRenderContext &ctx, int width, int height, s
   UniformsModel uniformsModel{};
   glm::mat4 modelMatrix(1.f);
 
-  // draw
-  ctx.renderer->setFrameBuffer(ctx.fbo);
-  ctx.renderer->setViewPort(0, 0, width, height);
-
   for (int i = 0; i < 6; i++) {
     auto &param = captureViews[i];
     ctx.camera.lookAt(param.eye, param.center, param.up);
@@ -181,16 +177,21 @@ void Environment::drawCubeFaces(CubeRenderContext &ctx, int width, int height, s
       beforeDraw();
     }
 
-    // draw
     auto &materialObj = ctx.modelSkybox.material->materialObj;
     ctx.fbo->setColorAttachment(texOut, CubeMapFace(TEXTURE_CUBE_MAP_POSITIVE_X + i), texOutLevel);
 
-    ctx.renderer->clear({});
+    ClearStates clearStates{};
+    clearStates.colorFlag = true;
+
+    // draw
+    ctx.renderer->beginRenderPass(ctx.fbo, clearStates);
+    ctx.renderer->setViewPort(0, 0, width, height);
     ctx.renderer->setVertexArrayObject(ctx.modelSkybox.vao);
     ctx.renderer->setShaderProgram(materialObj->shaderProgram);
     ctx.renderer->setShaderResources(materialObj->shaderResources);
     ctx.renderer->setPipelineStates(materialObj->pipelineStates);
     ctx.renderer->draw();
+    ctx.renderer->endRenderPass();
   }
 }
 

@@ -66,38 +66,9 @@ std::shared_ptr<UniformSampler> RendererSoft::createUniformSampler(const std::st
 }
 
 // pipeline
-void RendererSoft::setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) {
+void RendererSoft::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) {
   fbo_ = dynamic_cast<FrameBufferSoft *>(frameBuffer.get());
-}
 
-void RendererSoft::setViewPort(int x, int y, int width, int height) {
-  viewport_.x = (float) x;
-  viewport_.y = (float) y;
-  viewport_.width = (float) width;
-  viewport_.height = (float) height;
-
-  viewport_.depthNear = 0.f;
-  viewport_.depthFar = 1.f;
-
-  if (reverseZ_) {
-    std::swap(viewport_.depthNear, viewport_.depthFar);
-  }
-
-  viewport_.depthMin = std::min(viewport_.depthNear, viewport_.depthFar);
-  viewport_.depthMax = std::max(viewport_.depthNear, viewport_.depthFar);
-
-  viewport_.innerO.x = viewport_.x + viewport_.width / 2.f;
-  viewport_.innerO.y = viewport_.y + viewport_.height / 2.f;
-  viewport_.innerO.z = viewport_.depthNear;
-  viewport_.innerO.w = 0.f;
-
-  viewport_.innerP.x = viewport_.width / 2.f;    // divide by 2 in advance
-  viewport_.innerP.y = viewport_.height / 2.f;   // divide by 2 in advance
-  viewport_.innerP.z = viewport_.depthFar - viewport_.depthNear;
-  viewport_.innerP.w = 1.f;
-}
-
-void RendererSoft::clear(const ClearStates &states) {
   if (!fbo_) {
     return;
   }
@@ -125,6 +96,33 @@ void RendererSoft::clear(const ClearStates &states) {
       fboDepth_->buffer->setAll(depth);
     }
   }
+}
+
+void RendererSoft::setViewPort(int x, int y, int width, int height) {
+  viewport_.x = (float) x;
+  viewport_.y = (float) y;
+  viewport_.width = (float) width;
+  viewport_.height = (float) height;
+
+  viewport_.depthNear = 0.f;
+  viewport_.depthFar = 1.f;
+
+  if (reverseZ_) {
+    std::swap(viewport_.depthNear, viewport_.depthFar);
+  }
+
+  viewport_.depthMin = std::min(viewport_.depthNear, viewport_.depthFar);
+  viewport_.depthMax = std::max(viewport_.depthNear, viewport_.depthFar);
+
+  viewport_.innerO.x = viewport_.x + viewport_.width / 2.f;
+  viewport_.innerO.y = viewport_.y + viewport_.height / 2.f;
+  viewport_.innerO.z = viewport_.depthNear;
+  viewport_.innerO.w = 0.f;
+
+  viewport_.innerP.x = viewport_.width / 2.f;    // divide by 2 in advance
+  viewport_.innerP.y = viewport_.height / 2.f;   // divide by 2 in advance
+  viewport_.innerP.z = viewport_.depthFar - viewport_.depthNear;
+  viewport_.innerP.w = 1.f;
 }
 
 void RendererSoft::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
@@ -177,6 +175,8 @@ void RendererSoft::draw() {
     multiSampleResolve();
   }
 }
+
+void RendererSoft::endRenderPass() {}
 
 void RendererSoft::processVertexShader() {
   // init shader varyings

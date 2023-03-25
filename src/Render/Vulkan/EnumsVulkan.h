@@ -55,5 +55,21 @@ static inline VkPolygonMode cvtPolygonMode(PolygonMode mode) {
   return VK_POLYGON_MODE_MAX_ENUM;
 }
 
+static inline VkCompareOp cvtDepthFunc(DepthFunction func) {
+  switch (func) {
+    case DepthFunc_NEVER:       return VK_COMPARE_OP_NEVER;
+    case DepthFunc_LESS:        return VK_COMPARE_OP_LESS ;
+    case DepthFunc_EQUAL:       return VK_COMPARE_OP_EQUAL ;
+    case DepthFunc_LEQUAL:      return VK_COMPARE_OP_LESS_OR_EQUAL ;
+    case DepthFunc_GREATER:     return VK_COMPARE_OP_GREATER ;
+    case DepthFunc_NOTEQUAL:    return VK_COMPARE_OP_NOT_EQUAL ;
+    case DepthFunc_GEQUAL:      return VK_COMPARE_OP_GREATER_OR_EQUAL ;
+    case DepthFunc_ALWAYS:      return VK_COMPARE_OP_ALWAYS ;
+    default:
+      break;
+  }
+  return VK_COMPARE_OP_NEVER;
+}
+
 }
 }

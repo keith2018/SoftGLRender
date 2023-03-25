@@ -13,6 +13,9 @@
 namespace SoftGL {
 namespace View {
 
+#define CASE_CREATE_SHADER_VK(shading, source) case shading: \
+  return programVK->compileAndLinkGLSL(source##_VS, source##_FS)
+
 class ViewerVulkan : public Viewer {
  public:
   ViewerVulkan(Config &config, Camera &camera) : Viewer(config, camera) {
@@ -54,7 +57,19 @@ class ViewerVulkan : public Viewer {
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
     auto *programVK = dynamic_cast<ShaderProgramVulkan *>(&program);
-    return programVK->compileAndLinkGLSL(BASIC_VS, BASIC_FS);
+    switch (shading) {
+      CASE_CREATE_SHADER_VK(Shading_BaseColor, BASIC);
+      CASE_CREATE_SHADER_VK(Shading_BlinnPhong, BLINN_PHONG);
+      CASE_CREATE_SHADER_VK(Shading_PBR, PBR_IBL);
+      CASE_CREATE_SHADER_VK(Shading_Skybox, SKYBOX);
+      CASE_CREATE_SHADER_VK(Shading_IBL_Irradiance, IBL_IRRADIANCE);
+      CASE_CREATE_SHADER_VK(Shading_IBL_Prefilter, IBL_PREFILTER);
+      CASE_CREATE_SHADER_VK(Shading_FXAA, FXAA);
+      default:
+        break;
+    }
+
+    return false;
   }
 
  private:

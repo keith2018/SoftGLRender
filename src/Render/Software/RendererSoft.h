@@ -44,14 +44,14 @@ class RendererSoft : public Renderer {
   std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
 
   // pipeline
-  void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;
+  void beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) override;
   void setViewPort(int x, int y, int width, int height) override;
-  void clear(const ClearStates &states) override;
   void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
   void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
   void setShaderResources(std::shared_ptr<ShaderResources> &resources) override;
   void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
   void draw() override;
+  void endRenderPass() override;
 
  private:
   void processVertexShader();

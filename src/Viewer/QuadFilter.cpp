@@ -98,16 +98,17 @@ void QuadFilter::draw() {
     return;
   }
   auto &materialObj = quadMesh_.material->materialObj;
+  ClearStates clearStates{};
+  clearStates.colorFlag = true;
 
-  renderer_->setFrameBuffer(fbo_);
+  renderer_->beginRenderPass(fbo_, clearStates);
   renderer_->setViewPort(0, 0, width_, height_);
-
-  renderer_->clear({});
   renderer_->setVertexArrayObject(quadMesh_.vao);
   renderer_->setShaderProgram(materialObj->shaderProgram);
   renderer_->setShaderResources(materialObj->shaderResources);
   renderer_->setPipelineStates(materialObj->pipelineStates);
   renderer_->draw();
+  renderer_->endRenderPass();
 }
 
 }

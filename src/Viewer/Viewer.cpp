@@ -82,43 +82,22 @@ void Viewer::drawFrame(DemoScene &scene) {
 
   scene_ = &scene;
 
-  // init frame buffers
-  setupMainBuffers();
-
-  // FXAA
-  if (config_.aaType == AAType_FXAA) {
-    processFXAASetup();
-  }
-
-  // init skybox ibl
+  // init skybox textures & ibl
   if (config_.showSkybox && config_.pbrIbl) {
     initSkyboxIBL(scene_->skybox);
   }
-
-  // set fbo & viewport
-  renderer_->setFrameBuffer(fboMain_);
-  renderer_->setViewPort(0, 0, width_, height_);
-
-  // clear
-  ClearStates clearStates;
-  clearStates.clearColor = config_.clearColor;
-  renderer_->clear(clearStates);
 
   // update scene uniform
   updateUniformScene();
 
   // draw shadow map
   if (config_.shadowMap) {
-    // set fbo & viewport
+    // shadow pass
     setupShadowMapBuffers();
-    renderer_->setFrameBuffer(fboShadow_);
-    renderer_->setViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
-
-    // clear
-    ClearStates clearDepth;
+    ClearStates clearDepth{};
     clearDepth.depthFlag = true;
-    clearDepth.colorFlag = false;
-    renderer_->clear(clearDepth);
+    renderer_->beginRenderPass(fboShadow_, clearDepth);
+    renderer_->setViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
 
     // set camera
     if (!cameraDepth_) {
@@ -135,13 +114,27 @@ void Viewer::drawFrame(DemoScene &scene) {
     // draw scene
     drawScene(false, false);
 
+    // end shadow pass
+    renderer_->endRenderPass();
+
     // set back to main camera
     camera_ = &cameraMain_;
-
-    // set back to main fbo
-    renderer_->setFrameBuffer(fboMain_);
-    renderer_->setViewPort(0, 0, width_, height_);
   }
+
+  // main pass
+  setupMainBuffers();
+
+  // FXAA
+  if (config_.aaType == AAType_FXAA) {
+    processFXAASetup();
+  }
+
+  ClearStates clearStates{};
+  clearStates.colorFlag = true;
+  clearStates.depthFlag = config_.depthTest;
+  clearStates.clearColor = config_.clearColor;
+  renderer_->beginRenderPass(fboMain_, clearStates);
+  renderer_->setViewPort(0, 0, width_, height_);
 
   // draw point light
   if (config_.showLight) {
@@ -157,6 +150,9 @@ void Viewer::drawFrame(DemoScene &scene) {
 
   // draw scene
   drawScene(config_.showFloor, config_.showSkybox);
+
+  // end main pass
+  renderer_->endRenderPass();
 
   // FXAA
   if (config_.aaType == AAType_FXAA) {

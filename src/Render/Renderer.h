@@ -47,14 +47,14 @@ class Renderer {
   virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) = 0;
 
   // pipeline
-  virtual void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) = 0;
+  virtual void beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) = 0;
   virtual void setViewPort(int x, int y, int width, int height) = 0;
-  virtual void clear(const ClearStates &state) = 0;
   virtual void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
   virtual void setShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
   virtual void setShaderResources(std::shared_ptr<ShaderResources> &uniforms) = 0;
   virtual void setPipelineStates(std::shared_ptr<PipelineStates> &states) = 0;
   virtual void draw() = 0;
+  virtual void endRenderPass() = 0;
 };
 
 }
