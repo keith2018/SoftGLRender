@@ -79,18 +79,10 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
   fbo_ = dynamic_cast<FrameBufferVulkan *>(frameBuffer.get());
   fbo_->create();
 
-  clearValues_.clear();
-  if (states.colorFlag) {
-    VkClearValue clearColor;
-    clearColor.color = {states.clearColor.r, states.clearColor.g, states.clearColor.b, states.clearColor.a};
-    clearValues_.push_back(clearColor);
-  }
-
-  if (states.depthFlag) {
-    VkClearValue clearDepth;
-    clearDepth.depthStencil = {viewport_.maxDepth, 0};
-    clearValues_.push_back(clearDepth);
-  }
+  // clear operation controlled by render pass load op
+  clearValues_.resize(2);
+  clearValues_[0].color = {states.clearColor.r, states.clearColor.g, states.clearColor.b, states.clearColor.a};
+  clearValues_[1].depthStencil = {1.0f, 0};
 
   vkWaitForFences(device_, 1, &drawFence_, VK_TRUE, UINT64_MAX);
   vkResetFences(device_, 1, &drawFence_);
@@ -140,7 +132,7 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
   }
 
   if (shaderProgram_) {
-    shaderProgram_->beginBindUniforms(resources->blocks.size() + resources->samplers.size());
+    shaderProgram_->beginBindUniforms();
     shaderProgram_->bindResources(*resources);
     shaderProgram_->endBindUniforms();
   }

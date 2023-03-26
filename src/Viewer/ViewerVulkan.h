@@ -22,6 +22,9 @@ class ViewerVulkan : public Viewer {
   }
 
   void configRenderer() override {
+    // disabled
+    config_.reverseZ = false;
+    config_.earlyZ = false;
   }
 
   void swapBuffer() override {

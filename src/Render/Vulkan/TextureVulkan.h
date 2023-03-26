@@ -25,6 +25,9 @@ class TextureVulkan : public Texture {
     usage = desc.usage;
     useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
+
+    createImage();
+    createMemory();
   }
 
   virtual ~TextureVulkan() {
@@ -41,16 +44,13 @@ class TextureVulkan : public Texture {
     samplerDesc_ = sampler;
   };
 
-  void initImageData() override {
-    createImage();
-    createMemory();
-  };
+  void initImageData() override {};
 
   inline VkImage &getVkImage() {
     return image_;
   }
 
-  VkImageView &createImageView(VkImageAspectFlagBits aspectMask = VK_IMAGE_ASPECT_COLOR_BIT) {
+  VkImageView &createImageView(uint32_t aspectMask = VK_IMAGE_ASPECT_COLOR_BIT) {
     if (view_ != VK_NULL_HANDLE) {
       return view_;
     }
@@ -58,7 +58,7 @@ class TextureVulkan : public Texture {
     VkImageViewCreateInfo imageViewCreateInfo{};
     imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     imageViewCreateInfo.viewType = VK::cvtImageViewType(type);
-    imageViewCreateInfo.format = VK::cvtImageFormat(format);
+    imageViewCreateInfo.format = VK::cvtImageFormat(format, usage);
     imageViewCreateInfo.subresourceRange = {};
     imageViewCreateInfo.subresourceRange.aspectMask = aspectMask;
     imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
@@ -84,12 +84,12 @@ class TextureVulkan : public Texture {
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.anisotropyEnable = VK_FALSE;
     samplerInfo.maxAnisotropy = vkCtx_.getPhysicalDeviceProperties().limits.maxSamplerAnisotropy;
     samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     VK_CHECK(vkCreateSampler(device_, &samplerInfo, nullptr, &sampler_));
 
@@ -105,7 +105,7 @@ class TextureVulkan : public Texture {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK::cvtImageType(type);
-    imageInfo.format = VK::cvtImageFormat(format);
+    imageInfo.format = VK::cvtImageFormat(format, usage);
     imageInfo.extent.width = width;
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1;
@@ -113,7 +113,19 @@ class TextureVulkan : public Texture {
     imageInfo.arrayLayers = 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = 0;
+
+    switch (usage) {
+      case TextureUsage_Color:
+        imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        break;
+      case TextureUsage_Depth:
+        imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        break;
+    }
 
     VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_));
   }
@@ -154,11 +166,13 @@ class Texture2DVulkan : public TextureVulkan {
       : TextureVulkan(ctx, desc) {}
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
-    createImage();
-    createMemory();
-
     auto &dataBuffer = buffers[0];
-    VkDeviceSize imageSize = dataBuffer->getRawDataSize();
+    VkDeviceSize imageSize = dataBuffer->getRawDataSize() * sizeof(RGBA);
+
+    if (imageSize != width * height * sizeof(RGBA)) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;

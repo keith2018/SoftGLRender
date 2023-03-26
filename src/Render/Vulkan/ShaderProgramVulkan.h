@@ -119,11 +119,8 @@ class ShaderProgramVulkan : public ShaderProgram {
     writeDescriptorSets_.push_back(writeDesc);
   }
 
-  void beginBindUniforms(size_t uniformCnt = 0) {
+  void beginBindUniforms() {
     writeDescriptorSets_.clear();
-    if (uniformCnt > 0) {
-      writeDescriptorSets_.reserve(uniformCnt);
-    }
   }
 
   void endBindUniforms() {

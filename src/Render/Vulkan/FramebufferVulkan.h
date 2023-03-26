@@ -21,8 +21,8 @@ class FrameBufferVulkan : public FrameBuffer {
 
   virtual ~FrameBufferVulkan() {
     vkDestroyFramebuffer(device_, framebuffer_, nullptr);
-    vkDestroyImage(device_, hostImage_, nullptr);
-    vkFreeMemory(device_, hostImageMemory_, nullptr);
+    vkDestroyImage(device_, hostImageColor_, nullptr);
+    vkFreeMemory(device_, hostImageColorMemory_, nullptr);
 
     vkDestroyRenderPass(device_, renderPass_, nullptr);
 
@@ -44,7 +44,7 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   void readColorPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height)> &func) {
-    createHostImage();
+    createHostImageColor();
     prepareCopy();
 
     vkWaitForFences(device_, 1, &copyFence_, VK_TRUE, UINT64_MAX);
@@ -58,17 +58,17 @@ class FrameBufferVulkan : public FrameBuffer {
     subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     VkSubresourceLayout subResourceLayout;
 
-    vkGetImageSubresourceLayout(device_, hostImage_, &subResource, &subResourceLayout);
+    vkGetImageSubresourceLayout(device_, hostImageColor_, &subResource, &subResourceLayout);
 
     uint8_t *pixelPtr = nullptr;
-    vkMapMemory(device_, hostImageMemory_, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
+    vkMapMemory(device_, hostImageColorMemory_, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
     pixelPtr += subResourceLayout.offset;
 
     if (func) {
       func(pixelPtr, width_, height_);
     }
 
-    vkUnmapMemory(device_, hostImageMemory_);
+    vkUnmapMemory(device_, hostImageColorMemory_);
   }
 
   inline VkRenderPass &getRenderPass() {
@@ -94,17 +94,17 @@ class FrameBufferVulkan : public FrameBuffer {
     }
 
     VkAttachmentReference colorAttachmentRef{};
-    colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference depthAttachmentRef{};
-    depthAttachmentRef.attachment = 0;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     std::vector<VkAttachmentDescription> attachments;
     if (colorReady) {
+      auto *colorDesc = getColorAttachmentDesc();
+
       VkAttachmentDescription colorAttachment{};
-      colorAttachment.format = VK::cvtImageFormat(getColorAttachmentDesc()->format);
+      colorAttachment.format = VK::cvtImageFormat(colorDesc->format, colorDesc->usage);
       colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
       colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
       colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -117,11 +117,13 @@ class FrameBufferVulkan : public FrameBuffer {
       attachments.push_back(colorAttachment);
     }
     if (depthReady) {
+      auto *depthDesc = getDepthAttachmentDesc();
+
       VkAttachmentDescription depthAttachment{};
-      depthAttachment.format = VK::cvtImageFormat(getDepthAttachmentDesc()->format);
+      depthAttachment.format = VK::cvtImageFormat(depthDesc->format, depthDesc->usage);
       depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
       depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-      depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
       depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -142,24 +144,22 @@ class FrameBufferVulkan : public FrameBuffer {
       subpass.pDepthStencilAttachment = &depthAttachmentRef;
     }
 
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = 0;
-    dependency.srcAccessMask = 0;
-    dependency.dstStageMask = 0;
-    dependency.dstAccessMask = 0;
+    std::vector<VkSubpassDependency> dependencies;
+    dependencies.resize(2);
 
-    if (colorReady) {
-      dependency.srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependency.dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependency.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    }
-    if (depthReady) {
-      dependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-      dependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-      dependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    }
+    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass = 0;
+    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[0].srcAccessMask = 0;
+    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].dstSubpass = 0;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependencies[1].srcAccessMask = 0;
+    dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -167,8 +167,8 @@ class FrameBufferVulkan : public FrameBuffer {
     renderPassInfo.pAttachments = attachments.data();
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.dependencyCount = 1;
-    renderPassInfo.pDependencies = &dependency;
+    renderPassInfo.dependencyCount = dependencies.size();
+    renderPassInfo.pDependencies = dependencies.data();
 
     VK_CHECK(vkCreateRenderPass(device_, &renderPassInfo, nullptr, &renderPass_));
   }
@@ -210,15 +210,17 @@ class FrameBufferVulkan : public FrameBuffer {
     VK_CHECK(vkCreateFramebuffer(device_, &framebufferCreateInfo, nullptr, &framebuffer_));
   }
 
-  void createHostImage() {
-    if (hostImage_ != VK_NULL_HANDLE) {
+  void createHostImageColor() {
+    if (hostImageColor_ != VK_NULL_HANDLE) {
       return;
     }
+
+    auto *colorDesc = getColorAttachmentDesc();
 
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    imageInfo.format = VK::cvtImageFormat(colorDesc->format, colorDesc->usage);
     imageInfo.extent.width = width_;
     imageInfo.extent.height = height_;
     imageInfo.extent.depth = 1;
@@ -228,20 +230,20 @@ class FrameBufferVulkan : public FrameBuffer {
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
     imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &hostImage_));
+    VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &hostImageColor_));
 
     VkMemoryRequirements memRequirements;
     VkMemoryAllocateInfo memAllocInfo{};
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 
-    vkGetImageMemoryRequirements(device_, hostImage_, &memRequirements);
+    vkGetImageMemoryRequirements(device_, hostImageColor_, &memRequirements);
     memAllocInfo.allocationSize = memRequirements.size;
 
     memAllocInfo.memoryTypeIndex = vkCtx_.getMemoryTypeIndex(memRequirements.memoryTypeBits,
                                                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                                                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &hostImageMemory_));
-    VK_CHECK(vkBindImageMemory(device_, hostImage_, hostImageMemory_, 0));
+    VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &hostImageColorMemory_));
+    VK_CHECK(vkBindImageMemory(device_, hostImageColor_, hostImageColorMemory_, 0));
   }
 
   void prepareCopy() {
@@ -268,7 +270,7 @@ class FrameBufferVulkan : public FrameBuffer {
 
     VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
-    VKContext::transitionImageLayout(commandBuffer, hostImage_,
+    VKContext::transitionImageLayout(commandBuffer, hostImageColor_,
                                      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
@@ -280,10 +282,10 @@ class FrameBufferVulkan : public FrameBuffer {
     imageCopyRegion.extent.width = width_;
     imageCopyRegion.extent.height = height_;
     imageCopyRegion.extent.depth = 1;
-    vkCmdCopyImage(commandBuffer, getColorAttachmentImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImage_,
+    vkCmdCopyImage(commandBuffer, getColorAttachmentImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImageColor_,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
-    VKContext::transitionImageLayout(commandBuffer, hostImage_,
+    VKContext::transitionImageLayout(commandBuffer, hostImageColor_,
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
@@ -315,8 +317,8 @@ class FrameBufferVulkan : public FrameBuffer {
   VkDevice device_ = VK_NULL_HANDLE;
   VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
 
-  VkImage hostImage_ = VK_NULL_HANDLE;
-  VkDeviceMemory hostImageMemory_ = VK_NULL_HANDLE;
+  VkImage hostImageColor_ = VK_NULL_HANDLE;
+  VkDeviceMemory hostImageColorMemory_ = VK_NULL_HANDLE;
 
   VkRenderPass renderPass_ = VK_NULL_HANDLE;
   VkCommandBuffer copyCmd_ = VK_NULL_HANDLE;

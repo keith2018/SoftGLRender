@@ -168,14 +168,14 @@ int main() {
       // draw frame
       viewer->drawFrame();
 
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-      glViewport(0, 0, frameWidth, frameHeight);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
       glDisable(GL_BLEND);
       glDisable(GL_DEPTH_TEST);
-      glDisable(GL_CULL_FACE);
       glDepthMask(true);
+      glDisable(GL_CULL_FACE);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glViewport(0, 0, frameWidth, frameHeight);
 
       glClearColor(0.f, 0.f, 0.f, 0.0f);
       glClear(GL_COLOR_BUFFER_BIT);

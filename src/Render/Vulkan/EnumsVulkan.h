@@ -16,15 +16,26 @@ namespace VK {
 static inline VkImageType cvtImageType(TextureType type) {
   switch (type) {
     case TextureType_2D:
-    case TextureType_CUBE:      return VK_IMAGE_TYPE_2D;
+    case TextureType_CUBE:          return VK_IMAGE_TYPE_2D;
   }
   return VK_IMAGE_TYPE_MAX_ENUM;
 }
 
-static inline VkFormat cvtImageFormat(TextureFormat format) {
-  switch (format) {
-    case TextureFormat_RGBA8:   return VK_FORMAT_R8G8B8A8_UNORM;
-    case TextureFormat_FLOAT32: return VK_FORMAT_R32_SFLOAT;
+static inline VkFormat cvtImageFormat(TextureFormat format, TextureUsage usage) {
+  switch (usage) {
+    case TextureUsage_Color: {
+      switch (format) {
+        case TextureFormat_RGBA8:   return VK_FORMAT_R8G8B8A8_UNORM;
+        case TextureFormat_FLOAT32: return VK_FORMAT_R32_SFLOAT;
+      }
+      break;
+    }
+    case TextureUsage_Depth: {
+      switch (format) {
+        case TextureFormat_FLOAT32: return VK_FORMAT_D32_SFLOAT;
+      }
+      break;
+    }
   }
   return VK_FORMAT_MAX_ENUM;
 }
@@ -68,7 +79,38 @@ static inline VkCompareOp cvtDepthFunc(DepthFunction func) {
     default:
       break;
   }
-  return VK_COMPARE_OP_NEVER;
+  return VK_COMPARE_OP_MAX_ENUM;
+}
+
+static inline VkBlendFactor cvtBlendFactor(BlendFactor factor) {
+  switch (factor) {
+    case BlendFactor_ZERO:                return VK_BLEND_FACTOR_ZERO;
+    case BlendFactor_ONE:                 return VK_BLEND_FACTOR_ONE;
+    case BlendFactor_SRC_COLOR:           return VK_BLEND_FACTOR_SRC_COLOR;
+    case BlendFactor_SRC_ALPHA:           return VK_BLEND_FACTOR_SRC_ALPHA;
+    case BlendFactor_DST_COLOR:           return VK_BLEND_FACTOR_DST_COLOR;
+    case BlendFactor_DST_ALPHA:           return VK_BLEND_FACTOR_DST_ALPHA;
+    case BlendFactor_ONE_MINUS_SRC_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+    case BlendFactor_ONE_MINUS_SRC_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    case BlendFactor_ONE_MINUS_DST_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+    case BlendFactor_ONE_MINUS_DST_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+    default:
+      break;
+  }
+  return VK_BLEND_FACTOR_MAX_ENUM;
+}
+
+static inline VkBlendOp cvtBlendFunction(BlendFunction func) {
+  switch (func) {
+    case BlendFunc_ADD:                   return VK_BLEND_OP_ADD;
+    case BlendFunc_SUBTRACT:              return VK_BLEND_OP_SUBTRACT;
+    case BlendFunc_REVERSE_SUBTRACT:      return VK_BLEND_OP_REVERSE_SUBTRACT;
+    case BlendFunc_MIN:                   return VK_BLEND_OP_MIN;
+    case BlendFunc_MAX:                   return VK_BLEND_OP_MAX;
+    default:
+      break;
+  }
+  return VK_BLEND_OP_MAX_ENUM;
 }
 
 }

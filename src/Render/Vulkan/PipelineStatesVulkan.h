@@ -78,8 +78,8 @@ class PipelineStatesVulkan : public PipelineStates {
 
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = renderStates.depthTest;
-    depthStencil.depthWriteEnable = renderStates.depthMask;
+    depthStencil.depthTestEnable = renderStates.depthTest ? VK_TRUE : VK_FALSE;
+    depthStencil.depthWriteEnable = renderStates.depthMask ? VK_TRUE : VK_FALSE;
     depthStencil.depthCompareOp = VK::cvtDepthFunc(renderStates.depthFunc);
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
@@ -87,7 +87,13 @@ class PipelineStatesVulkan : public PipelineStates {
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask =
         VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.blendEnable = renderStates.blend ? VK_TRUE : VK_FALSE;
+    colorBlendAttachment.colorBlendOp = VK::cvtBlendFunction(renderStates.blendParams.blendFuncRgb);
+    colorBlendAttachment.srcColorBlendFactor = VK::cvtBlendFactor(renderStates.blendParams.blendSrcRgb);
+    colorBlendAttachment.dstColorBlendFactor = VK::cvtBlendFactor(renderStates.blendParams.blendDstRgb);
+    colorBlendAttachment.alphaBlendOp = VK::cvtBlendFunction(renderStates.blendParams.blendFuncAlpha);
+    colorBlendAttachment.srcAlphaBlendFactor = VK::cvtBlendFactor(renderStates.blendParams.blendSrcAlpha);
+    colorBlendAttachment.dstAlphaBlendFactor = VK::cvtBlendFactor(renderStates.blendParams.blendDstAlpha);
 
     VkPipelineColorBlendStateCreateInfo colorBlending{};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -105,7 +111,7 @@ class PipelineStatesVulkan : public PipelineStates {
     };
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.dynamicStateCount = dynamicStates.size();
     dynamicState.pDynamicStates = dynamicStates.data();
 
     auto &descriptorSetLayouts = program->getDescriptorSetLayouts();

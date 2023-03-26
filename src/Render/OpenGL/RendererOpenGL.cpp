@@ -65,7 +65,6 @@ void RendererOpenGL::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
     clearBit |= GL_COLOR_BUFFER_BIT;
   }
   if (states.depthFlag) {
-    glDepthMask(true);  // force depth write enabled if we need to clear depth buffer
     clearBit |= GL_DEPTH_BUFFER_BIT;
   }
   GL_CHECK(glClear(clearBit));
@@ -133,6 +132,13 @@ void RendererOpenGL::draw() {
   GL_CHECK(glDrawElements(mode, (GLsizei) vao_->getIndicesCnt(), GL_UNSIGNED_INT, nullptr));
 }
 
-void RendererOpenGL::endRenderPass() {}
+void RendererOpenGL::endRenderPass() {
+  // reset gl states
+  GL_CHECK(glDisable(GL_BLEND));
+  GL_CHECK(glDisable(GL_DEPTH_TEST));
+  GL_CHECK(glDepthMask(true));
+  GL_CHECK(glDisable(GL_CULL_FACE));
+  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+}
 
 }
