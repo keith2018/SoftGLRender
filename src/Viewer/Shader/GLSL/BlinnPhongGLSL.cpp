@@ -64,13 +64,14 @@ void main() {
 const char *BLINN_PHONG_FS = R"(
 layout (location = 0) in vec2 v_texCoord;
 layout (location = 1) in vec3 v_normalVector;
-layout (location = 2) in vec3 v_cameraDirection;
-layout (location = 3) in vec3 v_lightDirection;
-layout (location = 4) in vec4 v_shadowFragPos;
+layout (location = 2) in vec3 v_worldPos;
+layout (location = 3) in vec3 v_cameraDirection;
+layout (location = 4) in vec3 v_lightDirection;
+layout (location = 5) in vec4 v_shadowFragPos;
 
 #if defined(NORMAL_MAP)
-layout (location = 5) in vec3 v_normal;
-layout (location = 6) in vec3 v_tangent;
+layout (location = 6) in vec3 v_normal;
+layout (location = 7) in vec3 v_tangent;
 #endif
 
 layout (location = 0) out vec4 FragColor;

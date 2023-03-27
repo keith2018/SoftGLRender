@@ -27,12 +27,16 @@ static inline VkFormat cvtImageFormat(TextureFormat format, TextureUsage usage) 
       switch (format) {
         case TextureFormat_RGBA8:   return VK_FORMAT_R8G8B8A8_UNORM;
         case TextureFormat_FLOAT32: return VK_FORMAT_R32_SFLOAT;
+        default:
+          break;
       }
       break;
     }
     case TextureUsage_Depth: {
       switch (format) {
         case TextureFormat_FLOAT32: return VK_FORMAT_D32_SFLOAT;
+        default:
+          break;
       }
       break;
     }
