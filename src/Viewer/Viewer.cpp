@@ -713,7 +713,7 @@ void Viewer::updateUniformMaterial(Material &material, float specular) {
   UniformsMaterial uniformsMaterial{};
   uniformsMaterial.u_enableLight = config_.showLight ? 1 : 0;
   uniformsMaterial.u_enableIBL = iBLEnabled() ? 1 : 0;
-  uniformsMaterial.u_enableShadow = config_.shadowMap;
+  uniformsMaterial.u_enableShadow = config_.shadowMap ? 1 : 0;
 
   uniformsMaterial.u_kSpecular = specular;
   uniformsMaterial.u_baseColor = material.baseColor;
