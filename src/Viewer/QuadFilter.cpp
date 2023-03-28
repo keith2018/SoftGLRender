@@ -59,7 +59,7 @@ QuadFilter::QuadFilter(int width, int height, const std::shared_ptr<Renderer> &r
   texDesc.height = height_;
   texDesc.type = TextureType_2D;
   texDesc.format = TextureFormat_RGBA8;
-  texDesc.usage = TextureUsage_Color;
+  texDesc.usage = TextureUsage_AttachmentColor;
   texDesc.useMipmaps = false;
   texDesc.multiSample = false;
   uniformTexIn_ = renderer_->createUniformSampler(samplerName, texDesc);

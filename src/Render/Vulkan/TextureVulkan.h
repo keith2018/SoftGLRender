@@ -117,14 +117,18 @@ class TextureVulkan : public Texture {
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = 0;
 
-    switch (usage) {
-      case TextureUsage_Color:
-        imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        break;
-      case TextureUsage_Depth:
-        imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        break;
+    if (usage & TextureUsage_Sampler) {
+      imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+      imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+
+    if (usage & TextureUsage_AttachmentColor) {
+      imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    }
+
+    if (usage & TextureUsage_AttachmentDepth) {
+      imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
 
     VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_));
@@ -166,14 +170,38 @@ class Texture2DVulkan : public TextureVulkan {
       : TextureVulkan(ctx, desc) {}
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
-    auto &dataBuffer = buffers[0];
-    VkDeviceSize imageSize = dataBuffer->getRawDataSize() * sizeof(RGBA);
+    if (format != TextureFormat_RGBA8) {
+      LOGE("setImageData error: format not match");
+      return;
+    }
 
-    if (imageSize != width * height * sizeof(RGBA)) {
+    auto &dataBuffer = buffers[0];
+    if (dataBuffer->getRawDataSize() != width * height) {
       LOGE("setImageData error: size not match");
       return;
     }
 
+    VkDeviceSize imageSize = dataBuffer->getRawDataSize() * sizeof(RGBA);
+    setImageDataInternal(dataBuffer->getRawDataPtr(), imageSize);
+  }
+
+  void setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) override {
+    if (format != TextureFormat_FLOAT32) {
+      LOGE("setImageData error: format not match");
+      return;
+    }
+
+    auto &dataBuffer = buffers[0];
+    if (dataBuffer->getRawDataSize() != width * height) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
+
+    VkDeviceSize imageSize = dataBuffer->getRawDataSize() * sizeof(float);
+    setImageDataInternal(dataBuffer->getRawDataPtr(), imageSize);
+  }
+
+  void setImageDataInternal(const void *buffer, VkDeviceSize imageSize) {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     vkCtx_.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -182,7 +210,7 @@ class Texture2DVulkan : public TextureVulkan {
 
     void *dataPtr;
     VK_CHECK(vkMapMemory(device_, stagingBufferMemory, 0, imageSize, 0, &dataPtr));
-    memcpy(dataPtr, dataBuffer->getRawDataPtr(), static_cast<size_t>(imageSize));
+    memcpy(dataPtr, buffer, static_cast<size_t>(imageSize));
     vkUnmapMemory(device_, stagingBufferMemory);
 
     VkCommandBuffer copyCmd = vkCtx_.beginSingleTimeCommands();

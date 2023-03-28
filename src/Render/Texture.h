@@ -61,8 +61,9 @@ enum TextureFormat {
 };
 
 enum TextureUsage {
-  TextureUsage_Color,
-  TextureUsage_Depth,
+  TextureUsage_Sampler = 1 << 0,
+  TextureUsage_AttachmentColor = 1 << 1,
+  TextureUsage_AttachmentDepth = 1 << 2,
 };
 
 struct TextureDesc {
@@ -70,7 +71,7 @@ struct TextureDesc {
   int height = 0;
   TextureType type = TextureType_2D;
   TextureFormat format = TextureFormat_RGBA8;
-  TextureUsage usage = TextureUsage_Color;
+  uint32_t usage = TextureUsage_Sampler;
   bool useMipmaps = false;
   bool multiSample = false;
 };

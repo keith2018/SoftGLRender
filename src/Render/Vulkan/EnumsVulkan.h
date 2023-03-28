@@ -21,24 +21,19 @@ static inline VkImageType cvtImageType(TextureType type) {
   return VK_IMAGE_TYPE_MAX_ENUM;
 }
 
-static inline VkFormat cvtImageFormat(TextureFormat format, TextureUsage usage) {
-  switch (usage) {
-    case TextureUsage_Color: {
-      switch (format) {
-        case TextureFormat_RGBA8:   return VK_FORMAT_R8G8B8A8_UNORM;
-        case TextureFormat_FLOAT32: return VK_FORMAT_R32_SFLOAT;
-        default:
-          break;
-      }
-      break;
+static inline VkFormat cvtImageFormat(TextureFormat format, uint32_t usage) {
+  if (usage & TextureUsage_AttachmentDepth) {
+    switch (format) {
+      case TextureFormat_FLOAT32: return VK_FORMAT_D32_SFLOAT;
+      default:
+        break;
     }
-    case TextureUsage_Depth: {
-      switch (format) {
-        case TextureFormat_FLOAT32: return VK_FORMAT_D32_SFLOAT;
-        default:
-          break;
-      }
-      break;
+  } else {
+    switch (format) {
+      case TextureFormat_RGBA8:   return VK_FORMAT_R8G8B8A8_UNORM;
+      case TextureFormat_FLOAT32: return VK_FORMAT_R32_SFLOAT;
+      default:
+        break;
     }
   }
   return VK_FORMAT_MAX_ENUM;

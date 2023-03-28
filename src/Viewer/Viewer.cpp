@@ -41,10 +41,10 @@ bool Viewer::create(int width, int height, int outTexId) {
   texDepthMain_ = nullptr;
   fboShadow_ = nullptr;
   texDepthShadow_ = nullptr;
-  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32, TextureUsage_Depth);
+  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32, TextureUsage_Sampler);
   fxaaFilter_ = nullptr;
   texColorFxaa_ = nullptr;
-  iblPlaceholder_ = createTextureCubeDefault(1, 1, TextureUsage_Color);
+  iblPlaceholder_ = createTextureCubeDefault(1, 1, TextureUsage_Sampler);
   programCache_.clear();
   pipelineCache_.clear();
 
@@ -159,7 +159,7 @@ void Viewer::processFXAASetup() {
     texDesc.height = height_;
     texDesc.type = TextureType_2D;
     texDesc.format = TextureFormat_RGBA8;
-    texDesc.usage = TextureUsage_Color;
+    texDesc.usage = TextureUsage_AttachmentColor;
     texDesc.useMipmaps = false;
     texDesc.multiSample = false;
     texColorFxaa_ = renderer_->createTexture(texDesc);
@@ -425,7 +425,7 @@ void Viewer::setupShadowMapBuffers() {
     texDesc.height = SHADOW_MAP_HEIGHT;
     texDesc.type = TextureType_2D;
     texDesc.format = TextureFormat_FLOAT32;
-    texDesc.usage = TextureUsage_Depth;
+    texDesc.usage = TextureUsage_Sampler | TextureUsage_AttachmentDepth;
     texDesc.useMipmaps = false;
     texDesc.multiSample = false;
     texDepthShadow_ = renderer_->createTexture(texDesc);
@@ -454,7 +454,7 @@ void Viewer::setupMainColorBuffer(bool multiSample) {
     texDesc.height = height_;
     texDesc.type = TextureType_2D;
     texDesc.format = TextureFormat_RGBA8;
-    texDesc.usage = TextureUsage_Color;
+    texDesc.usage = TextureUsage_AttachmentColor;
     texDesc.useMipmaps = false;
     texDesc.multiSample = multiSample;
     texColorMain_ = renderer_->createTexture(texDesc);
@@ -475,7 +475,7 @@ void Viewer::setupMainDepthBuffer(bool multiSample) {
     texDesc.height = height_;
     texDesc.type = TextureType_2D;
     texDesc.format = TextureFormat_FLOAT32;
-    texDesc.usage = TextureUsage_Depth;
+    texDesc.usage = TextureUsage_AttachmentDepth;
     texDesc.useMipmaps = false;
     texDesc.multiSample = multiSample;
     texDepthMain_ = renderer_->createTexture(texDesc);
@@ -501,7 +501,7 @@ void Viewer::setupTextures(Material &material) {
     texDesc.width = (int) kv.second.width;
     texDesc.height = (int) kv.second.height;
     texDesc.format = TextureFormat_RGBA8;
-    texDesc.usage = TextureUsage_Color;
+    texDesc.usage = TextureUsage_Sampler;
     texDesc.useMipmaps = false;
     texDesc.multiSample = false;
 
@@ -744,7 +744,7 @@ bool Viewer::initSkyboxIBL() {
     if (texEqIt != skybox.material->textures.end()) {
       auto tex2d = std::dynamic_pointer_cast<Texture>(texEqIt->second);
       auto cubeSize = std::min(tex2d->width, tex2d->height);
-      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize, TextureUsage_Color);
+      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize, TextureUsage_AttachmentColor);
       auto success = Environment::convertEquirectangular(renderer_,
                                                          [&](ShaderProgram &program) -> bool {
                                                            return loadShaders(program, Shading_Skybox);
@@ -772,7 +772,7 @@ bool Viewer::initSkyboxIBL() {
 
   // generate irradiance map
   LOGD("generate ibl irradiance map ...");
-  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize, TextureUsage_Color);
+  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize, TextureUsage_AttachmentColor);
   if (Environment::generateIrradianceMap(renderer_,
                                          [&](ShaderProgram &program) -> bool {
                                            return loadShaders(program, Shading_IBL_Irradiance);
@@ -788,7 +788,7 @@ bool Viewer::initSkyboxIBL() {
 
   // generate prefilter map
   LOGD("generate ibl prefilter map ...");
-  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, TextureUsage_Color, true);
+  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, TextureUsage_AttachmentColor, true);
   if (Environment::generatePrefilterMap(renderer_,
                                         [&](ShaderProgram &program) -> bool {
                                           return loadShaders(program, Shading_IBL_Prefilter);
