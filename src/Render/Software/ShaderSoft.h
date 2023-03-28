@@ -33,7 +33,8 @@ struct DerivativeContext {
 
 struct ShaderBuiltin {
   // vertex shader output
-  glm::vec4 Position;
+  glm::vec4 Position = glm::vec4{0.f};
+  float PointSize = 1.f;
 
   // fragment shader input
   glm::vec4 FragCoord;

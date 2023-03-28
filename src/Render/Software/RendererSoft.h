@@ -123,6 +123,7 @@ class RendererSoft : public Renderer {
   size_t varyingsAlignedCnt_ = 0;
   size_t varyingsAlignedSize_ = 0;
 
+  float pointSize_ = 1.f;
   bool reverseZ_ = true;
   bool earlyZ_ = false;
   int rasterSamples_ = 1;

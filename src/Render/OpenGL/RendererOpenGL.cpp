@@ -124,7 +124,7 @@ void RendererOpenGL::setPipelineStates(std::shared_ptr<PipelineStates> &states) 
   GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::cvtPolygonMode(renderStates.polygonMode)));
 
   GL_CHECK(glLineWidth(renderStates.lineWidth));
-  GL_CHECK(glPointSize(renderStates.pointSize));
+  GL_CHECK(glEnable(GL_PROGRAM_POINT_SIZE));
 }
 
 void RendererOpenGL::draw() {

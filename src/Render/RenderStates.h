@@ -89,7 +89,6 @@ struct RenderStates {
   PolygonMode polygonMode = PolygonMode_FILL;
 
   float lineWidth = 1.f;
-  float pointSize = 1.f;
 };
 
 struct ClearStates {

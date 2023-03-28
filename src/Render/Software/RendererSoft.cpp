@@ -315,7 +315,7 @@ void RendererSoft::processRasterization() {
           continue;
         }
         auto *vert0 = &vertexes_[primitive.indices[0]];
-        rasterizationPoint(vert0, renderState_->pointSize);
+        rasterizationPoint(vert0, pointSize_);
       }
       break;
     case Primitive_LINE:
@@ -598,8 +598,7 @@ void RendererSoft::rasterizationPolygonsPoint(std::vector<PrimitiveHolder> &prim
       }
 
       // rasterization
-      rasterizationPoint(&vertexes_[point.indices[0]],
-                         renderState_->pointSize);
+      rasterizationPoint(&vertexes_[point.indices[0]], pointSize_);
     }
   }
 }
@@ -982,6 +981,7 @@ void RendererSoft::vertexShaderImpl(VertexHolder &vertex) {
   shaderProgram_->bindVertexShaderVaryings(vertex.varyings);
   shaderProgram_->execVertexShader();
 
+  pointSize_ = shaderProgram_->getShaderBuiltin().PointSize;
   vertex.clipPos = shaderProgram_->getShaderBuiltin().Position;
   vertex.clipMask = countFrustumClipMask(vertex.clipPos);
 }

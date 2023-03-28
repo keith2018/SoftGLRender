@@ -69,6 +69,7 @@ struct UniformsScene {
 
 struct UniformsModel {
   glm::int32_t u_reverseZ;
+  glm::float32_t u_pointSize;
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
@@ -80,7 +81,7 @@ struct UniformsMaterial {
   glm::int32_t u_enableIBL;
   glm::int32_t u_enableShadow;
 
-  float u_kSpecular;
+  glm::float32_t u_kSpecular;
   glm::vec4 u_baseColor;
 };
 
@@ -89,8 +90,8 @@ struct UniformsQuadFilter {
 };
 
 struct UniformsIBLPrefilter {
-  float u_srcResolution;
-  float u_roughness;
+  glm::float32_t u_srcResolution;
+  glm::float32_t u_roughness;
 };
 
 struct TextureData {

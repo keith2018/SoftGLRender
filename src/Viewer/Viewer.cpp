@@ -602,7 +602,6 @@ void Viewer::setupPipelineStates(ModelBase &model, const std::function<void(Rend
   rs.polygonMode = PolygonMode_FILL;
 
   rs.lineWidth = material.lineWidth;
-  rs.pointSize = material.pointSize;
 
   if (extraStates) {
     extraStates(rs);
@@ -686,7 +685,7 @@ void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm:
 
   UniformsModel uniformsModel{};
   uniformsModel.u_reverseZ = config_.reverseZ ? 1 : 0;
-
+  uniformsModel.u_pointSize = model.material->pointSize;
   uniformsModel.u_modelMatrix = m;
   uniformsModel.u_modelViewProjectionMatrix = camera_->projectionMatrix() * v * m;
   uniformsModel.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(m)));
@@ -915,6 +914,7 @@ size_t Viewer::getPipelineCacheKey(Material &material, const RenderStates &rs) {
 
   HashUtils::hashCombine(seed, (int) material.materialObj->shadingModel);
 
+  // TODO pack together
   HashUtils::hashCombine(seed, rs.blend);
   HashUtils::hashCombine(seed, (int) rs.blendParams.blendFuncRgb);
   HashUtils::hashCombine(seed, (int) rs.blendParams.blendSrcRgb);
@@ -932,7 +932,6 @@ size_t Viewer::getPipelineCacheKey(Material &material, const RenderStates &rs) {
   HashUtils::hashCombine(seed, (int) rs.polygonMode);
 
   HashUtils::hashCombine(seed, rs.lineWidth);
-  HashUtils::hashCombine(seed, rs.pointSize);
 
   return seed;
 }
