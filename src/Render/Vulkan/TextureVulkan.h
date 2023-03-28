@@ -50,6 +50,16 @@ class TextureVulkan : public Texture {
     return image_;
   }
 
+  inline uint32_t getLayerCount() {
+    switch (type) {
+      case TextureType_2D:
+        return 1;
+      case TextureType_CUBE:
+        return 6;
+    }
+    return 0;
+  }
+
   VkImageView &createImageView(uint32_t aspectMask = VK_IMAGE_ASPECT_COLOR_BIT) {
     if (view_ != VK_NULL_HANDLE) {
       return view_;
@@ -64,7 +74,7 @@ class TextureVulkan : public Texture {
     imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
     imageViewCreateInfo.subresourceRange.levelCount = 1;
     imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    imageViewCreateInfo.subresourceRange.layerCount = 1;
+    imageViewCreateInfo.subresourceRange.layerCount = getLayerCount();
     imageViewCreateInfo.image = image_;
     VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &view_));
 
@@ -110,7 +120,7 @@ class TextureVulkan : public Texture {
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1;
     imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
+    imageInfo.arrayLayers = getLayerCount();
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;

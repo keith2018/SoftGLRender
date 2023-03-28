@@ -43,7 +43,7 @@ class FrameBufferVulkan : public FrameBuffer {
     createFramebuffer();
   }
 
-  void readColorPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height)> &func) {
+  void readColorPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func) {
     createHostImageColor();
     prepareCopy();
 
@@ -65,7 +65,7 @@ class FrameBufferVulkan : public FrameBuffer {
     pixelPtr += subResourceLayout.offset;
 
     if (func) {
-      func(pixelPtr, width_, height_);
+      func(pixelPtr, width_, height_, subResourceLayout.rowPitch);
     }
 
     vkUnmapMemory(device_, hostImageColorMemory_);
@@ -111,7 +111,7 @@ class FrameBufferVulkan : public FrameBuffer {
       colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
       colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+      colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
       colorAttachmentRef.attachment = attachments.size();
       attachments.push_back(colorAttachment);
@@ -270,8 +270,14 @@ class FrameBufferVulkan : public FrameBuffer {
 
     VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
+    VkImage colorAttachment = getColorAttachmentImage();
+
     VKContext::transitionImageLayout(commandBuffer, hostImageColor_,
                                      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+    VKContext::transitionImageLayout(commandBuffer, colorAttachment,
+                                     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
     VkImageCopy imageCopyRegion{};
@@ -282,8 +288,13 @@ class FrameBufferVulkan : public FrameBuffer {
     imageCopyRegion.extent.width = width_;
     imageCopyRegion.extent.height = height_;
     imageCopyRegion.extent.depth = 1;
-    vkCmdCopyImage(commandBuffer, getColorAttachmentImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImageColor_,
+
+    vkCmdCopyImage(commandBuffer, colorAttachment, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImageColor_,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
+
+    VKContext::transitionImageLayout(commandBuffer, colorAttachment,
+                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
     VKContext::transitionImageLayout(commandBuffer, hostImageColor_,
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,

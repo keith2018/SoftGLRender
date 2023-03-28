@@ -29,8 +29,9 @@ class ViewerVulkan : public Viewer {
 
   void swapBuffer() override {
     auto *vkFbo = dynamic_cast<FrameBufferVulkan *>(fboMain_.get());
-    vkFbo->readColorPixels([&](uint8_t *buffer, uint32_t width, uint32_t height) -> void {
+    vkFbo->readColorPixels([&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
       GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
+      GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, rowStride / sizeof(RGBA)));
       GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
                             0,
                             GL_RGBA,
@@ -40,6 +41,7 @@ class ViewerVulkan : public Viewer {
                             GL_RGBA,
                             GL_UNSIGNED_BYTE,
                             buffer));
+      GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
     });
   }
 
