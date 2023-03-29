@@ -684,7 +684,7 @@ void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm:
   }
 
   UniformsModel uniformsModel{};
-  uniformsModel.u_reverseZ = config_.reverseZ ? 1 : 0;
+  uniformsModel.u_reverseZ = config_.reverseZ ? 1u : 0u;
   uniformsModel.u_pointSize = model.material->pointSize;
   uniformsModel.u_modelMatrix = m;
   uniformsModel.u_modelViewProjectionMatrix = camera_->projectionMatrix() * v * m;
@@ -710,9 +710,9 @@ void Viewer::updateUniformMaterial(Material &material, float specular) {
   }
 
   UniformsMaterial uniformsMaterial{};
-  uniformsMaterial.u_enableLight = config_.showLight ? 1 : 0;
-  uniformsMaterial.u_enableIBL = iBLEnabled() ? 1 : 0;
-  uniformsMaterial.u_enableShadow = config_.shadowMap ? 1 : 0;
+  uniformsMaterial.u_enableLight = config_.showLight ? 1u : 0u;
+  uniformsMaterial.u_enableIBL = iBLEnabled() ? 1u : 0u;
+  uniformsMaterial.u_enableShadow = config_.shadowMap ? 1u : 0u;
 
   uniformsMaterial.u_kSpecular = specular;
   uniformsMaterial.u_baseColor = material.baseColor;
