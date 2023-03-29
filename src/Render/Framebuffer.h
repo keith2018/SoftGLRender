@@ -56,6 +56,14 @@ class FrameBuffer {
     return nullptr;
   }
 
+  inline bool isColorReady() const {
+    return colorReady;
+  }
+
+  inline bool isDepthReady() const {
+    return depthReady;
+  }
+
  protected:
   bool colorReady = false;
   bool depthReady = false;

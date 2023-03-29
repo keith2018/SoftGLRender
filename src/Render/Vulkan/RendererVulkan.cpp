@@ -80,9 +80,17 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
   fbo_->create();
 
   // clear operation controlled by render pass load op
-  clearValues_.resize(2);
-  clearValues_[0].color = {states.clearColor.r, states.clearColor.g, states.clearColor.b, states.clearColor.a};
-  clearValues_[1].depthStencil = {1.0f, 0};
+  clearValues_.clear();
+  if (fbo_->isColorReady()) {
+    VkClearValue colorClear;
+    colorClear.color = {states.clearColor.r, states.clearColor.g, states.clearColor.b, states.clearColor.a};
+    clearValues_.push_back(colorClear);
+  }
+  if (fbo_->isDepthReady()) {
+    VkClearValue depthClear;
+    depthClear.depthStencil = {1.0f, 0};
+    clearValues_.push_back(depthClear);
+  }
 
   vkWaitForFences(device_, 1, &drawFence_, VK_TRUE, UINT64_MAX);
   vkResetFences(device_, 1, &drawFence_);

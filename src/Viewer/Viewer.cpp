@@ -435,7 +435,7 @@ void Viewer::setupShadowMapBuffers() {
     sampler.filterMag = Filter_NEAREST;
     sampler.wrapS = Wrap_CLAMP_TO_BORDER;
     sampler.wrapT = Wrap_CLAMP_TO_BORDER;
-    sampler.borderColor = glm::vec4(config_.reverseZ ? 0.f : 1.f);
+    sampler.borderColor = config_.reverseZ ? Border_BLACK : Border_WHITE;
     texDepthShadow_->setSamplerDesc(sampler);
 
     texDepthShadow_->initImageData();
@@ -501,7 +501,7 @@ void Viewer::setupTextures(Material &material) {
     texDesc.width = (int) kv.second.width;
     texDesc.height = (int) kv.second.height;
     texDesc.format = TextureFormat_RGBA8;
-    texDesc.usage = TextureUsage_Sampler;
+    texDesc.usage = TextureUsage_Sampler | TextureUsage_UploadData;
     texDesc.useMipmaps = false;
     texDesc.multiSample = false;
 
@@ -865,8 +865,7 @@ std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height,
   return textureCube;
 }
 
-std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, TextureFormat format, TextureUsage usage,
-                                                        bool mipmaps) {
+std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, TextureFormat format, uint32_t usage, bool mipmaps) {
   TextureDesc texDesc{};
   texDesc.width = width;
   texDesc.height = height;

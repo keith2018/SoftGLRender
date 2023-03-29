@@ -8,6 +8,7 @@
 
 #include "Viewer.h"
 #include "Render/Vulkan/RendererVulkan.h"
+#include "Render/Vulkan/TextureVulkan.h"
 #include "Shader/GLSL/ShaderGLSL.h"
 
 namespace SoftGL {
@@ -28,8 +29,8 @@ class ViewerVulkan : public Viewer {
   }
 
   void swapBuffer() override {
-    auto *vkFbo = dynamic_cast<FrameBufferVulkan *>(fboMain_.get());
-    vkFbo->readColorPixels([&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
+    auto *vkTex = dynamic_cast<TextureVulkan *>(texColorMain_.get());
+    vkTex->readPixels([&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
       GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
       GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, rowStride / sizeof(RGBA)));
       GL_CHECK(glTexImage2D(GL_TEXTURE_2D,

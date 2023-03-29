@@ -80,7 +80,9 @@ class Texture2DOpenGL : public TextureOpenGL {
     GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(sampler.wrapT)));
     GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::cvtFilter(sampler.filterMin)));
     GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::cvtFilter(sampler.filterMag)));
-    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler.borderColor[0]));
+
+    glm::vec4 borderColor = OpenGL::cvtBorderColor(sampler.borderColor);
+    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &borderColor[0]));
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
@@ -193,7 +195,9 @@ class TextureCubeOpenGL : public TextureOpenGL {
                              OpenGL::cvtFilter(sampler.filterMin)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
                              OpenGL::cvtFilter(sampler.filterMag)));
-    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &sampler.borderColor[0]));
+
+    glm::vec4 borderColor = OpenGL::cvtBorderColor(sampler.borderColor);
+    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &borderColor[0]));
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {

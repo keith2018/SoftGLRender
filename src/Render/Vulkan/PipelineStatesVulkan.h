@@ -32,9 +32,7 @@ class PipelineStatesVulkan : public PipelineStates {
     vkDestroyPipelineLayout(device_, pipeline_.pipelineLayout_, nullptr);
   }
 
-  void create(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
-              ShaderProgramVulkan *program,
-              VkRenderPass &renderPass) {
+  void create(VkPipelineVertexInputStateCreateInfo &vertexInputInfo, ShaderProgramVulkan *program, VkRenderPass &renderPass) {
     size_t cacheKey = getPipelineCacheKey(program, renderPass);
     auto it = pipelineCache_.find(cacheKey);
     if (it != pipelineCache_.end()) {

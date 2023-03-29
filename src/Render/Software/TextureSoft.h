@@ -80,8 +80,21 @@ class TextureImageSoft {
   std::vector<std::shared_ptr<ImageBufferSoft<T>>> levels;
 };
 
+class TextureSoft : public Texture {
+ protected:
+  static inline glm::vec4 cvtBorderColor(BorderColor color) {
+    switch (color) {
+      case Border_BLACK: return glm::vec4(0.f);
+      case Border_WHITE: return glm::vec4(1.f);
+      default:
+        break;
+    }
+    return glm::vec4(0.f);
+  }
+};
+
 template<typename T>
-class Texture2DSoft : public Texture {
+class Texture2DSoft : public TextureSoft {
  public:
   explicit Texture2DSoft(const TextureDesc &desc) {
     assert(desc.type == TextureType_2D);
@@ -158,11 +171,11 @@ class Texture2DSoft : public Texture {
   }
 
   inline void getBorderColor(float &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor.r, 0.f, 1.f);
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor).r, 0.f, 1.f);
   }
 
   inline void getBorderColor(RGBA &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor * 255.f, {0, 0, 0, 0},
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor) * 255.f, {0, 0, 0, 0},
                      {255, 255, 255, 255});
   }
 
@@ -173,7 +186,7 @@ class Texture2DSoft : public Texture {
 };
 
 template<typename T>
-class TextureCubeSoft : public Texture {
+class TextureCubeSoft : public TextureSoft {
  public:
   explicit TextureCubeSoft(const TextureDesc &desc) {
     assert(desc.type == TextureType_CUBE);
@@ -236,11 +249,11 @@ class TextureCubeSoft : public Texture {
   }
 
   inline void getBorderColor(float &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor.r, 0.f, 1.f);
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor).r, 0.f, 1.f);
   }
 
   inline void getBorderColor(RGBA &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor * 255.f, {0, 0, 0, 0},
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor) * 255.f, {0, 0, 0, 0},
                      {255, 255, 255, 255});
   }
 

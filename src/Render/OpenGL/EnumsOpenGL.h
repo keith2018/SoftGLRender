@@ -122,5 +122,15 @@ static inline GLint cvtDrawMode(PrimitiveType type) {
   return 0;
 }
 
+static inline glm::vec4 cvtBorderColor(BorderColor color) {
+  switch (color) {
+    case Border_BLACK:          return glm::vec4(0.f);
+    case Border_WHITE:          return glm::vec4(1.f);
+    default:
+      break;
+  }
+  return glm::vec4(0.f);
+}
+
 }
 }

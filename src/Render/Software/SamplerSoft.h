@@ -204,11 +204,6 @@ T BaseSampler<T>::pixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wr
       if (y < 0 || y >= h) return border;
       break;
     }
-    case Wrap_CLAMP_TO_ZERO: {
-      if (x < 0 || x >= w) return T(0);
-      if (y < 0 || y >= h) return T(0);
-      break;
-    }
   }
 
   T *ptr = buffer->get(x, y);

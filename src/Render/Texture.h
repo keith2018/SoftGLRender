@@ -18,7 +18,6 @@ enum WrapMode {
   Wrap_MIRRORED_REPEAT,
   Wrap_CLAMP_TO_EDGE,
   Wrap_CLAMP_TO_BORDER,
-  Wrap_CLAMP_TO_ZERO,
 };
 
 enum FilterMode {
@@ -39,6 +38,11 @@ enum CubeMapFace {
   TEXTURE_CUBE_MAP_NEGATIVE_Z = 5,
 };
 
+enum BorderColor {
+  Border_BLACK = 0,
+  Border_WHITE,
+};
+
 struct SamplerDesc {
   FilterMode filterMin = Filter_NEAREST;
   FilterMode filterMag = Filter_NEAREST;
@@ -47,7 +51,7 @@ struct SamplerDesc {
   WrapMode wrapT = Wrap_CLAMP_TO_EDGE;
   WrapMode wrapR = Wrap_CLAMP_TO_EDGE;
 
-  glm::vec4 borderColor = glm::vec4{0.f};
+  BorderColor borderColor = Border_BLACK;
 };
 
 enum TextureType {
@@ -62,8 +66,9 @@ enum TextureFormat {
 
 enum TextureUsage {
   TextureUsage_Sampler = 1 << 0,
-  TextureUsage_AttachmentColor = 1 << 1,
-  TextureUsage_AttachmentDepth = 1 << 2,
+  TextureUsage_UploadData = 1 << 1,
+  TextureUsage_AttachmentColor = 1 << 2,
+  TextureUsage_AttachmentDepth = 1 << 3,
 };
 
 struct TextureDesc {

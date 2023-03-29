@@ -77,12 +77,12 @@ static inline const char *vkResultStr(VkResult ret) {
 }
 
 #ifdef DEBUG
-#define VK_CHECK(stmt) do {                                                                               \
-            VkResult result = (stmt);                                                                     \
-            if (result != VK_SUCCESS) {                                                                   \
-              LOGE("VK_CHECK: VkResult: %s, %s:%d, %s", vkResultStr(result), __FILE__, __LINE__, #stmt);  \
-              abort();                                                                                    \
-            }                                                                                             \
+#define VK_CHECK(stmt) do {                                                                     \
+            VkResult result = (stmt);                                                           \
+            if (result != VK_SUCCESS) {                                                         \
+              LOGE("VkResult: %s, %s:%d, %s", vkResultStr(result), __FILE__, __LINE__, #stmt);  \
+              abort();                                                                          \
+            }                                                                                   \
         } while (0)
 #else
 #define VK_CHECK(stmt) stmt

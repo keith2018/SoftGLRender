@@ -75,7 +75,7 @@ void ImageUtils::writeImage(char const *filename, int w, int h, int comp, const 
   stbi_write_png(filename, w, h, comp, data, strideInBytes);
 }
 
-void ImageUtils::convertFloatImage(RGBA *dst, float *src, int width, int height) {
+void ImageUtils::convertFloatImage(RGBA *dst, float *src, uint32_t width, uint32_t height) {
   float *srcPixel = src;
 
   float depthMin = FLT_MAX;

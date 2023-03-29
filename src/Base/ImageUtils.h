@@ -16,7 +16,7 @@ class ImageUtils {
   static void writeImage(char const *filename, int w, int h, int comp, const void *data, int strideInBytes,
                          bool flipY);
 
-  static void convertFloatImage(RGBA *dst, float *src, int width, int height);
+  static void convertFloatImage(RGBA *dst, float *src, uint32_t width, uint32_t height);
 };
 
 }

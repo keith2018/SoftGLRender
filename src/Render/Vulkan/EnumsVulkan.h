@@ -17,6 +17,8 @@ static inline VkImageType cvtImageType(TextureType type) {
   switch (type) {
     case TextureType_2D:
     case TextureType_CUBE:          return VK_IMAGE_TYPE_2D;
+    default:
+      break;
   }
   return VK_IMAGE_TYPE_MAX_ENUM;
 }
@@ -43,6 +45,8 @@ static inline VkImageViewType cvtImageViewType(TextureType type) {
   switch (type) {
     case TextureType_2D:        return VK_IMAGE_VIEW_TYPE_2D;
     case TextureType_CUBE:      return VK_IMAGE_VIEW_TYPE_CUBE;
+    default:
+      break;
   }
   return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 }
@@ -52,6 +56,8 @@ static inline VkPrimitiveTopology cvtPrimitiveTopology(PrimitiveType type) {
     case Primitive_POINT:       return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
     case Primitive_LINE:        return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
     case Primitive_TRIANGLE:    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    default:
+      break;
   }
   return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 }
@@ -110,6 +116,54 @@ static inline VkBlendOp cvtBlendFunction(BlendFunction func) {
       break;
   }
   return VK_BLEND_OP_MAX_ENUM;
+}
+
+static inline VkSamplerAddressMode cvtWrapMode(WrapMode mode) {
+  switch (mode) {
+    case Wrap_REPEAT:                     return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    case Wrap_MIRRORED_REPEAT:            return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    case Wrap_CLAMP_TO_EDGE:              return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    case Wrap_CLAMP_TO_BORDER:            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    default:
+      break;
+  }
+  return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+}
+
+static inline VkFilter cvtFilter(FilterMode mode) {
+  switch (mode) {
+    case Filter_NEAREST:
+    case Filter_NEAREST_MIPMAP_NEAREST:
+    case Filter_NEAREST_MIPMAP_LINEAR:    return VK_FILTER_NEAREST;
+    case Filter_LINEAR:
+    case Filter_LINEAR_MIPMAP_NEAREST:
+    case Filter_LINEAR_MIPMAP_LINEAR:     return VK_FILTER_LINEAR;
+    default:
+      break;
+  }
+  return VK_FILTER_MAX_ENUM;
+}
+
+static inline VkSamplerMipmapMode cvtMipmapMode(FilterMode mode) {
+  switch (mode) {
+    case Filter_NEAREST_MIPMAP_NEAREST:
+    case Filter_LINEAR_MIPMAP_NEAREST:    return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    case Filter_NEAREST_MIPMAP_LINEAR:
+    case Filter_LINEAR_MIPMAP_LINEAR:     return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    default:
+      break;
+  }
+  return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+}
+
+static inline VkBorderColor cvtBorderColor(BorderColor color) {
+  switch (color) {
+    case Border_BLACK:                    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    case Border_WHITE:                    return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    default:
+      break;
+  }
+  return VK_BORDER_COLOR_MAX_ENUM;
 }
 
 }
