@@ -6,12 +6,19 @@
 
 #pragma once
 
+#include <unordered_map>
 #include "Base/UUID.h"
+#include "Base/HashUtils.h"
 #include "Render/PipelineStates.h"
 #include "ShaderProgramVulkan.h"
 #include "VKContext.h"
 
 namespace SoftGL {
+
+struct PipelineContainerVK {
+  VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
+  VkPipeline graphicsPipeline_ = VK_NULL_HANDLE;
+};
 
 class PipelineStatesVulkan : public PipelineStates {
  public:
@@ -21,35 +28,36 @@ class PipelineStatesVulkan : public PipelineStates {
   }
 
   ~PipelineStatesVulkan() override {
-    vkDestroyPipeline(device_, graphicsPipeline_, nullptr);
-    vkDestroyPipelineLayout(device_, pipelineLayout_, nullptr);
+    vkDestroyPipeline(device_, pipeline_.graphicsPipeline_, nullptr);
+    vkDestroyPipelineLayout(device_, pipeline_.pipelineLayout_, nullptr);
   }
 
   void create(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
               ShaderProgramVulkan *program,
-              VkRenderPass renderPass) {
-    createGraphicsPipeline(vertexInputInfo, program, renderPass);
+              VkRenderPass &renderPass) {
+    size_t cacheKey = getPipelineCacheKey(program, renderPass);
+    auto it = pipelineCache_.find(cacheKey);
+    if (it != pipelineCache_.end()) {
+      pipeline_ = it->second;
+    } else {
+      pipeline_ = createGraphicsPipeline(vertexInputInfo, program, renderPass);
+      pipelineCache_[cacheKey] = pipeline_;
+    }
   }
 
-  inline VkPipeline getGraphicsPipeline() {
-    return graphicsPipeline_;
+  inline VkPipeline getGraphicsPipeline() const {
+    return pipeline_.graphicsPipeline_;
   }
 
-  inline VkPipelineLayout getGraphicsPipelineLayout() {
-    return pipelineLayout_;
+  inline VkPipelineLayout getGraphicsPipelineLayout() const {
+    return pipeline_.pipelineLayout_;
   }
 
  private:
-  void createGraphicsPipeline(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
-                              ShaderProgramVulkan *program,
-                              VkRenderPass renderPass) {
-    if (graphicsPipeline_ != VK_NULL_HANDLE) {
-      return;
-    }
-
-    if (!program || !renderPass) {
-      return;
-    }
+  PipelineContainerVK createGraphicsPipeline(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
+                                             ShaderProgramVulkan *program,
+                                             VkRenderPass &renderPass) {
+    PipelineContainerVK ret{};
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -122,7 +130,7 @@ class PipelineStatesVulkan : public PipelineStates {
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
     pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-    VK_CHECK(vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &pipelineLayout_));
+    VK_CHECK(vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &ret.pipelineLayout_));
 
     auto &shaderStages = program->getShaderStages();
 
@@ -138,20 +146,31 @@ class PipelineStatesVulkan : public PipelineStates {
     pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
-    pipelineInfo.layout = pipelineLayout_;
+    pipelineInfo.layout = ret.pipelineLayout_;
     pipelineInfo.renderPass = renderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    VK_CHECK(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline_));
+    VK_CHECK(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &ret.graphicsPipeline_));
+
+    return ret;
+  }
+
+  static size_t getPipelineCacheKey(ShaderProgramVulkan *program, VkRenderPass &renderPass) {
+    size_t seed = 0;
+
+    HashUtils::hashCombine(seed, (void *) program);
+    HashUtils::hashCombine(seed, (void *) renderPass);
+
+    return seed;
   }
 
  private:
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
 
-  VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
-  VkPipeline graphicsPipeline_ = VK_NULL_HANDLE;
+  PipelineContainerVK pipeline_{};
+  std::unordered_map<size_t, PipelineContainerVK> pipelineCache_;
 };
 
 }

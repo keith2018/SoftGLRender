@@ -60,7 +60,17 @@ class TextureVulkan : public Texture {
     return 0;
   }
 
-  VkImageView &createImageView(uint32_t aspectMask = VK_IMAGE_ASPECT_COLOR_BIT) {
+  inline uint32_t getImageAspect() {
+    switch (usage) {
+      case TextureUsage_AttachmentColor:
+        return VK_IMAGE_ASPECT_COLOR_BIT;
+      case TextureUsage_AttachmentDepth:
+        return VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+    return VK_IMAGE_ASPECT_COLOR_BIT;
+  }
+
+  VkImageView &createImageView() {
     if (view_ != VK_NULL_HANDLE) {
       return view_;
     }
@@ -70,7 +80,7 @@ class TextureVulkan : public Texture {
     imageViewCreateInfo.viewType = VK::cvtImageViewType(type);
     imageViewCreateInfo.format = VK::cvtImageFormat(format, usage);
     imageViewCreateInfo.subresourceRange = {};
-    imageViewCreateInfo.subresourceRange.aspectMask = aspectMask;
+    imageViewCreateInfo.subresourceRange.aspectMask = getImageAspect();
     imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
     imageViewCreateInfo.subresourceRange.levelCount = 1;
     imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -224,18 +234,16 @@ class Texture2DVulkan : public TextureVulkan {
     vkUnmapMemory(device_, stagingBufferMemory);
 
     VkCommandBuffer copyCmd = vkCtx_.beginSingleTimeCommands();
-    VKContext::transitionImageLayout(copyCmd,
-                                     image_,
-                                     VK_IMAGE_LAYOUT_UNDEFINED,
-                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT);
+    VKContext::transitionImageLayout(copyCmd, image_, getImageAspect(),
+                                     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                     0, VK_ACCESS_TRANSFER_WRITE_BIT);
 
     VkBufferImageCopy region{};
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.aspectMask = getImageAspect();
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
@@ -244,12 +252,10 @@ class Texture2DVulkan : public TextureVulkan {
 
     vkCmdCopyBufferToImage(copyCmd, stagingBuffer, image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-    VKContext::transitionImageLayout(copyCmd,
-                                     image_,
-                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    VKContext::transitionImageLayout(copyCmd, image_, getImageAspect(),
+                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                     VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
     vkCtx_.endSingleTimeCommands(copyCmd);
 
     vkDestroyBuffer(device_, stagingBuffer, nullptr);

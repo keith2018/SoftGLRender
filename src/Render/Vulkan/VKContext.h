@@ -53,9 +53,10 @@ class VKContext {
 
   void submitWork(VkCommandBuffer cmdBuffer, VkFence fence);
 
-  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
+  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags imageAspect,
                                     VkImageLayout oldLayout, VkImageLayout newLayout,
-                                    VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
+                                    VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
+                                    VkAccessFlags srcMask, VkAccessFlags dstMask);
 
  private:
   bool createInstance();

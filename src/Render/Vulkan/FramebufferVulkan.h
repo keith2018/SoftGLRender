@@ -144,22 +144,25 @@ class FrameBufferVulkan : public FrameBuffer {
       subpass.pDepthStencilAttachment = &depthAttachmentRef;
     }
 
-    std::vector<VkSubpassDependency> dependencies;
-    dependencies.resize(2);
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = 0;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = 0;
+    dependency.dstAccessMask = 0;
 
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[0].srcAccessMask = 0;
-    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    if (colorReady) {
+      dependency.srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      dependency.dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      dependency.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    }
 
-    dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].dstSubpass = 0;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependencies[1].srcAccessMask = 0;
-    dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    if (depthReady) {
+      dependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+      dependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+      dependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    }
 
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -167,8 +170,8 @@ class FrameBufferVulkan : public FrameBuffer {
     renderPassInfo.pAttachments = attachments.data();
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.dependencyCount = dependencies.size();
-    renderPassInfo.pDependencies = dependencies.data();
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
 
     VK_CHECK(vkCreateRenderPass(device_, &renderPassInfo, nullptr, &renderPass_));
   }
@@ -186,14 +189,14 @@ class FrameBufferVulkan : public FrameBuffer {
     VkImageView attachments[2];
     if (colorReady) {
       auto *texColor = dynamic_cast<Texture2DVulkan *>(colorAttachment2d.tex.get());
-      attachments[attachCnt] = texColor->createImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+      attachments[attachCnt] = texColor->createImageView();
       width_ = texColor->width;
       height_ = texColor->height;
       attachCnt++;
     }
     if (depthReady) {
       auto *texDepth = dynamic_cast<Texture2DVulkan *>(depthAttachment.get());
-      attachments[attachCnt] = texDepth->createImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+      attachments[attachCnt] = texDepth->createImageView();
       width_ = texDepth->width;
       height_ = texDepth->height;
       attachCnt++;
@@ -272,13 +275,10 @@ class FrameBufferVulkan : public FrameBuffer {
 
     VkImage colorAttachment = getColorAttachmentImage();
 
-    VKContext::transitionImageLayout(commandBuffer, hostImageColor_,
+    VKContext::transitionImageLayout(commandBuffer, hostImageColor_, VK_IMAGE_ASPECT_COLOR_BIT,
                                      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-    VKContext::transitionImageLayout(commandBuffer, colorAttachment,
-                                     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                     0, VK_ACCESS_TRANSFER_WRITE_BIT);
 
     VkImageCopy imageCopyRegion{};
     imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -292,13 +292,10 @@ class FrameBufferVulkan : public FrameBuffer {
     vkCmdCopyImage(commandBuffer, colorAttachment, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImageColor_,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
-    VKContext::transitionImageLayout(commandBuffer, colorAttachment,
-                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-    VKContext::transitionImageLayout(commandBuffer, hostImageColor_,
+    VKContext::transitionImageLayout(commandBuffer, hostImageColor_, VK_IMAGE_ASPECT_COLOR_BIT,
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                     VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT);
 
     VK_CHECK(vkEndCommandBuffer(commandBuffer));
   }
