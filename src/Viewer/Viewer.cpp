@@ -106,7 +106,7 @@ void Viewer::drawFrame(DemoScene &scene) {
   renderer_->setViewPort(0, 0, width_, height_);
 
   // draw scene
-  drawScene(config_.showFloor, config_.showSkybox);
+  drawScene(false);
 
   // end main pass
   renderer_->endRenderPass();
@@ -139,7 +139,7 @@ void Viewer::drawShadowMap() {
   camera_ = cameraDepth_.get();
 
   // draw scene
-  drawScene(false, false);
+  drawScene(true);
 
   // end shadow pass
   renderer_->endRenderPass();
@@ -284,26 +284,26 @@ void Viewer::setupModelNodes(ModelNode &node, bool wireframe) {
   }
 }
 
-void Viewer::drawScene(bool floor, bool skybox) {
+void Viewer::drawScene(bool shadowPass) {
   // update scene uniform
   updateUniformScene();
 
   // draw point light
-  if (config_.showLight) {
+  if (!shadowPass && config_.showLight) {
     updateUniformModel(scene_->pointLight, glm::mat4(1.0f), camera_->viewMatrix());
     updateUniformMaterial(*scene_->pointLight.material);
     pipelineDraw(scene_->pointLight);
   }
 
   // draw world axis
-  if (config_.worldAxis) {
+  if (!shadowPass && config_.worldAxis) {
     updateUniformModel(scene_->worldAxis, glm::mat4(1.0f), camera_->viewMatrix());
     updateUniformMaterial(*scene_->worldAxis.material);
     pipelineDraw(scene_->worldAxis);
   }
 
   // draw floor
-  if (floor) {
+  if (!shadowPass && config_.showFloor) {
     drawModelMesh(scene_->floor, glm::mat4(1.0f), 0.f);
   }
 
@@ -312,7 +312,7 @@ void Viewer::drawScene(bool floor, bool skybox) {
   drawModelNodes(modelNode, scene_->model->centeredTransform, Alpha_Opaque);
 
   // draw skybox
-  if (skybox) {
+  if (!shadowPass && config_.showSkybox) {
     updateUniformModel(scene_->skybox, glm::mat4(1.0f), glm::mat3(camera_->viewMatrix()));
     pipelineDraw(scene_->skybox);
   }
@@ -346,7 +346,7 @@ void Viewer::drawModelMesh(ModelMesh &mesh, const glm::mat4 &transform, float sp
   }
 
   // update model uniform
-  // TODO: share the same uniform
+  // TODO: share the same uniform object
   updateUniformModel(mesh, transform, camera_->viewMatrix());
 
   // update material

@@ -77,7 +77,7 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
   }
 
   fbo_ = dynamic_cast<FrameBufferVulkan *>(frameBuffer.get());
-  fbo_->create();
+  fbo_->create(states);
 
   // clear operation controlled by render pass load op
   clearValues_.clear();

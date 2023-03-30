@@ -32,9 +32,14 @@ class FrameBufferVulkan : public FrameBuffer {
     return colorReady || depthReady;
   }
 
-  void create() {
+  void create(const ClearStates &states) {
+    clearStates_ = states;
     createRenderPass();
     createFramebuffer();
+  }
+
+  inline ClearStates &getClearStates() {
+    return clearStates_;
   }
 
   inline VkRenderPass &getRenderPass() {
@@ -72,7 +77,7 @@ class FrameBufferVulkan : public FrameBuffer {
       VkAttachmentDescription colorAttachment{};
       colorAttachment.format = VK::cvtImageFormat(colorDesc->format, colorDesc->usage);
       colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-      colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      colorAttachment.loadOp = clearStates_.colorFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -88,7 +93,7 @@ class FrameBufferVulkan : public FrameBuffer {
       VkAttachmentDescription depthAttachment{};
       depthAttachment.format = VK::cvtImageFormat(depthDesc->format, depthDesc->usage);
       depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-      depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      depthAttachment.loadOp = clearStates_.depthFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -112,23 +117,40 @@ class FrameBufferVulkan : public FrameBuffer {
     }
 
     std::vector<VkSubpassDependency> dependencies;
-    dependencies.resize(1);
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = 0;
-    dependencies[0].srcAccessMask = 0;
-    dependencies[0].dstStageMask = 0;
-    dependencies[0].dstAccessMask = 0;
 
-    if (colorReady) {
-      dependencies[0].srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependencies[0].dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependencies[0].dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    }
-    if (depthReady) {
-      dependencies[0].srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-      dependencies[0].dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-      dependencies[0].dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    if (!colorReady) {
+      // shadow depth pass
+      dependencies.resize(2);
+      dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+      dependencies[0].dstSubpass = 0;
+      dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+      dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+      dependencies[1].srcSubpass = 0;
+      dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+      dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    } else {
+      // normal render pass
+      dependencies.resize(1);
+      dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+      dependencies[0].dstSubpass = 0;
+      dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      dependencies[0].srcAccessMask = 0;
+      dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      if (depthReady) {
+        dependencies[0].srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependencies[0].dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependencies[0].dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      }
     }
 
     VkRenderPassCreateInfo renderPassInfo{};
@@ -190,6 +212,8 @@ class FrameBufferVulkan : public FrameBuffer {
 
   VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
   VkRenderPass renderPass_ = VK_NULL_HANDLE;
+
+  ClearStates clearStates_{};
 };
 
 }

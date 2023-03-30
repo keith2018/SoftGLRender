@@ -45,7 +45,7 @@ class Viewer {
   void setupModelNodes(ModelNode &node, bool wireframe);
   void setupSkybox(ModelMesh &skybox);
 
-  void drawScene(bool floor, bool skybox);
+  void drawScene(bool shadowPass);
   void drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, float specular = 1.f);
   void drawModelMesh(ModelMesh &mesh, const glm::mat4 &transform, float specular = 1.f);
 
