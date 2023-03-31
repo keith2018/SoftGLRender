@@ -311,21 +311,31 @@ bool ModelLoader::processMesh(const aiMesh *ai_mesh, const aiScene *ai_scene, Mo
   outMesh.material->baseColor = glm::vec4(1.f);
   if (ai_mesh->mMaterialIndex >= 0) {
     const aiMaterial *material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
-    aiString alphaMode;
-    material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode);
-    // "MASK" not support
-    if (aiString("BLEND") == alphaMode) {
-      outMesh.material->alphaMode = Alpha_Blend;
-    } else {
-      outMesh.material->alphaMode = Alpha_Opaque;
-    }
-    material->Get(AI_MATKEY_TWOSIDED, outMesh.material->doubleSided);
 
-    aiShadingMode shading_mode;
-    material->Get(AI_MATKEY_SHADING_MODEL, shading_mode);
+    // alpha mode
+    outMesh.material->alphaMode = Alpha_Opaque;
+    aiString alphaMode;
+    if (material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == aiReturn_SUCCESS) {
+      // "MASK" not support
+      if (aiString("BLEND") == alphaMode) {
+        outMesh.material->alphaMode = Alpha_Blend;
+      }
+    }
+
+    // double side
+    outMesh.material->doubleSided = false;
+    bool doubleSide;
+    if (material->Get(AI_MATKEY_TWOSIDED, doubleSide) == aiReturn_SUCCESS) {
+      outMesh.material->doubleSided = doubleSide;
+    }
+
+    // shading mode
     outMesh.material->shadingModel = Shading_BlinnPhong;  // default
-    if (aiShadingMode_PBR_BRDF == shading_mode) {
-      outMesh.material->shadingModel = Shading_PBR;
+    aiShadingMode shading_mode;
+    if (material->Get(AI_MATKEY_SHADING_MODEL, shading_mode) == aiReturn_SUCCESS) {
+      if (aiShadingMode_PBR_BRDF == shading_mode) {
+        outMesh.material->shadingModel = Shading_PBR;
+      }
     }
 
     for (int i = 0; i <= AI_TEXTURE_TYPE_MAX; i++) {

@@ -120,6 +120,9 @@ layout (binding = 6) uniform sampler2D u_aoMap;
 
 layout (binding = 7) uniform sampler2D u_shadowMap;
 
+const float depthBiasCoeff  = 0.00025;
+const float depthBiasMin    = 0.00005;
+
 vec3 GetNormalFromMap() {
     #if defined(NORMAL_MAP)
     vec3 N = normalize(v_normal);
@@ -137,20 +140,24 @@ vec3 GetNormalFromMap() {
 
 float ShadowCalculation(vec4 fragPos, vec3 normal) {
     vec3 projCoords = fragPos.xyz / fragPos.w;
-    projCoords = projCoords * 0.5 + 0.5;
     float currentDepth = projCoords.z;
+
+    #if defined(OpenGL)
+    currentDepth = currentDepth * 0.5 + 0.5;
+    #endif
+
     if (currentDepth < 0.0 || currentDepth > 1.0) {
         return 0.0;
     }
 
-    float bias = max(0.00025 * (1.0 - dot(normal, normalize(v_lightDirection))), 0.00005);
+    float bias = max(depthBiasCoeff * (1.0 - dot(normal, normalize(v_lightDirection))), depthBiasMin);
     float shadow = 0.0;
 
     // PCF
-    vec2 texelSize = 1.0 / textureSize(u_shadowMap, 0);
+    vec2 pixelOffset = 1.0 / textureSize(u_shadowMap, 0);
     for (int x = -1; x <= 1; ++x) {
         for(int y = -1; y <= 1; ++y) {
-            float pcfDepth = texture(u_shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            float pcfDepth = texture(u_shadowMap, projCoords.xy + vec2(x, y) * pixelOffset).r;
             if (u_reverseZ) {
                 pcfDepth = 1.0 - pcfDepth;
             }

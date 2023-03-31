@@ -692,7 +692,11 @@ void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm:
 
   // shadow mvp
   if (config_.shadowMap && cameraDepth_) {
-    uniformsModel.u_shadowMVPMatrix = cameraDepth_->projectionMatrix() * cameraDepth_->viewMatrix() * m;
+    const glm::mat4 biasMat = glm::mat4(0.5f, 0.0f, 0.0f, 0.0f,
+                                        0.0f, 0.5f, 0.0f, 0.0f,
+                                        0.0f, 0.0f, 1.0f, 0.0f,
+                                        0.5f, 0.5f, 0.0f, 1.0f);
+    uniformsModel.u_shadowMVPMatrix = biasMat * cameraDepth_->projectionMatrix() * cameraDepth_->viewMatrix() * m;
   }
 
   it->second->setData(&uniformsModel, sizeof(UniformsModel));

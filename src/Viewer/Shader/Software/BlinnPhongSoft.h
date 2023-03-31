@@ -125,6 +125,9 @@ class FS : public ShaderBlinnPhong {
  public:
   CREATE_SHADER_CLONE(FS)
 
+  const float depthBiasCoeff = 0.00025f;
+  const float depthBiasMin = 0.00005f;
+
   size_t getSamplerDerivativeOffset(BaseSampler<RGBA> *sampler) const override {
     return offsetof(ShaderVaryings, v_texCoord);
   }
@@ -165,16 +168,15 @@ class FS : public ShaderBlinnPhong {
     if (currentDepth < 0.f || currentDepth > 1.f) {
       return 0.0f;
     }
-    projCoords = projCoords * 0.5f + 0.5f;
 
-    float bias = glm::max(0.0005f * (1.0f - glm::dot(normal, glm::normalize(v->v_lightDirection))), 0.00005f);
+    float bias = glm::max(depthBiasCoeff * (1.0f - glm::dot(normal, glm::normalize(v->v_lightDirection))), depthBiasMin);
     float shadow = 0.0;
 
     // PCF
-    glm::vec2 texelSize = 1.0f / (glm::vec2) textureSize(u->u_shadowMap, 0);
+    glm::vec2 pixelOffset = 1.0f / (glm::vec2) textureSize(u->u_shadowMap, 0);
     for (int x = -1; x <= 1; ++x) {
       for (int y = -1; y <= 1; ++y) {
-        float pcfDepth = texture(u->u_shadowMap, glm::vec2(projCoords) + glm::vec2(x, y) * texelSize);
+        float pcfDepth = texture(u->u_shadowMap, glm::vec2(projCoords) + glm::vec2(x, y) * pixelOffset);
         if (u->u_reverseZ) {
           pcfDepth = 1.f - pcfDepth;
         }

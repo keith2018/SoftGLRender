@@ -206,9 +206,13 @@ void main() {
 
     vec3 albedo = pow(albedo_rgba.rgb, vec3(2.2f));
 
+    float metallic = 0.0;
+    float roughness = 1.0;
+#if defined(METALROUGHNESS_MAP)
     vec4 metalRoughness = texture(u_metalRoughnessMap, v_texCoord);
-    float metallic = metalRoughness.b;
-    float roughness = metalRoughness.g;
+    metallic = metalRoughness.b;
+    roughness = metalRoughness.g;
+#endif
 
     float ao = 1.f;
     #if defined(AO_MAP)
