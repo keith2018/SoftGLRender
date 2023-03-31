@@ -151,6 +151,10 @@ float ShadowCalculation(vec4 fragPos, vec3 normal) {
     }
 
     float bias = max(depthBiasCoeff * (1.0 - dot(normal, normalize(v_lightDirection))), depthBiasMin);
+    #if defined(OpenGL)
+    bias = bias * 0.5;
+    #endif
+
     float shadow = 0.0;
 
     // PCF
