@@ -148,7 +148,7 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
 
 void RendererVulkan::setPipelineStates(std::shared_ptr<PipelineStates> &states) {
   pipelineStates_ = dynamic_cast<PipelineStatesVulkan *>(states.get());
-  pipelineStates_->create(vao_->getVertexInputInfo(), shaderProgram_, fbo_->getRenderPass());
+  pipelineStates_->create(vao_->getVertexInputInfo(), shaderProgram_, fbo_->getRenderPass(), fbo_->getSampleCount());
 }
 
 void RendererVulkan::draw() {

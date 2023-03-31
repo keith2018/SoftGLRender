@@ -75,6 +75,10 @@ class TextureVulkan : public Texture {
     return image_;
   }
 
+  inline VkSampleCountFlagBits getSampleCount() {
+    return multiSample ? VK_SAMPLE_COUNT_4_BIT : VK_SAMPLE_COUNT_1_BIT;
+  }
+
   inline uint32_t getLayerCount() {
     switch (type) {
       case TextureType_2D:
@@ -160,18 +164,29 @@ class TextureVulkan : public Texture {
                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                                      0, VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    VkImageCopy imageCopyRegion{};
-    imageCopyRegion.srcSubresource.aspectMask = getImageAspect();
-    imageCopyRegion.srcSubresource.layerCount = 1;
-    imageCopyRegion.dstSubresource.aspectMask = getImageAspect();
-    imageCopyRegion.dstSubresource.layerCount = 1;
-    imageCopyRegion.extent.width = width;
-    imageCopyRegion.extent.height = height;
-    imageCopyRegion.extent.depth = 1;
-
-    vkCmdCopyImage(copyCmd, image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImage_,
-                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
-
+    if (multiSample) {
+      VkImageResolve imageResolveRegion{};
+      imageResolveRegion.srcSubresource.aspectMask = getImageAspect();
+      imageResolveRegion.srcSubresource.layerCount = 1;
+      imageResolveRegion.dstSubresource.aspectMask = getImageAspect();
+      imageResolveRegion.dstSubresource.layerCount = 1;
+      imageResolveRegion.extent.width = width;
+      imageResolveRegion.extent.height = height;
+      imageResolveRegion.extent.depth = 1;
+      vkCmdResolveImage(copyCmd, image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImage_,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageResolveRegion);
+    } else {
+      VkImageCopy imageCopyRegion{};
+      imageCopyRegion.srcSubresource.aspectMask = getImageAspect();
+      imageCopyRegion.srcSubresource.layerCount = 1;
+      imageCopyRegion.dstSubresource.aspectMask = getImageAspect();
+      imageCopyRegion.dstSubresource.layerCount = 1;
+      imageCopyRegion.extent.width = width;
+      imageCopyRegion.extent.height = height;
+      imageCopyRegion.extent.depth = 1;
+      vkCmdCopyImage(copyCmd, image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImage_,
+                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
+    }
     VKContext::transitionImageLayout(copyCmd, hostImage_, getImageAspect(),
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -212,7 +227,7 @@ class TextureVulkan : public Texture {
     imageInfo.extent.depth = 1;
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = getLayerCount();
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.samples = getSampleCount();
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

@@ -50,6 +50,18 @@ class FrameBufferVulkan : public FrameBuffer {
     return framebuffer_;
   }
 
+  inline VkSampleCountFlagBits getSampleCount() {
+    if (colorReady) {
+      return getAttachmentColor()->getSampleCount();
+    }
+
+    if (depthReady) {
+      return getAttachmentDepth()->getSampleCount();
+    }
+
+    return VK_SAMPLE_COUNT_1_BIT;
+  }
+
   inline uint32_t width() const {
     return width_;
   }
@@ -76,7 +88,7 @@ class FrameBufferVulkan : public FrameBuffer {
 
       VkAttachmentDescription colorAttachment{};
       colorAttachment.format = VK::cvtImageFormat(colorDesc->format, colorDesc->usage);
-      colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+      colorAttachment.samples = getAttachmentColor()->getSampleCount();
       colorAttachment.loadOp = clearStates_.colorFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -92,7 +104,7 @@ class FrameBufferVulkan : public FrameBuffer {
 
       VkAttachmentDescription depthAttachment{};
       depthAttachment.format = VK::cvtImageFormat(depthDesc->format, depthDesc->usage);
-      depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+      depthAttachment.samples = getAttachmentDepth()->getSampleCount();
       depthAttachment.loadOp = clearStates_.depthFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -200,6 +212,25 @@ class FrameBufferVulkan : public FrameBuffer {
     framebufferCreateInfo.height = height_;
     framebufferCreateInfo.layers = 1;
     VK_CHECK(vkCreateFramebuffer(device_, &framebufferCreateInfo, nullptr, &framebuffer_));
+  }
+
+  inline Texture2DVulkan *getAttachmentColor() {
+    switch (colorTexType) {
+      case TextureType_2D: {
+        return dynamic_cast<Texture2DVulkan *>(colorAttachment2d.tex.get());
+      }
+      case TextureType_CUBE: {
+        return dynamic_cast<Texture2DVulkan *>(colorAttachmentCube.tex.get());
+      }
+      default:
+        break;
+    }
+
+    return nullptr;
+  }
+
+  inline Texture2DVulkan *getAttachmentDepth() {
+    return dynamic_cast<Texture2DVulkan *>(depthAttachment.get());
   }
 
  private:

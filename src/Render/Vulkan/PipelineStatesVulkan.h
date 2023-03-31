@@ -32,13 +32,16 @@ class PipelineStatesVulkan : public PipelineStates {
     vkDestroyPipelineLayout(device_, pipeline_.pipelineLayout_, nullptr);
   }
 
-  void create(VkPipelineVertexInputStateCreateInfo &vertexInputInfo, ShaderProgramVulkan *program, VkRenderPass &renderPass) {
-    size_t cacheKey = getPipelineCacheKey(program, renderPass);
+  void create(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
+              ShaderProgramVulkan *program,
+              VkRenderPass &renderPass,
+              VkSampleCountFlagBits sampleCount) {
+    size_t cacheKey = getPipelineCacheKey(program, renderPass, sampleCount);
     auto it = pipelineCache_.find(cacheKey);
     if (it != pipelineCache_.end()) {
       pipeline_ = it->second;
     } else {
-      pipeline_ = createGraphicsPipeline(vertexInputInfo, program, renderPass);
+      pipeline_ = createGraphicsPipeline(vertexInputInfo, program, renderPass, sampleCount);
       pipelineCache_[cacheKey] = pipeline_;
     }
   }
@@ -54,7 +57,8 @@ class PipelineStatesVulkan : public PipelineStates {
  private:
   PipelineContainerVK createGraphicsPipeline(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
                                              ShaderProgramVulkan *program,
-                                             VkRenderPass &renderPass) {
+                                             VkRenderPass &renderPass,
+                                             VkSampleCountFlagBits sampleCount) {
     PipelineContainerVK ret{};
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -80,7 +84,7 @@ class PipelineStatesVulkan : public PipelineStates {
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.rasterizationSamples = sampleCount;
 
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -154,11 +158,14 @@ class PipelineStatesVulkan : public PipelineStates {
     return ret;
   }
 
-  static size_t getPipelineCacheKey(ShaderProgramVulkan *program, VkRenderPass &renderPass) {
+  static size_t getPipelineCacheKey(ShaderProgramVulkan *program,
+                                    VkRenderPass &renderPass,
+                                    VkSampleCountFlagBits sampleCount) {
     size_t seed = 0;
 
     HashUtils::hashCombine(seed, (void *) program);
     HashUtils::hashCombine(seed, (void *) renderPass);
+    HashUtils::hashCombine(seed, (uint32_t) sampleCount);
 
     return seed;
   }
