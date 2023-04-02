@@ -28,7 +28,11 @@ class TextureVulkan : public Texture {
     samplerDesc_ = sampler;
   };
 
-  void initImageData() override {};
+  void initImageData() override {
+    if (needMipmaps_) {
+      generateMipmaps();
+    }
+  };
 
   void dumpImage(const char *path) override;
 
@@ -83,11 +87,15 @@ class TextureVulkan : public Texture {
   void createImageResolve();
   void createImageHost();
   void createImageView(VkImageView &view, VkImage &image);
+  void generateMipmaps();
 
  protected:
   SamplerDesc samplerDesc_;
   bool needResolve_ = false;
+  bool needMipmaps_ = false;
+  uint32_t mipLevels_ = 1;
 
+  VkFormat vkFormat_ = VK_FORMAT_MAX_ENUM;
   VkSampler sampler_ = VK_NULL_HANDLE;
 
   VkImage image_ = VK_NULL_HANDLE;

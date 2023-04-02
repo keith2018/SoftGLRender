@@ -58,10 +58,13 @@ class VKContext {
                     VkBuffer &buffer, VkDeviceMemory &bufferMemory);
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
   void uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize);
+
   bool createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32_t properties);
+  bool linearBlitAvailable(VkFormat imageFormat);
+
   void submitWork(VkCommandBuffer cmdBuffer, VkFence fence);
 
-  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags imageAspect,
+  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags imageAspect, uint32_t mipLevels,
                                     VkImageLayout oldLayout, VkImageLayout newLayout,
                                     VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
                                     VkAccessFlags srcMask, VkAccessFlags dstMask);

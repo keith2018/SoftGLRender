@@ -325,7 +325,7 @@ QueueFamilyIndices VKContext::findQueueFamilies(VkPhysicalDevice physicalDevice)
   return indices;
 }
 
-void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,VkImageAspectFlags imageAspect,
+void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags imageAspect, uint32_t mipLevels,
                                       VkImageLayout oldLayout, VkImageLayout newLayout,
                                       VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
                                       VkAccessFlags srcMask, VkAccessFlags dstMask) {
@@ -340,7 +340,7 @@ void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage ima
   barrier.image = image;
   barrier.subresourceRange.aspectMask = imageAspect;
   barrier.subresourceRange.baseMipLevel = 0;
-  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.levelCount = mipLevels;
   barrier.subresourceRange.baseArrayLayer = 0;
   barrier.subresourceRange.layerCount = 1;
 
@@ -415,6 +415,17 @@ bool VKContext::createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32
   }
   VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &memory));
   VK_CHECK(vkBindImageMemory(device_, image, memory, 0));
+
+  return true;
+}
+
+bool VKContext::linearBlitAvailable(VkFormat format) {
+  VkFormatProperties formatProperties;
+  vkGetPhysicalDeviceFormatProperties(physicalDevice_, format, &formatProperties);
+
+  if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
+    return false;
+  }
 
   return true;
 }
