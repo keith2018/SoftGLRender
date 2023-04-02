@@ -54,10 +54,18 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   bool create(const ClearStates &states) {
-    dirty_ = false;
+    if (!isValid()) {
+      return false;
+    }
+
     clearStates_ = states;
-    createRenderPass();
-    return createFramebuffer();
+    if (dirty_) {
+      dirty_ = false;
+      createRenderPass();
+      return createFramebuffer();
+    }
+
+    return true;
   }
 
   inline ClearStates &getClearStates() {
@@ -94,10 +102,6 @@ class FrameBufferVulkan : public FrameBuffer {
 
  private:
   void createRenderPass() {
-    if (!dirty_ && renderPass_ != VK_NULL_HANDLE) {
-      return;
-    }
-
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = VK_ATTACHMENT_UNUSED;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -222,14 +226,6 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   bool createFramebuffer() {
-    if (!dirty_ && framebuffer_ != VK_NULL_HANDLE) {
-      return true;
-    }
-
-    if (!isValid()) {
-      return false;
-    }
-
     std::vector<VkImageView> attachments;
     if (colorReady) {
       auto *texColor = getAttachmentColor();

@@ -159,7 +159,7 @@ void Viewer::processFXAASetup() {
     texDesc.height = height_;
     texDesc.type = TextureType_2D;
     texDesc.format = TextureFormat_RGBA8;
-    texDesc.usage = TextureUsage_AttachmentColor;
+    texDesc.usage = TextureUsage_Sampler | TextureUsage_AttachmentColor;
     texDesc.useMipmaps = false;
     texDesc.multiSample = false;
     texColorFxaa_ = renderer_->createTexture(texDesc);
