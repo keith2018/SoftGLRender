@@ -27,15 +27,38 @@ class TextureVulkan : public Texture {
     useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
 
+    // only multi sample color attachment need to be resolved
+    needResolve_ = multiSample && (usage & TextureUsage_AttachmentColor);
+
     createImage();
-    createMemory();
+    bool memoryReady = false;
+    if (needResolve_) {
+      // check if lazy allocate available
+      memoryReady = vkCtx_.createImageMemory(memory_, image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+    }
+    if (!memoryReady) {
+      vkCtx_.createImageMemory(memory_, image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    }
+    createImageView(view_, image_);
+
+    // resolve
+    if (needResolve_) {
+      createImageResolve();
+      vkCtx_.createImageMemory(memoryResolve_, imageResolve_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      createImageView(viewResolve_, imageResolve_);
+    }
   }
 
   virtual ~TextureVulkan() {
     vkDestroySampler(device_, sampler_, nullptr);
+
     vkDestroyImageView(device_, view_, nullptr);
     vkDestroyImage(device_, image_, nullptr);
     vkFreeMemory(device_, memory_, nullptr);
+
+    vkDestroyImageView(device_, viewResolve_, nullptr);
+    vkDestroyImage(device_, imageResolve_, nullptr);
+    vkFreeMemory(device_, memoryResolve_, nullptr);
 
     vkDestroyImage(device_, hostImage_, nullptr);
     vkFreeMemory(device_, hostMemory_, nullptr);
@@ -69,10 +92,6 @@ class TextureVulkan : public Texture {
       ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
       delete[] pixels;
     });
-  }
-
-  inline VkImage &getVkImage() {
-    return image_;
   }
 
   inline VkSampleCountFlagBits getSampleCount() {
@@ -109,28 +128,15 @@ class TextureVulkan : public Texture {
     return VK_IMAGE_ASPECT_COLOR_BIT;
   }
 
-  VkImageView &createImageView() {
-    if (view_ != VK_NULL_HANDLE) {
-      return view_;
-    }
-
-    VkImageViewCreateInfo imageViewCreateInfo{};
-    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    imageViewCreateInfo.viewType = VK::cvtImageViewType(type);
-    imageViewCreateInfo.format = VK::cvtImageFormat(format, usage);
-    imageViewCreateInfo.subresourceRange = {};
-    imageViewCreateInfo.subresourceRange.aspectMask = getImageAspect();
-    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-    imageViewCreateInfo.subresourceRange.levelCount = 1;
-    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    imageViewCreateInfo.subresourceRange.layerCount = getLayerCount();
-    imageViewCreateInfo.image = image_;
-    VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &view_));
-
+  inline VkImageView &getImageView() {
     return view_;
   }
 
-  VkSampler &createSampler() {
+  inline VkImageView &getImageViewResolve() {
+    return viewResolve_;
+  }
+
+  VkSampler &getSampler() {
     if (sampler_ != VK_NULL_HANDLE) {
       return sampler_;
     }
@@ -155,7 +161,8 @@ class TextureVulkan : public Texture {
   }
 
   void readPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func) {
-    createHostImage();
+    createImageHost();
+    vkCtx_.createImageMemory(hostMemory_, hostImage_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     // copy
     VkCommandBuffer copyCmd = vkCtx_.beginSingleTimeCommands();
@@ -164,29 +171,22 @@ class TextureVulkan : public Texture {
                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                                      0, VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    if (multiSample) {
-      VkImageResolve imageResolveRegion{};
-      imageResolveRegion.srcSubresource.aspectMask = getImageAspect();
-      imageResolveRegion.srcSubresource.layerCount = 1;
-      imageResolveRegion.dstSubresource.aspectMask = getImageAspect();
-      imageResolveRegion.dstSubresource.layerCount = 1;
-      imageResolveRegion.extent.width = width;
-      imageResolveRegion.extent.height = height;
-      imageResolveRegion.extent.depth = 1;
-      vkCmdResolveImage(copyCmd, image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImage_,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageResolveRegion);
-    } else {
-      VkImageCopy imageCopyRegion{};
-      imageCopyRegion.srcSubresource.aspectMask = getImageAspect();
-      imageCopyRegion.srcSubresource.layerCount = 1;
-      imageCopyRegion.dstSubresource.aspectMask = getImageAspect();
-      imageCopyRegion.dstSubresource.layerCount = 1;
-      imageCopyRegion.extent.width = width;
-      imageCopyRegion.extent.height = height;
-      imageCopyRegion.extent.depth = 1;
-      vkCmdCopyImage(copyCmd, image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, hostImage_,
-                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
-    }
+    VkImageCopy imageCopyRegion{};
+    imageCopyRegion.srcSubresource.aspectMask = getImageAspect();
+    imageCopyRegion.srcSubresource.layerCount = 1;
+    imageCopyRegion.dstSubresource.aspectMask = getImageAspect();
+    imageCopyRegion.dstSubresource.layerCount = 1;
+    imageCopyRegion.extent.width = width;
+    imageCopyRegion.extent.height = height;
+    imageCopyRegion.extent.depth = 1;
+    vkCmdCopyImage(copyCmd,
+                   needResolve_ ? imageResolve_ : image_,
+                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   hostImage_,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                   1,
+                   &imageCopyRegion);
+
     VKContext::transitionImageLayout(copyCmd, hostImage_, getImageAspect(),
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -231,7 +231,7 @@ class TextureVulkan : public Texture {
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    imageInfo.usage = needResolve_ ? VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT : 0;
 
     if (usage & TextureUsage_Sampler) {
       imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -241,6 +241,9 @@ class TextureVulkan : public Texture {
     }
     if (usage & TextureUsage_AttachmentColor) {
       imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      if (!needResolve_) {
+        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      }
     }
     if (usage & TextureUsage_AttachmentDepth) {
       imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -249,24 +252,37 @@ class TextureVulkan : public Texture {
     VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_));
   }
 
-  void createMemory() {
-    if (memory_ != VK_NULL_HANDLE) {
+  void createImageResolve() {
+    if (imageResolve_ != VK_NULL_HANDLE) {
       return;
     }
 
-    VkMemoryRequirements memReqs;
-    vkGetImageMemoryRequirements(device_, image_, &memReqs);
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK::cvtImageType(type);
+    imageInfo.format = VK::cvtImageFormat(format, usage);
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = getLayerCount();
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-    VkMemoryAllocateInfo memAllocInfo{};
-    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memAllocInfo.allocationSize = memReqs.size;
-    memAllocInfo.memoryTypeIndex = vkCtx_.getMemoryTypeIndex(memReqs.memoryTypeBits,
-                                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &memory_));
-    VK_CHECK(vkBindImageMemory(device_, image_, memory_, 0));
+    if (usage & TextureUsage_Sampler) {
+      imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    }
+    if (usage & TextureUsage_AttachmentColor) {
+      imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    }
+
+    VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &imageResolve_));
   }
 
-  void createHostImage() {
+  void createImageHost() {
     if (hostImage_ != VK_NULL_HANDLE) {
       return;
     }
@@ -285,27 +301,37 @@ class TextureVulkan : public Texture {
     imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
     imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &hostImage_));
+  }
 
-    VkMemoryRequirements memRequirements;
-    VkMemoryAllocateInfo memAllocInfo{};
-    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-
-    vkGetImageMemoryRequirements(device_, hostImage_, &memRequirements);
-    memAllocInfo.allocationSize = memRequirements.size;
-
-    memAllocInfo.memoryTypeIndex = vkCtx_.getMemoryTypeIndex(memRequirements.memoryTypeBits,
-                                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &hostMemory_));
-    VK_CHECK(vkBindImageMemory(device_, hostImage_, hostMemory_, 0));
+  void createImageView(VkImageView &view, VkImage &image) {
+    VkImageViewCreateInfo imageViewCreateInfo{};
+    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewCreateInfo.viewType = VK::cvtImageViewType(type);
+    imageViewCreateInfo.format = VK::cvtImageFormat(format, usage);
+    imageViewCreateInfo.subresourceRange = {};
+    imageViewCreateInfo.subresourceRange.aspectMask = getImageAspect();
+    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.layerCount = getLayerCount();
+    imageViewCreateInfo.image = image;
+    VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &view));
   }
 
  protected:
   SamplerDesc samplerDesc_;
+  bool needResolve_ = false;
+
+  VkSampler sampler_ = VK_NULL_HANDLE;
 
   VkImage image_ = VK_NULL_HANDLE;
   VkDeviceMemory memory_ = VK_NULL_HANDLE;
   VkImageView view_ = VK_NULL_HANDLE;
-  VkSampler sampler_ = VK_NULL_HANDLE;
+
+  // msaa resolve (only color)
+  VkImage imageResolve_ = VK_NULL_HANDLE;
+  VkDeviceMemory memoryResolve_ = VK_NULL_HANDLE;
+  VkImageView viewResolve_ = VK_NULL_HANDLE;
 
   UUID<TextureVulkan> uuid_;
   VKContext &vkCtx_;

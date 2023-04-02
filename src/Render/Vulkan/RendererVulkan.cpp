@@ -77,7 +77,9 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
   }
 
   fbo_ = dynamic_cast<FrameBufferVulkan *>(frameBuffer.get());
-  fbo_->create(states);
+  if (!fbo_->create(states)) {
+    LOGE("VulkanRenderer init framebuffer failed");
+  }
 
   // clear operation controlled by render pass load op
   clearValues_.clear();

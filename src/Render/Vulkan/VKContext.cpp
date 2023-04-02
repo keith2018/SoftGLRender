@@ -131,7 +131,7 @@ uint32_t VKContext::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags 
     }
     typeBits >>= 1;
   }
-  return 0;
+  return VK_MAX_MEMORY_TYPES;
 }
 
 bool VKContext::createInstance() {
@@ -395,6 +395,28 @@ void VKContext::uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSiz
 
   vkDestroyBuffer(device_, stagingBuffer, nullptr);
   vkFreeMemory(device_, stagingBufferMemory, nullptr);
+}
+
+bool VKContext::createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32_t properties) {
+  if (memory != VK_NULL_HANDLE) {
+    return true;
+  }
+
+  VkMemoryRequirements memReqs;
+  vkGetImageMemoryRequirements(device_, image, &memReqs);
+
+  VkMemoryAllocateInfo memAllocInfo{};
+  memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  memAllocInfo.allocationSize = memReqs.size;
+  memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, properties);
+  if (memAllocInfo.memoryTypeIndex == VK_MAX_MEMORY_TYPES) {
+    LOGE("vulkan memory type not available, property flags: 0x%x", properties);
+    return false;
+  }
+  VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &memory));
+  VK_CHECK(vkBindImageMemory(device_, image, memory, 0));
+
+  return true;
 }
 
 void VKContext::submitWork(VkCommandBuffer cmdBuffer, VkFence fence) {

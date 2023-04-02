@@ -84,6 +84,8 @@ class PipelineStatesVulkan : public PipelineStates {
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.alphaToCoverageEnable = VK_FALSE;
+    multisampling.alphaToOneEnable = VK_FALSE;
     multisampling.rasterizationSamples = sampleCount;
 
     VkPipelineDepthStencilStateCreateInfo depthStencil{};

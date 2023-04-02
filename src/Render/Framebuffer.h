@@ -37,7 +37,7 @@ class FrameBuffer {
     depthReady = true;
   };
 
-  virtual const TextureDesc *getColorAttachmentDesc() {
+  virtual const TextureDesc *getColorAttachmentDesc() const {
     if (colorReady) {
       switch (colorTexType) {
         case TextureType_2D:
@@ -49,7 +49,7 @@ class FrameBuffer {
     return nullptr;
   }
 
-  virtual const TextureDesc *getDepthAttachmentDesc() {
+  virtual const TextureDesc *getDepthAttachmentDesc() const {
     if (depthReady) {
       return depthAttachment.get();
     }
@@ -62,6 +62,17 @@ class FrameBuffer {
 
   inline bool isDepthReady() const {
     return depthReady;
+  }
+
+  inline bool isMultiSample() const {
+    if (colorReady) {
+      return getColorAttachmentDesc()->multiSample;
+    }
+    if (depthReady) {
+      return getDepthAttachmentDesc()->multiSample;
+    }
+
+    return false;
   }
 
  protected:

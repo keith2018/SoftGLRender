@@ -79,8 +79,8 @@ class UniformSamplerVulkan : public UniformSampler {
   void setTexture(const std::shared_ptr<Texture> &tex) override {
     auto *texVulkan = dynamic_cast<TextureVulkan *>(tex.get());
     descriptorImageInfo_.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    descriptorImageInfo_.imageView = texVulkan->createImageView();
-    descriptorImageInfo_.sampler = texVulkan->createSampler();
+    descriptorImageInfo_.imageView = texVulkan->getImageView();
+    descriptorImageInfo_.sampler = texVulkan->getSampler();
   }
 
  private:

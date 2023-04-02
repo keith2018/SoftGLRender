@@ -32,10 +32,32 @@ class FrameBufferVulkan : public FrameBuffer {
     return colorReady || depthReady;
   }
 
-  void create(const ClearStates &states) {
+  void setColorAttachment(std::shared_ptr<Texture> &color, int level) override {
+    FrameBuffer::setColorAttachment(color, level);
+    width_ = color->width;
+    height_ = color->height;
+    dirty_ = true;
+  }
+
+  void setColorAttachment(std::shared_ptr<Texture> &color, CubeMapFace face, int level) override {
+    FrameBuffer::setColorAttachment(color, face, level);
+    width_ = color->width;
+    height_ = color->height;
+    dirty_ = true;
+  }
+
+  void setDepthAttachment(std::shared_ptr<Texture> &depth) override {
+    FrameBuffer::setDepthAttachment(depth);
+    width_ = depth->width;
+    height_ = depth->height;
+    dirty_ = true;
+  }
+
+  bool create(const ClearStates &states) {
+    dirty_ = false;
     clearStates_ = states;
     createRenderPass();
-    createFramebuffer();
+    return createFramebuffer();
   }
 
   inline ClearStates &getClearStates() {
@@ -72,25 +94,32 @@ class FrameBufferVulkan : public FrameBuffer {
 
  private:
   void createRenderPass() {
-    if (renderPass_ != VK_NULL_HANDLE) {
+    if (!dirty_ && renderPass_ != VK_NULL_HANDLE) {
       return;
     }
 
     VkAttachmentReference colorAttachmentRef{};
+    colorAttachmentRef.attachment = VK_ATTACHMENT_UNUSED;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference depthAttachmentRef{};
+    depthAttachmentRef.attachment = VK_ATTACHMENT_UNUSED;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference resolveAttachmentRef{};
+    resolveAttachmentRef.attachment = VK_ATTACHMENT_UNUSED;
+    resolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     std::vector<VkAttachmentDescription> attachments;
     if (colorReady) {
-      auto *colorDesc = getColorAttachmentDesc();
+      auto *colorTex = getAttachmentColor();
 
       VkAttachmentDescription colorAttachment{};
-      colorAttachment.format = VK::cvtImageFormat(colorDesc->format, colorDesc->usage);
+      colorAttachment.format = VK::cvtImageFormat(colorTex->format, colorTex->usage);
       colorAttachment.samples = getAttachmentColor()->getSampleCount();
-      colorAttachment.loadOp = clearStates_.colorFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-      colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      colorAttachment.loadOp = clearStates_.colorFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : (colorTex->multiSample ? VK_ATTACHMENT_LOAD_OP_DONT_CARE
+                                                                                                             : VK_ATTACHMENT_LOAD_OP_LOAD);
+      colorAttachment.storeOp = colorTex->multiSample > VK_SAMPLE_COUNT_1_BIT ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
       colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
       colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -99,14 +128,15 @@ class FrameBufferVulkan : public FrameBuffer {
       colorAttachmentRef.attachment = attachments.size();
       attachments.push_back(colorAttachment);
     }
+
     if (depthReady) {
-      auto *depthDesc = getDepthAttachmentDesc();
+      auto *depthTex = getAttachmentDepth();
 
       VkAttachmentDescription depthAttachment{};
-      depthAttachment.format = VK::cvtImageFormat(depthDesc->format, depthDesc->usage);
+      depthAttachment.format = VK::cvtImageFormat(depthTex->format, depthTex->usage);
       depthAttachment.samples = getAttachmentDepth()->getSampleCount();
       depthAttachment.loadOp = clearStates_.depthFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-      depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      depthAttachment.storeOp = colorReady ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
       depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
       depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -116,17 +146,31 @@ class FrameBufferVulkan : public FrameBuffer {
       attachments.push_back(depthAttachment);
     }
 
+    if (colorReady) {
+      auto *colorTex = getAttachmentColor();
+      // color resolve
+      if (colorTex->multiSample) {
+        VkAttachmentDescription colorResolveAttachment{};
+        colorResolveAttachment.format = VK::cvtImageFormat(colorTex->format, colorTex->usage);
+        colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+        resolveAttachmentRef.attachment = attachments.size();
+        attachments.push_back(colorResolveAttachment);
+      }
+    }
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 0;
-
-    if (colorReady) {
-      subpass.colorAttachmentCount = 1;
-      subpass.pColorAttachments = &colorAttachmentRef;
-    }
-    if (depthReady) {
-      subpass.pDepthStencilAttachment = &depthAttachmentRef;
-    }
+    subpass.colorAttachmentCount = colorReady ? 1 : 0;
+    subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
+    subpass.pResolveAttachments = &resolveAttachmentRef;
 
     std::vector<VkSubpassDependency> dependencies;
 
@@ -177,41 +221,41 @@ class FrameBufferVulkan : public FrameBuffer {
     VK_CHECK(vkCreateRenderPass(device_, &renderPassInfo, nullptr, &renderPass_));
   }
 
-  void createFramebuffer() {
-    if (framebuffer_ != VK_NULL_HANDLE) {
-      return;
+  bool createFramebuffer() {
+    if (!dirty_ && framebuffer_ != VK_NULL_HANDLE) {
+      return true;
     }
 
     if (!isValid()) {
-      return;
+      return false;
     }
 
-    int attachCnt = 0;
-    VkImageView attachments[2];
+    std::vector<VkImageView> attachments;
     if (colorReady) {
-      auto *texColor = dynamic_cast<Texture2DVulkan *>(colorAttachment2d.tex.get());
-      attachments[attachCnt] = texColor->createImageView();
-      width_ = texColor->width;
-      height_ = texColor->height;
-      attachCnt++;
+      auto *texColor = getAttachmentColor();
+      attachments.push_back(texColor->getImageView());
     }
     if (depthReady) {
-      auto *texDepth = dynamic_cast<Texture2DVulkan *>(depthAttachment.get());
-      attachments[attachCnt] = texDepth->createImageView();
-      width_ = texDepth->width;
-      height_ = texDepth->height;
-      attachCnt++;
+      auto *texDepth = getAttachmentDepth();
+      attachments.push_back(texDepth->getImageView());
+    }
+    // color resolve
+    if (colorReady && isMultiSample()) {
+      auto *texColor = getAttachmentColor();
+      attachments.push_back(texColor->getImageViewResolve());
     }
 
     VkFramebufferCreateInfo framebufferCreateInfo{};
     framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferCreateInfo.renderPass = renderPass_;
-    framebufferCreateInfo.attachmentCount = attachCnt;
-    framebufferCreateInfo.pAttachments = attachments;
+    framebufferCreateInfo.attachmentCount = attachments.size();
+    framebufferCreateInfo.pAttachments = attachments.data();
     framebufferCreateInfo.width = width_;
     framebufferCreateInfo.height = height_;
     framebufferCreateInfo.layers = 1;
     VK_CHECK(vkCreateFramebuffer(device_, &framebufferCreateInfo, nullptr, &framebuffer_));
+
+    return true;
   }
 
   inline Texture2DVulkan *getAttachmentColor() {
@@ -237,6 +281,7 @@ class FrameBufferVulkan : public FrameBuffer {
   UUID<FrameBufferVulkan> uuid_;
   uint32_t width_ = 0;
   uint32_t height_ = 0;
+  bool dirty_ = true;
 
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;

@@ -25,7 +25,15 @@ class VKContext {
   bool create(bool debugOutput = false);
   void destroy();
 
-  inline VkDevice &device() {
+  inline const VkInstance &instance() const {
+    return instance_;
+  }
+
+  inline const VkPhysicalDevice &physicalDevice() const {
+    return physicalDevice_;
+  }
+
+  inline const VkDevice &device() const {
     return device_;
   }
 
@@ -50,7 +58,7 @@ class VKContext {
                     VkBuffer &buffer, VkDeviceMemory &bufferMemory);
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
   void uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize);
-
+  bool createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32_t properties);
   void submitWork(VkCommandBuffer cmdBuffer, VkFence fence);
 
   static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags imageAspect,

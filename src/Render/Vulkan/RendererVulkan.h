@@ -50,6 +50,11 @@ class RendererVulkan : public Renderer {
   void draw() override;
   void endRenderPass() override;
 
+ public:
+  inline const VKContext &getVkContext() const {
+    return vkCtx_;
+  }
+
  private:
   void prepare();
   void recordDraw();
