@@ -23,8 +23,12 @@ class ViewerVulkan : public Viewer {
   }
 
   void configRenderer() override {
-    // disabled
-    config_.reverseZ = false;
+    if (renderer_->isReverseZ() != config_.reverseZ) {
+      texDepthShadow_ = nullptr;
+    }
+    renderer_->setReverseZ(config_.reverseZ);
+
+    // not available
     config_.earlyZ = false;
   }
 
