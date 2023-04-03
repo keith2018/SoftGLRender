@@ -24,7 +24,7 @@ struct CubeRenderContext {
   std::shared_ptr<FrameBuffer> fbo;
   Camera camera;
   ModelMesh modelSkybox;
-  std::shared_ptr<UniformBlock> uniformsBlockModel;
+  std::shared_ptr<UniformBlock> uniformsBlockModels[6];
 };
 
 class Environment {

@@ -755,7 +755,7 @@ bool Viewer::initSkyboxIBL() {
                                                          tex2d,
                                                          texCvt);
 
-      LOGD("convert equirectangular to cube map: %s .", success ? "success" : "failed");
+      LOGD("convert equirectangular to cube map: %s.", success ? "success" : "failed");
       if (success) {
         textureCube = texCvt;
         skybox.material->textures[MaterialTexType_CUBE] = texCvt;

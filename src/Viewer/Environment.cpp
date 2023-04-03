@@ -141,8 +141,9 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
   uniform->setTexture(texIn);
   ctx.modelSkybox.material->materialObj->shaderResources->samplers[texType] = uniform;
 
-  ctx.uniformsBlockModel = ctx.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
-  ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_Model] = ctx.uniformsBlockModel;
+  for (auto &block : ctx.uniformsBlockModels) {
+    block = ctx.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
+  }
 
   // pipeline
   ctx.modelSkybox.material->materialObj->pipelineStates = ctx.renderer->createPipelineStates({});
@@ -171,7 +172,8 @@ void Environment::drawCubeFaces(CubeRenderContext &ctx, int width, int height, s
     // update mvp
     glm::mat4 viewMatrix = glm::mat3(ctx.camera.viewMatrix());  // only rotation
     uniformsModel.u_modelViewProjectionMatrix = ctx.camera.projectionMatrix() * viewMatrix * modelMatrix;
-    ctx.uniformsBlockModel->setData(&uniformsModel, sizeof(UniformsModel));
+    ctx.uniformsBlockModels[i]->setData(&uniformsModel, sizeof(UniformsModel));
+    ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_Model] = ctx.uniformsBlockModels[i];
 
     if (beforeDraw) {
       beforeDraw();
