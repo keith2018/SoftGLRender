@@ -34,7 +34,7 @@ class ViewerVulkan : public Viewer {
 
   void swapBuffer() override {
     auto *vkTex = dynamic_cast<TextureVulkan *>(texColorMain_.get());
-    vkTex->readPixels([&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
+    vkTex->readPixels(0, 0, [&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
       GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
       GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, rowStride / sizeof(RGBA)));
       GL_CHECK(glTexImage2D(GL_TEXTURE_2D,

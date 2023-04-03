@@ -33,6 +33,10 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   void setColorAttachment(std::shared_ptr<Texture> &color, int level) override {
+    if (color == colorAttachment_.tex && level == colorAttachment_.level) {
+      return;
+    }
+
     FrameBuffer::setColorAttachment(color, level);
     width_ = color->width;
     height_ = color->height;
@@ -40,6 +44,10 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   void setColorAttachment(std::shared_ptr<Texture> &color, CubeMapFace face, int level) override {
+    if (color == colorAttachment_.tex && face == colorAttachment_.layer && level == colorAttachment_.level) {
+      return;
+    }
+
     FrameBuffer::setColorAttachment(color, face, level);
     width_ = color->width;
     height_ = color->height;
@@ -47,6 +55,10 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   void setDepthAttachment(std::shared_ptr<Texture> &depth) override {
+    if (depth == depthAttachment_.tex) {
+      return;
+    }
+
     FrameBuffer::setDepthAttachment(depth);
     width_ = depth->width;
     height_ = depth->height;

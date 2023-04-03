@@ -88,7 +88,7 @@ class Texture : public TextureDesc {
   virtual void initImageData() {};
   virtual void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
   virtual void setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {};
-  virtual void dumpImage(const char *path) {};
+  virtual void dumpImage(const char *path, uint32_t layer, uint32_t level) = 0;
 };
 
 }

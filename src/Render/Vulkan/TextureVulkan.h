@@ -34,13 +34,14 @@ class TextureVulkan : public Texture {
     }
   };
 
-  void dumpImage(const char *path) override;
+  void dumpImage(const char *path, uint32_t layer, uint32_t level) override;
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override;
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) override;
 
-  void readPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func);
+  void readPixels(uint32_t layer, uint32_t level,
+                  const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func);
 
   VkSampler &getSampler();
 

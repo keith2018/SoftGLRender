@@ -91,6 +91,26 @@ class TextureSoft : public Texture {
     }
     return glm::vec4(0.f);
   }
+
+  template<typename T>
+  void dumpImageSoft(const char *path, TextureImageSoft<T> image, uint32_t level) {
+    if (multiSample) {
+      return;
+    }
+
+    void *pixels = image.getBuffer(level)->buffer->getRawDataPtr();
+
+    // convert float to rgba
+    if (format == TextureFormat_FLOAT32) {
+      auto *rgba_pixels = new uint8_t[width * height * 4];
+      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels), reinterpret_cast<float *>(pixels),
+                                    width, height);
+      ImageUtils::writeImage(path, width, height, 4, rgba_pixels, width * 4, true);
+      delete[] rgba_pixels;
+    } else {
+      ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
+    }
+  }
 };
 
 template<typename T>
@@ -143,23 +163,8 @@ class Texture2DSoft : public TextureSoft {
     }
   }
 
-  void dumpImage(const char *path) override {
-    if (multiSample) {
-      return;
-    }
-
-    void *pixels = image_.getBuffer()->buffer->getRawDataPtr();
-
-    // convert float to rgba
-    if (format == TextureFormat_FLOAT32) {
-      auto *rgba_pixels = new uint8_t[width * height * 4];
-      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels), reinterpret_cast<float *>(pixels),
-                                    width, height);
-      ImageUtils::writeImage(path, width, height, 4, rgba_pixels, width * 4, true);
-      delete[] rgba_pixels;
-    } else {
-      ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
-    }
+  void dumpImage(const char *path, uint32_t layer, uint32_t level) override {
+    dumpImageSoft(path, image_, level);
   }
 
   inline SamplerDesc &getSamplerDesc() {
@@ -238,6 +243,10 @@ class TextureCubeSoft : public TextureSoft {
         image.generateMipmap(false);
       }
     }
+  }
+
+  void dumpImage(const char *path, uint32_t layer, uint32_t level) override {
+    dumpImageSoft(path, images_[layer], level);
   }
 
   inline SamplerDesc &getSamplerDesc() {

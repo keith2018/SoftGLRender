@@ -66,12 +66,12 @@ TextureVulkan::~TextureVulkan() {
   vkFreeMemory(device_, hostMemory_, nullptr);
 }
 
-void TextureVulkan::dumpImage(const char *path) {
+void TextureVulkan::dumpImage(const char *path, uint32_t layer, uint32_t level) {
   if (multiSample) {
     return;
   }
 
-  readPixels([&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
+  readPixels(layer, level, [&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
     auto *pixels = new uint8_t[width * height * 4];
     for (uint32_t i = 0; i < height; i++) {
       memcpy(pixels + i * rowStride, buffer + i * rowStride, width * getPixelByteSize());
@@ -114,7 +114,8 @@ VkSampler &TextureVulkan::getSampler() {
   return sampler_;
 }
 
-void TextureVulkan::readPixels(const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func) {
+void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
+                               const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func) {
   createImageHost();
   vkCtx_.createImageMemory(hostMemory_, hostImage_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -127,9 +128,13 @@ void TextureVulkan::readPixels(const std::function<void(uint8_t *buffer, uint32_
 
   VkImageCopy imageCopyRegion{};
   imageCopyRegion.srcSubresource.aspectMask = imageAspect_;
+  imageCopyRegion.srcSubresource.baseArrayLayer = layer;
   imageCopyRegion.srcSubresource.layerCount = 1;
+  imageCopyRegion.srcSubresource.mipLevel = level;
   imageCopyRegion.dstSubresource.aspectMask = imageAspect_;
+  imageCopyRegion.dstSubresource.baseArrayLayer = 0;
   imageCopyRegion.dstSubresource.layerCount = 1;
+  imageCopyRegion.dstSubresource.mipLevel = 0;
   imageCopyRegion.extent.width = width;
   imageCopyRegion.extent.height = height;
   imageCopyRegion.extent.depth = 1;

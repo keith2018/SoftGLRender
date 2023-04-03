@@ -747,13 +747,15 @@ bool Viewer::initSkyboxIBL() {
     if (texEqIt != skybox.material->textures.end()) {
       auto tex2d = std::dynamic_pointer_cast<Texture>(texEqIt->second);
       auto cubeSize = std::min(tex2d->width, tex2d->height);
-      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize, TextureUsage_AttachmentColor);
+      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize, TextureUsage_AttachmentColor | TextureUsage_Sampler);
       auto success = Environment::convertEquirectangular(renderer_,
                                                          [&](ShaderProgram &program) -> bool {
                                                            return loadShaders(program, Shading_Skybox);
                                                          },
                                                          tex2d,
                                                          texCvt);
+
+      LOGD("convert equirectangular to cube map: %s .", success ? "success" : "failed");
       if (success) {
         textureCube = texCvt;
         skybox.material->textures[MaterialTexType_CUBE] = texCvt;
@@ -775,7 +777,7 @@ bool Viewer::initSkyboxIBL() {
 
   // generate irradiance map
   LOGD("generate ibl irradiance map ...");
-  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize, TextureUsage_AttachmentColor);
+  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize, TextureUsage_AttachmentColor | TextureUsage_Sampler);
   if (Environment::generateIrradianceMap(renderer_,
                                          [&](ShaderProgram &program) -> bool {
                                            return loadShaders(program, Shading_IBL_Irradiance);
@@ -791,7 +793,7 @@ bool Viewer::initSkyboxIBL() {
 
   // generate prefilter map
   LOGD("generate ibl prefilter map ...");
-  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, TextureUsage_AttachmentColor, true);
+  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, TextureUsage_AttachmentColor | TextureUsage_Sampler, true);
   if (Environment::generatePrefilterMap(renderer_,
                                         [&](ShaderProgram &program) -> bool {
                                           return loadShaders(program, Shading_IBL_Prefilter);
@@ -846,7 +848,7 @@ void Viewer::updateShadowTextures(MaterialObject *materialObj) {
   }
 }
 
-std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height, TextureUsage usage, bool mipmaps) {
+std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height, uint32_t usage, bool mipmaps) {
   TextureDesc texDesc{};
   texDesc.width = width;
   texDesc.height = height;
