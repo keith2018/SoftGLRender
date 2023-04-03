@@ -40,8 +40,9 @@ std::shared_ptr<FrameBuffer> RendererVulkan::createFrameBuffer() {
 // texture
 std::shared_ptr<Texture> RendererVulkan::createTexture(const TextureDesc &desc) {
   switch (desc.type) {
-    case TextureType_2D:    return std::make_shared<Texture2DVulkan>(vkCtx_, desc);
-    case TextureType_CUBE:  return std::make_shared<TextureCubeVulkan>(vkCtx_, desc);
+    case TextureType_2D:
+    case TextureType_CUBE:
+      return std::make_shared<TextureVulkan>(vkCtx_, desc);
   }
   return nullptr;
 }

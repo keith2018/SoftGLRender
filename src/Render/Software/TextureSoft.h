@@ -70,7 +70,7 @@ class TextureImageSoft {
     return levels.empty();
   }
 
-  inline std::shared_ptr<ImageBufferSoft<T>> &getBuffer(int level = 0) {
+  inline std::shared_ptr<ImageBufferSoft<T>> &getBuffer(uint32_t level = 0) {
     return levels[level];
   }
 

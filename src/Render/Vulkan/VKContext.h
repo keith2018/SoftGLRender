@@ -20,6 +20,13 @@ struct QueueFamilyIndices {
   }
 };
 
+struct VkImageInfo {
+  VkImage image;
+  uint32_t aspect;
+  uint32_t layerCount;
+  uint32_t levelCount;
+};
+
 class VKContext {
  public:
   bool create(bool debugOutput = false);
@@ -64,7 +71,7 @@ class VKContext {
 
   void submitWork(VkCommandBuffer cmdBuffer, VkFence fence);
 
-  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags imageAspect, uint32_t mipLevels,
+  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImageInfo imageInfo,
                                     VkImageLayout oldLayout, VkImageLayout newLayout,
                                     VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
                                     VkAccessFlags srcMask, VkAccessFlags dstMask);

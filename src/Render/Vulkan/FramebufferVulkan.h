@@ -29,7 +29,7 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   bool isValid() override {
-    return colorReady || depthReady;
+    return colorReady_ || depthReady_;
   }
 
   void setColorAttachment(std::shared_ptr<Texture> &color, int level) override {
@@ -81,11 +81,11 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   inline VkSampleCountFlagBits getSampleCount() {
-    if (colorReady) {
+    if (colorReady_) {
       return getAttachmentColor()->getSampleCount();
     }
 
-    if (depthReady) {
+    if (depthReady_) {
       return getAttachmentDepth()->getSampleCount();
     }
 
@@ -104,23 +104,18 @@ class FrameBufferVulkan : public FrameBuffer {
   void createVkRenderPass();
   bool createVkFramebuffer();
 
-  inline Texture2DVulkan *getAttachmentColor() {
-    switch (colorTexType) {
-      case TextureType_2D: {
-        return dynamic_cast<Texture2DVulkan *>(colorAttachment2d.tex.get());
-      }
-      case TextureType_CUBE: {
-        return dynamic_cast<Texture2DVulkan *>(colorAttachmentCube.tex.get());
-      }
-      default:
-        break;
+  inline TextureVulkan *getAttachmentColor() {
+    if (colorReady_) {
+      return dynamic_cast<TextureVulkan *>(colorAttachment_.tex.get());
     }
-
     return nullptr;
   }
 
-  inline Texture2DVulkan *getAttachmentDepth() {
-    return dynamic_cast<Texture2DVulkan *>(depthAttachment.get());
+  inline TextureVulkan *getAttachmentDepth() {
+    if (depthReady_) {
+      return dynamic_cast<TextureVulkan *>(depthAttachment_.tex.get());
+    }
+    return nullptr;
   }
 
  private:

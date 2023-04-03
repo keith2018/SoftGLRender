@@ -23,7 +23,7 @@ void FrameBufferVulkan::createVkRenderPass() {
   resolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   std::vector<VkAttachmentDescription> attachments;
-  if (colorReady) {
+  if (colorReady_) {
     auto *colorTex = getAttachmentColor();
 
     VkAttachmentDescription colorAttachment{};
@@ -41,14 +41,14 @@ void FrameBufferVulkan::createVkRenderPass() {
     attachments.push_back(colorAttachment);
   }
 
-  if (depthReady) {
+  if (depthReady_) {
     auto *depthTex = getAttachmentDepth();
 
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = VK::cvtImageFormat(depthTex->format, depthTex->usage);
     depthAttachment.samples = getAttachmentDepth()->getSampleCount();
     depthAttachment.loadOp = clearStates_.depthFlag ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-    depthAttachment.storeOp = colorReady ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
+    depthAttachment.storeOp = colorReady_ ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -58,7 +58,7 @@ void FrameBufferVulkan::createVkRenderPass() {
     attachments.push_back(depthAttachment);
   }
 
-  if (colorReady) {
+  if (colorReady_) {
     auto *colorTex = getAttachmentColor();
     // color resolve
     if (colorTex->multiSample) {
@@ -79,14 +79,14 @@ void FrameBufferVulkan::createVkRenderPass() {
 
   VkSubpassDescription subpass{};
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpass.colorAttachmentCount = colorReady ? 1 : 0;
+  subpass.colorAttachmentCount = colorReady_ ? 1 : 0;
   subpass.pColorAttachments = &colorAttachmentRef;
   subpass.pDepthStencilAttachment = &depthAttachmentRef;
   subpass.pResolveAttachments = &resolveAttachmentRef;
 
   std::vector<VkSubpassDependency> dependencies;
 
-  if (!colorReady) {
+  if (!colorReady_) {
     // shadow depth pass
     dependencies.resize(2);
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -114,7 +114,7 @@ void FrameBufferVulkan::createVkRenderPass() {
     dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    if (depthReady) {
+    if (depthReady_) {
       dependencies[0].srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
       dependencies[0].dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
       dependencies[0].dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -135,16 +135,16 @@ void FrameBufferVulkan::createVkRenderPass() {
 
 bool FrameBufferVulkan::createVkFramebuffer() {
   std::vector<VkImageView> attachments;
-  if (colorReady) {
+  if (colorReady_) {
     auto *texColor = getAttachmentColor();
-    attachments.push_back(texColor->getImageView());
+    attachments.push_back(texColor->createAttachmentView(colorAttachment_.layer, colorAttachment_.level));
   }
-  if (depthReady) {
+  if (depthReady_) {
     auto *texDepth = getAttachmentDepth();
-    attachments.push_back(texDepth->getImageView());
+    attachments.push_back(texDepth->createAttachmentView(depthAttachment_.layer, depthAttachment_.level));
   }
   // color resolve
-  if (colorReady && isMultiSample()) {
+  if (colorReady_ && isMultiSample()) {
     auto *texColor = getAttachmentColor();
     attachments.push_back(texColor->getImageViewResolve());
   }

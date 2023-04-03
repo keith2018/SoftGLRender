@@ -195,7 +195,10 @@ bool VKContext::setupDebugMessenger() {
     ret = VK_ERROR_EXTENSION_NOT_PRESENT;
   }
 
-  VK_CHECK(ret);
+  if (ret != VK_SUCCESS) {
+    LOGE("VkResult: %s, %s:%d, %s", vkResultStr(ret), __FILE__, __LINE__, "vkCreateDebugUtilsMessengerEXT");
+    return false;
+  }
   return true;
 }
 
@@ -325,7 +328,7 @@ QueueFamilyIndices VKContext::findQueueFamilies(VkPhysicalDevice physicalDevice)
   return indices;
 }
 
-void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags imageAspect, uint32_t mipLevels,
+void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImageInfo imageInfo,
                                       VkImageLayout oldLayout, VkImageLayout newLayout,
                                       VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
                                       VkAccessFlags srcMask, VkAccessFlags dstMask) {
@@ -337,12 +340,12 @@ void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage ima
   barrier.dstAccessMask = dstMask;
   barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.image = image;
-  barrier.subresourceRange.aspectMask = imageAspect;
+  barrier.image = imageInfo.image;
+  barrier.subresourceRange.aspectMask = imageInfo.aspect;
   barrier.subresourceRange.baseMipLevel = 0;
-  barrier.subresourceRange.levelCount = mipLevels;
+  barrier.subresourceRange.levelCount = imageInfo.levelCount;
   barrier.subresourceRange.baseArrayLayer = 0;
-  barrier.subresourceRange.layerCount = 1;
+  barrier.subresourceRange.layerCount = imageInfo.layerCount;
 
   vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
