@@ -16,15 +16,15 @@ struct Viewport {
   float y;
   float width;
   float height;
-  float depthNear;
-  float depthFar;
-
-  float depthMin;
-  float depthMax;
+  float minDepth;
+  float maxDepth;
 
   // ref: https://registry.khronos.org/vulkan/specs/1.0/html/chap24.html#vertexpostproc-viewport
   glm::vec4 innerO;
   glm::vec4 innerP;
+
+  float absMinDepth;
+  float absMaxDepth;
 };
 
 struct VertexHolder {

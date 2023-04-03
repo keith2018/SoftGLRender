@@ -594,8 +594,8 @@ void Viewer::setupPipelineStates(ModelBase &model, const std::function<void(Rend
   rs.blendParams.SetBlendFactor(BlendFactor_SRC_ALPHA, BlendFactor_ONE_MINUS_SRC_ALPHA);
 
   rs.depthTest = config_.depthTest;
-  rs.depthMask = !rs.blend;   // disable depth write
-  rs.depthFunc = config_.reverseZ ? DepthFunc_GEQUAL : DepthFunc_LESS;
+  rs.depthMask = !rs.blend;   // disable depth write if blending enabled
+  rs.depthFunc = config_.reverseZ ? DepthFunc_GREATER : DepthFunc_LESS;
 
   rs.cullFace = config_.cullFace && (!material.doubleSided);
   rs.primitiveType = model.primitiveType;

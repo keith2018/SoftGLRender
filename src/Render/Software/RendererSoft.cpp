@@ -89,11 +89,11 @@ void RendererSoft::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, co
   }
 
   if (states.depthFlag && fboDepth_) {
-    float depth = viewport_.depthFar;
+    float clearDepth = reverseZ_ ? 0.f : 1.f;
     if (fboDepth_->multiSample) {
-      fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(depth));
+      fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(clearDepth));
     } else {
-      fboDepth_->buffer->setAll(depth);
+      fboDepth_->buffer->setAll(clearDepth);
     }
   }
 }
@@ -104,24 +104,20 @@ void RendererSoft::setViewPort(int x, int y, int width, int height) {
   viewport_.width = (float) width;
   viewport_.height = (float) height;
 
-  viewport_.depthNear = 0.f;
-  viewport_.depthFar = 1.f;
+  viewport_.minDepth = reverseZ_ ? 1.f : 0.f;
+  viewport_.maxDepth = reverseZ_ ? 0.f : 1.f;
 
-  if (reverseZ_) {
-    std::swap(viewport_.depthNear, viewport_.depthFar);
-  }
-
-  viewport_.depthMin = std::min(viewport_.depthNear, viewport_.depthFar);
-  viewport_.depthMax = std::max(viewport_.depthNear, viewport_.depthFar);
+  viewport_.absMinDepth = std::min(viewport_.minDepth, viewport_.maxDepth);
+  viewport_.absMaxDepth = std::max(viewport_.minDepth, viewport_.maxDepth);
 
   viewport_.innerO.x = viewport_.x + viewport_.width / 2.f;
   viewport_.innerO.y = viewport_.y + viewport_.height / 2.f;
-  viewport_.innerO.z = viewport_.depthNear;
+  viewport_.innerO.z = viewport_.minDepth;
   viewport_.innerO.w = 0.f;
 
   viewport_.innerP.x = viewport_.width / 2.f;    // divide by 2 in advance
   viewport_.innerP.y = viewport_.height / 2.f;   // divide by 2 in advance
-  viewport_.innerP.z = viewport_.depthFar - viewport_.depthNear;
+  viewport_.innerP.z = viewport_.maxDepth - viewport_.minDepth;
   viewport_.innerP.w = 1.f;
 }
 
@@ -389,7 +385,7 @@ bool RendererSoft::processDepthTest(int x, int y, float depth, int sample, bool 
   }
 
   // depth clamping
-  depth = glm::clamp(depth, viewport_.depthMin, viewport_.depthMax);
+  depth = glm::clamp(depth, viewport_.absMinDepth, viewport_.absMaxDepth);
 
   // depth comparison
   float *zPtr = getFrameDepth(x, y, sample);
@@ -801,8 +797,8 @@ void RendererSoft::rasterizationPixelQuad(PixelQuadContext &quad) {
       // interpolate z, w
       interpolateBarycentric(&sample.position.z, quad.vertZ, 2, sample.barycentric);
 
-      // depth clip
-      if (sample.position.z < viewport_.depthMin || sample.position.z > viewport_.depthMax) {
+      // depth clipping
+      if (sample.position.z < viewport_.absMinDepth || sample.position.z > viewport_.absMaxDepth) {
         sample.inside = false;
       }
 

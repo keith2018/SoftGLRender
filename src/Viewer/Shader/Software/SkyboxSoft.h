@@ -66,9 +66,9 @@ class VS : public ShaderSkybox {
   CREATE_SHADER_CLONE(VS)
 
   void shaderMain() override {
-    glm::vec4 pos = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0);
-    gl->Position = pos;
-    gl->Position.z = pos.w;
+    glm::vec4 pos = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0f);
+    gl->Position = glm::vec4(pos.x, pos.y, pos.w, pos.w);
+
     v->v_worldPos = a->a_position;
   }
 };
