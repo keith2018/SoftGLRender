@@ -13,6 +13,7 @@ namespace View {
 
 const char *Material::shadingModelStr(ShadingModel model) {
   switch (model) {
+    CASE_ENUM_STR(Shading_Unknown);
     CASE_ENUM_STR(Shading_BaseColor);
     CASE_ENUM_STR(Shading_BlinnPhong);
     CASE_ENUM_STR(Shading_PBR);
@@ -26,37 +27,37 @@ const char *Material::shadingModelStr(ShadingModel model) {
   return "";
 }
 
-const char *Material::textureUsageStr(TextureUsage usage) {
+const char *Material::materialTexTypeStr(MaterialTexType usage) {
   switch (usage) {
-    CASE_ENUM_STR(TextureUsage_NONE);
-    CASE_ENUM_STR(TextureUsage_ALBEDO);
-    CASE_ENUM_STR(TextureUsage_NORMAL);
-    CASE_ENUM_STR(TextureUsage_EMISSIVE);
-    CASE_ENUM_STR(TextureUsage_AMBIENT_OCCLUSION);
-    CASE_ENUM_STR(TextureUsage_METAL_ROUGHNESS);
-    CASE_ENUM_STR(TextureUsage_CUBE);
-    CASE_ENUM_STR(TextureUsage_EQUIRECTANGULAR);
-    CASE_ENUM_STR(TextureUsage_IBL_IRRADIANCE);
-    CASE_ENUM_STR(TextureUsage_IBL_PREFILTER);
-    CASE_ENUM_STR(TextureUsage_QUAD_FILTER);
-    CASE_ENUM_STR(TextureUsage_SHADOWMAP);
+    CASE_ENUM_STR(MaterialTexType_NONE);
+    CASE_ENUM_STR(MaterialTexType_ALBEDO);
+    CASE_ENUM_STR(MaterialTexType_NORMAL);
+    CASE_ENUM_STR(MaterialTexType_EMISSIVE);
+    CASE_ENUM_STR(MaterialTexType_AMBIENT_OCCLUSION);
+    CASE_ENUM_STR(MaterialTexType_METAL_ROUGHNESS);
+    CASE_ENUM_STR(MaterialTexType_CUBE);
+    CASE_ENUM_STR(MaterialTexType_EQUIRECTANGULAR);
+    CASE_ENUM_STR(MaterialTexType_IBL_IRRADIANCE);
+    CASE_ENUM_STR(MaterialTexType_IBL_PREFILTER);
+    CASE_ENUM_STR(MaterialTexType_QUAD_FILTER);
+    CASE_ENUM_STR(MaterialTexType_SHADOWMAP);
     default:
       break;
   }
   return "";
 }
 
-const char *Material::samplerDefine(TextureUsage usage) {
+const char *Material::samplerDefine(MaterialTexType usage) {
   switch (usage) {
-    case TextureUsage_ALBEDO:             return "ALBEDO_MAP";
-    case TextureUsage_NORMAL:             return "NORMAL_MAP";
-    case TextureUsage_EMISSIVE:           return "EMISSIVE_MAP";
-    case TextureUsage_AMBIENT_OCCLUSION:  return "AO_MAP";
-    case TextureUsage_METAL_ROUGHNESS:    return "METALROUGHNESS_MAP";
-    case TextureUsage_CUBE:               return "CUBE_MAP";
-    case TextureUsage_EQUIRECTANGULAR:    return "EQUIRECTANGULAR_MAP";
-    case TextureUsage_IBL_IRRADIANCE:
-    case TextureUsage_IBL_PREFILTER:      return "IBL_MAP";
+    case MaterialTexType_ALBEDO:             return "ALBEDO_MAP";
+    case MaterialTexType_NORMAL:             return "NORMAL_MAP";
+    case MaterialTexType_EMISSIVE:           return "EMISSIVE_MAP";
+    case MaterialTexType_AMBIENT_OCCLUSION:  return "AO_MAP";
+    case MaterialTexType_METAL_ROUGHNESS:    return "METALROUGHNESS_MAP";
+    case MaterialTexType_CUBE:               return "CUBE_MAP";
+    case MaterialTexType_EQUIRECTANGULAR:    return "EQUIRECTANGULAR_MAP";
+    case MaterialTexType_IBL_IRRADIANCE:
+    case MaterialTexType_IBL_PREFILTER:      return "IBL_MAP";
     default:
       break;
   }
@@ -64,19 +65,19 @@ const char *Material::samplerDefine(TextureUsage usage) {
   return nullptr;
 }
 
-const char *Material::samplerName(TextureUsage usage) {
+const char *Material::samplerName(MaterialTexType usage) {
   switch (usage) {
-    case TextureUsage_ALBEDO:             return "u_albedoMap";
-    case TextureUsage_NORMAL:             return "u_normalMap";
-    case TextureUsage_EMISSIVE:           return "u_emissiveMap";
-    case TextureUsage_AMBIENT_OCCLUSION:  return "u_aoMap";
-    case TextureUsage_METAL_ROUGHNESS:    return "u_metalRoughnessMap";
-    case TextureUsage_CUBE:               return "u_cubeMap";
-    case TextureUsage_EQUIRECTANGULAR:    return "u_equirectangularMap";
-    case TextureUsage_IBL_IRRADIANCE:     return "u_irradianceMap";
-    case TextureUsage_IBL_PREFILTER:      return "u_prefilterMap";
-    case TextureUsage_QUAD_FILTER:        return "u_screenTexture";
-    case TextureUsage_SHADOWMAP:          return "u_shadowMap";
+    case MaterialTexType_ALBEDO:             return "u_albedoMap";
+    case MaterialTexType_NORMAL:             return "u_normalMap";
+    case MaterialTexType_EMISSIVE:           return "u_emissiveMap";
+    case MaterialTexType_AMBIENT_OCCLUSION:  return "u_aoMap";
+    case MaterialTexType_METAL_ROUGHNESS:    return "u_metalRoughnessMap";
+    case MaterialTexType_CUBE:               return "u_cubeMap";
+    case MaterialTexType_EQUIRECTANGULAR:    return "u_equirectangularMap";
+    case MaterialTexType_IBL_IRRADIANCE:     return "u_irradianceMap";
+    case MaterialTexType_IBL_PREFILTER:      return "u_prefilterMap";
+    case MaterialTexType_QUAD_FILTER:        return "u_screenTexture";
+    case MaterialTexType_SHADOWMAP:          return "u_shadowMap";
     default:
       break;
   }

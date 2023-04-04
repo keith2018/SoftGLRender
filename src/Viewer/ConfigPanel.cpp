@@ -62,10 +62,11 @@ void ConfigPanel::drawSettings() {
   const char *rendererItems[] = {
       "Software",
       "OpenGL",
+      "Vulkan",
   };
   ImGui::Separator();
   ImGui::Text("renderer");
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 3; i++) {
     if (ImGui::RadioButton(rendererItems[i], config_.rendererType == i)) {
       config_.rendererType = i;
     }
@@ -89,13 +90,15 @@ void ConfigPanel::drawSettings() {
   // model
   ImGui::Separator();
   ImGui::Text("load model");
-  std::vector<const char *> modelNames;
-  for (const auto &kv : modelPaths_) {
-    modelNames.emplace_back(kv.first.c_str());
+
+  int modelIdx = 0;
+  for (; modelIdx < modelNames_.size(); modelIdx++) {
+    if (config_.modelName == modelNames_[modelIdx]) {
+      break;
+    }
   }
-  int model_idx = 0;
-  if (ImGui::Combo("##load model", &model_idx, modelNames.data(), (int) modelNames.size())) {
-    reloadModel(modelNames[model_idx]);
+  if (ImGui::Combo("##load model", &modelIdx, modelNames_.data(), (int) modelNames_.size())) {
+    reloadModel(modelNames_[modelIdx]);
   }
 
   // skybox
@@ -106,13 +109,14 @@ void ConfigPanel::drawSettings() {
     // pbr ibl
     ImGui::Checkbox("enable IBL", &config_.pbrIbl);
 
-    std::vector<const char *> skyboxNames;
-    for (const auto &kv : skyboxPaths_) {
-      skyboxNames.emplace_back(kv.first.c_str());
+    int skyboxIdx = 0;
+    for (; skyboxIdx < skyboxNames_.size(); skyboxIdx++) {
+      if (config_.skyboxName == skyboxNames_[skyboxIdx]) {
+        break;
+      }
     }
-    int skybox_idx = 0;
-    if (ImGui::Combo("##skybox", &skybox_idx, skyboxNames.data(), (int) skyboxNames.size())) {
-      reloadSkybox(skyboxNames[skybox_idx]);
+    if (ImGui::Combo("##skybox", &skyboxIdx, skyboxNames_.data(), (int) skyboxNames_.size())) {
+      reloadSkybox(skyboxNames_[skyboxIdx]);
     }
   }
 
@@ -171,11 +175,11 @@ void ConfigPanel::drawSettings() {
 
   // reverse z
   ImGui::Separator();
-  ImGui::Checkbox("reverse z", &config_.reverseZ);
-
-  // early z
-  ImGui::Separator();
-  ImGui::Checkbox("early z", &config_.earlyZ);
+  if (ImGui::Checkbox("reverse z", &config_.reverseZ)) {
+    if (resetReverseZFunc_) {
+      resetReverseZFunc_();
+    }
+  }
 
   // Anti aliasing
   const char *aaItems[] = {
@@ -225,12 +229,15 @@ bool ConfigPanel::wantCaptureMouse() {
 }
 
 bool ConfigPanel::loadConfig() {
-  auto config_path = ASSETS_DIR + "assets.json";
-  std::string config_str = FileUtils::readAll(config_path);
-  LOGD("load assets config: %s", config_path.c_str());
+  auto configPath = ASSETS_DIR + "assets.json";
+  auto configStr = FileUtils::readText(configPath);
+  if (configStr.empty()) {
+    LOGE("load models failed: error read config file");
+    return false;
+  }
 
   std::string err;
-  const auto json = json11::Json::parse(config_str, err);
+  const auto json = json11::Json::parse(configStr, err);
   for (auto &kv : json["model"].object_items()) {
     modelPaths_[kv.first] = ASSETS_DIR + kv.second["path"].string_value();
   }
@@ -239,13 +246,19 @@ bool ConfigPanel::loadConfig() {
   }
 
   if (modelPaths_.empty()) {
-    LOGE("load models failed");
+    LOGE("load models failed: %s", err.c_str());
     return false;
   }
 
+  for (const auto &kv : modelPaths_) {
+    modelNames_.emplace_back(kv.first.c_str());
+  }
+  for (const auto &kv : skyboxPaths_) {
+    skyboxNames_.emplace_back(kv.first.c_str());
+  }
+
   // load default model & skybox
-  return reloadModel(modelPaths_.begin()->first)
-      && reloadSkybox(skyboxPaths_.begin()->first);
+  return reloadModel(modelPaths_.begin()->first) && reloadSkybox(skyboxPaths_.begin()->first);
 }
 
 bool ConfigPanel::reloadModel(const std::string &name) {

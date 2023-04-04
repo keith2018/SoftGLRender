@@ -29,6 +29,7 @@ struct ShaderAttributes {
 struct ShaderUniforms {
   // UniformsModel
   glm::int32_t u_reverseZ;
+  glm::float32_t u_pointSize;
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
@@ -233,9 +234,13 @@ class FS : public ShaderPbrIBL {
 
     glm::vec3 albedo = glm::pow(glm::vec3(albedo_rgba), glm::vec3(2.2f));
 
-    glm::vec4 metalRoughness = texture(u->u_metalRoughnessMap, v->v_texCoord);
-    float metallic = metalRoughness.b;
-    float roughness = metalRoughness.g;
+    float metallic = 0.0f;
+    float roughness = 1.0f;
+    if (def->METALROUGHNESS_MAP) {
+      glm::vec4 metalRoughness = texture(u->u_metalRoughnessMap, v->v_texCoord);
+      metallic = metalRoughness.b;
+      roughness = metalRoughness.g;
+    }
 
     float ao = 1.f;
     if (def->AO_MAP) {

@@ -6,14 +6,14 @@
 
 #pragma once
 
+#include "Base/UUID.h"
 #include "Render/Vertex.h"
 
 namespace SoftGL {
 
 class VertexArrayObjectSoft : public VertexArrayObject {
  public:
-  explicit VertexArrayObjectSoft(const VertexArray &vertexArray)
-      : uuid_(uuidCounter_++) {
+  explicit VertexArrayObjectSoft(const VertexArray &vertexArray) {
     // init vertexes
     vertexStride = vertexArray.vertexesDesc[0].stride;
     vertexCnt = vertexArray.vertexesBufferLength / vertexStride;
@@ -21,9 +21,9 @@ class VertexArrayObjectSoft : public VertexArrayObject {
     memcpy(vertexes.data(), vertexArray.vertexesBuffer, vertexArray.vertexesBufferLength);
 
     // init indices
-    indicesCnt = vertexArray.indicesBufferLength / sizeof(int32_t);
+    indicesCnt = vertexArray.indexBufferLength / sizeof(int32_t);
     indices.resize(indicesCnt);
-    memcpy(indices.data(), vertexArray.indicesBuffer, vertexArray.indicesBufferLength);
+    memcpy(indices.data(), vertexArray.indexBuffer, vertexArray.indexBufferLength);
   }
 
   void updateVertexData(void *data, size_t length) override {
@@ -31,7 +31,7 @@ class VertexArrayObjectSoft : public VertexArrayObject {
   }
 
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
  public:
@@ -42,8 +42,7 @@ class VertexArrayObjectSoft : public VertexArrayObject {
   std::vector<int32_t> indices;
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
+  UUID<VertexArrayObjectSoft> uuid_;
 };
 
 }

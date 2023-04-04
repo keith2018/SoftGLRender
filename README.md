@@ -1,7 +1,7 @@
 # SoftGLRender
 
-Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipeline, 3D models (GLTF) are loaded
-by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.com/g-truc/glm) as math library.
+Tiny C++ Software Renderer/Rasterizer, It implements the GPU's main rendering pipeline, including point, line, and polygon drawing, texture mapping, and emulates vertex shaders and fragment shaders, 3D models (GLTF) are loaded
+by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.com/g-truc/glm) as math library. The project also adds OpenGL and Vulkan renderers, so you can switch between them in real time to see the comparison of the rendering output while running.
 
 <div align="center">
 
@@ -22,13 +22,14 @@ by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.co
 src
 ├── Base/ - Basic utility classes.
 ├── Render/ - Renderer abstraction.
+|   ├── Software/ - Software renderer implementation.
 |   ├── OpenGL/ - OpenGL renderer implementation.
-|   └── Software/ - Software renderer implementation.
+|   └── Vulkan/ - Vulkan renderer implementation.
 └── Viewer/ -  Code for Viewer, mainly include GLTF loading (based on Assimp), camera & controller, 
     |          setting panel, and render pass management. 
     |          You can switch between software renderer and OpenGL renderer in real time.
     └── Shader/
-        ├── OpenGL/ - GLSL shader code.
+        ├── GLSL/ - GLSL shader code.
         └── Software/ - Simulate vertex shader & fragment shader using c++, several basic shaders
                         are embed such as blinn-phong lighting, skybox, PBR & IBL, etc.
 ```
@@ -50,24 +51,24 @@ class Renderer {
   // shader program
   virtual std::shared_ptr<ShaderProgram> createShaderProgram() = 0;
 
+  // pipeline states
+  virtual std::shared_ptr<PipelineStates> createPipelineStates(const RenderStates &renderStates) = 0;
+
   // uniform
   virtual std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) = 0;
-  virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
-                                                               TextureFormat format) = 0;
+  virtual std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) = 0;
 
   // pipeline
-  virtual void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) = 0;
+  virtual void beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) = 0;
   virtual void setViewPort(int x, int y, int width, int height) = 0;
-  virtual void clear(const ClearState &state) = 0;
-  virtual void setRenderState(const RenderState &state) = 0;
   virtual void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) = 0;
   virtual void setShaderProgram(std::shared_ptr<ShaderProgram> &program) = 0;
-  virtual void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) = 0;
-  virtual void draw(PrimitiveType type) = 0;
+  virtual void setShaderResources(std::shared_ptr<ShaderResources> &uniforms) = 0;
+  virtual void setPipelineStates(std::shared_ptr<PipelineStates> &states) = 0;
+  virtual void draw() = 0;
+  virtual void endRenderPass() = 0;
 };
 ```
-
-![](screenshot/pipeline.jpg)
 
 #### Software Renderer Features
 

@@ -20,65 +20,73 @@ class Viewer {
  public:
   Viewer(Config &config, Camera &camera) : config_(config), cameraMain_(camera) {}
 
-  virtual void create(int width, int height, int outTexId);
+  virtual bool create(int width, int height, int outTexId);
+  virtual void destroy();
 
-  virtual void configRenderer();
-
+  virtual void configRenderer() {};
   virtual void drawFrame(DemoScene &scene);
-
   virtual void swapBuffer() = 0;
 
-  virtual void destroy();
+  void onResetReverseZ();
 
  protected:
   virtual std::shared_ptr<Renderer> createRenderer() = 0;
   virtual bool loadShaders(ShaderProgram &program, ShadingModel shading) = 0;
 
  private:
+  void cleanup();
+
+  void drawShadowMap();
+
   void processFXAASetup();
   void processFXAADraw();
 
-  void drawScene(bool floor, bool skybox);
+  void setupScene();
+  void setupPoints(ModelPoints &points);
+  void setupLines(ModelLines &lines);
+  void setupMeshBaseColor(ModelMesh &mesh, bool wireframe);
+  void setupMeshTextured(ModelMesh &mesh);
+  void setupModelNodes(ModelNode &node, bool wireframe);
+  void setupSkybox(ModelMesh &skybox);
 
-  void drawPoints(ModelPoints &points, glm::mat4 &transform);
-  void drawLines(ModelLines &lines, glm::mat4 &transform);
-  void drawMeshBaseColor(ModelMesh &mesh, bool wireframe);
-  void drawMeshTextured(ModelMesh &mesh, float specular);
-  void drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe);
-  void drawSkybox(ModelSkybox &skybox, glm::mat4 &transform);
+  void drawScene(bool shadowPass);
+  void drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, float specular = 1.f);
+  void drawModelMesh(ModelMesh &mesh, const glm::mat4 &transform, float specular = 1.f);
 
-  void pipelineSetup(ModelVertexes &vertexes, Material &material,
-                     const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks,
-                     const std::function<void(RenderState &rs)> &extraStates = nullptr);
-  void pipelineDraw(ModelVertexes &vertexes, Material &material);
+  void pipelineSetup(ModelBase &model, ShadingModel shading, const std::set<int> &uniformBlocks,
+                     const std::function<void(RenderStates &rs)> &extraStates = nullptr);
+  void pipelineDraw(ModelBase &model);
 
   void setupMainBuffers();
-  void setupShowMapBuffers();
+  void setupShadowMapBuffers();
   void setupMainColorBuffer(bool multiSample);
   void setupMainDepthBuffer(bool multiSample);
 
   void setupVertexArray(ModelVertexes &vertexes);
-  void setupRenderStates(RenderState &rs, bool blend) const;
-  bool setupShaderProgram(Material &material);
   void setupTextures(Material &material);
+  bool setupShaderProgram(Material &material, ShadingModel shading);
   void setupSamplerUniforms(Material &material);
-  void setupMaterial(Material &material, const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks);
+  void setupPipelineStates(ModelBase &model, const std::function<void(RenderStates &rs)> &extraStates);
+  void setupMaterial(ModelBase &model, ShadingModel shading, const std::set<int> &uniformBlocks,
+                     const std::function<void(RenderStates &rs)> &extraStates);
 
   void updateUniformScene();
-  void updateUniformModel(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj);
-  void updateUniformMaterial(const glm::vec4 &color, float specular = 1.f);
+  void updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &v);
+  void updateUniformMaterial(Material &material, float specular = 1.f);
 
-  bool initSkyboxIBL(ModelSkybox &skybox);
+  inline SkyboxMaterial *getSkyboxMaterial();
+  bool initSkyboxIBL();
   bool iBLEnabled();
-  void updateIBLTextures(Material &material);
-  void updateShadowTextures(Material &material);
+  void updateIBLTextures(MaterialObject *materialObj);
+  void updateShadowTextures(MaterialObject *materialObj);
 
   static std::set<std::string> generateShaderDefines(Material &material);
   static size_t getShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
+  static size_t getPipelineCacheKey(Material &material, const RenderStates &rs);
 
-  std::shared_ptr<Texture> createTextureCubeDefault(int width, int height, bool mipmaps = false);
-  std::shared_ptr<Texture> createTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps = false);
-  bool checkMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform);
+  std::shared_ptr<Texture> createTextureCubeDefault(int width, int height, uint32_t usage, bool mipmaps = false);
+  std::shared_ptr<Texture> createTexture2DDefault(int width, int height, TextureFormat format, uint32_t usage, bool mipmaps = false);
+  bool checkMeshFrustumCull(ModelMesh &mesh, const glm::mat4 &transform);
 
  protected:
   Config &config_;
@@ -92,10 +100,6 @@ class Viewer {
   int width_ = 0;
   int height_ = 0;
   int outTexId_ = 0;
-
-  UniformsScene uniformsScene_{};
-  UniformsModel uniformsModel_{};
-  UniformsMaterial uniformsMaterial_{};
 
   std::shared_ptr<Renderer> renderer_ = nullptr;
 
@@ -116,12 +120,12 @@ class Viewer {
   // ibl
   std::shared_ptr<Texture> iblPlaceholder_ = nullptr;
 
+  // global uniform
   std::shared_ptr<UniformBlock> uniformBlockScene_;
-  std::shared_ptr<UniformBlock> uniformsBlockModel_;
-  std::shared_ptr<UniformBlock> uniformsBlockMaterial_;
 
-  // program cache
+  // caches
   std::unordered_map<size_t, std::shared_ptr<ShaderProgram>> programCache_;
+  std::unordered_map<size_t, std::shared_ptr<PipelineStates>> pipelineCache_;
 };
 
 }

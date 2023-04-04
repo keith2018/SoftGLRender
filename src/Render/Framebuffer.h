@@ -11,50 +11,72 @@
 
 namespace SoftGL {
 
+struct FrameBufferAttachment {
+  std::shared_ptr<Texture> tex = nullptr;
+  uint32_t layer = 0; // for cube map
+  uint32_t level = 0;
+};
+
 class FrameBuffer {
  public:
   virtual int getId() const = 0;
   virtual bool isValid() = 0;
 
-  // TODO MTR
   virtual void setColorAttachment(std::shared_ptr<Texture> &color, int level) {
-    colorTexType = TextureType_2D;
-    colorAttachment2d.tex = color;
-    colorAttachment2d.level = level;
-    colorReady = true;
+    colorAttachment_.tex = color;
+    colorAttachment_.layer = 0;
+    colorAttachment_.level = level;
+    colorReady_ = true;
   };
 
   virtual void setColorAttachment(std::shared_ptr<Texture> &color, CubeMapFace face, int level) {
-    colorTexType = TextureType_CUBE;
-    colorAttachmentCube.tex = color;
-    colorAttachmentCube.face = face;
-    colorAttachmentCube.level = level;
-    colorReady = true;
+    colorAttachment_.tex = color;
+    colorAttachment_.layer = face;
+    colorAttachment_.level = level;
+    colorReady_ = true;
   };
 
   virtual void setDepthAttachment(std::shared_ptr<Texture> &depth) {
-    depthAttachment = depth;
-    depthReady = true;
+    depthAttachment_.tex = depth;
+    depthAttachment_.layer = 0;
+    depthAttachment_.level = 0;
+    depthReady_ = true;
   };
 
+  virtual const TextureDesc *getColorAttachmentDesc() const {
+    return colorAttachment_.tex.get();
+  }
+
+  virtual const TextureDesc *getDepthAttachmentDesc() const {
+    return depthAttachment_.tex.get();
+  }
+
+  inline bool isColorReady() const {
+    return colorReady_;
+  }
+
+  inline bool isDepthReady() const {
+    return depthReady_;
+  }
+
+  inline bool isMultiSample() const {
+    if (colorReady_) {
+      return getColorAttachmentDesc()->multiSample;
+    }
+    if (depthReady_) {
+      return getDepthAttachmentDesc()->multiSample;
+    }
+
+    return false;
+  }
+
  protected:
-  bool colorReady = false;
-  bool depthReady = false;
+  bool colorReady_ = false;
+  bool depthReady_ = false;
 
-  TextureType colorTexType = TextureType_2D;
-
-  struct {
-    std::shared_ptr<Texture> tex = nullptr;
-    int level = 0;
-  } colorAttachment2d;
-
-  struct {
-    std::shared_ptr<Texture> tex = nullptr;
-    CubeMapFace face = TEXTURE_CUBE_MAP_POSITIVE_X;
-    int level = 0;
-  } colorAttachmentCube;
-
-  std::shared_ptr<Texture> depthAttachment = nullptr;
+  // TODO MTR
+  FrameBufferAttachment colorAttachment_{};
+  FrameBufferAttachment depthAttachment_{};
 };
 
 }

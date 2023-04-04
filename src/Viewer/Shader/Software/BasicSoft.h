@@ -24,6 +24,7 @@ struct ShaderAttributes {
 struct ShaderUniforms {
   // UniformsModel
   glm::int32_t u_reverseZ;
+  glm::float32_t u_pointSize;
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
@@ -64,6 +65,7 @@ class VS : public ShaderBasic {
 
   void shaderMain() override {
     gl->Position = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0);
+    gl->PointSize = u->u_pointSize;
   }
 };
 

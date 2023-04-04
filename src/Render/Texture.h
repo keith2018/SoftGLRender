@@ -18,7 +18,6 @@ enum WrapMode {
   Wrap_MIRRORED_REPEAT,
   Wrap_CLAMP_TO_EDGE,
   Wrap_CLAMP_TO_BORDER,
-  Wrap_CLAMP_TO_ZERO,
 };
 
 enum FilterMode {
@@ -39,38 +38,20 @@ enum CubeMapFace {
   TEXTURE_CUBE_MAP_NEGATIVE_Z = 5,
 };
 
+enum BorderColor {
+  Border_BLACK = 0,
+  Border_WHITE,
+};
+
 struct SamplerDesc {
-  bool useMipmaps = false;
-  virtual ~SamplerDesc() = default;
-};
+  FilterMode filterMin = Filter_NEAREST;
+  FilterMode filterMag = Filter_NEAREST;
 
-struct Sampler2DDesc : SamplerDesc {
-  WrapMode wrapS;
-  WrapMode wrapT;
-  FilterMode filterMin;
-  FilterMode filterMag;
-  glm::vec4 borderColor{0.f};
+  WrapMode wrapS = Wrap_CLAMP_TO_EDGE;
+  WrapMode wrapT = Wrap_CLAMP_TO_EDGE;
+  WrapMode wrapR = Wrap_CLAMP_TO_EDGE;
 
-  Sampler2DDesc() {
-    useMipmaps = false;
-    wrapS = Wrap_CLAMP_TO_EDGE;
-    wrapT = Wrap_CLAMP_TO_EDGE;
-    filterMin = Filter_LINEAR;
-    filterMag = Filter_LINEAR;
-  }
-};
-
-struct SamplerCubeDesc : Sampler2DDesc {
-  WrapMode wrapR;
-
-  SamplerCubeDesc() {
-    useMipmaps = false;
-    wrapS = Wrap_CLAMP_TO_EDGE;
-    wrapT = Wrap_CLAMP_TO_EDGE;
-    wrapR = Wrap_CLAMP_TO_EDGE;
-    filterMin = Filter_LINEAR;
-    filterMag = Filter_LINEAR;
-  }
+  BorderColor borderColor = Border_BLACK;
 };
 
 enum TextureType {
@@ -79,34 +60,43 @@ enum TextureType {
 };
 
 enum TextureFormat {
-  TextureFormat_RGBA8 = 0,    // RGBA8888
-  TextureFormat_DEPTH = 1,    // Float32
+  TextureFormat_RGBA8 = 0,      // RGBA8888
+  TextureFormat_FLOAT32 = 1,    // Float32
+};
+
+enum TextureUsage {
+  TextureUsage_Sampler = 1 << 0,
+  TextureUsage_UploadData = 1 << 1,
+  TextureUsage_AttachmentColor = 1 << 2,
+  TextureUsage_AttachmentDepth = 1 << 3,
 };
 
 struct TextureDesc {
-  TextureDesc(TextureType type, TextureFormat format, bool multiSample)
-      : type(type), format(format), multiSample(multiSample) {}
-
+  int width = 0;
+  int height = 0;
   TextureType type = TextureType_2D;
   TextureFormat format = TextureFormat_RGBA8;
+  uint32_t usage = TextureUsage_Sampler;
+  bool useMipmaps = false;
   bool multiSample = false;
 };
 
-class Texture {
+class Texture : public TextureDesc {
  public:
+  inline uint32_t getLevelWidth(uint32_t level) {
+    return std::max(1, width >> level);
+  }
+
+  inline uint32_t getLevelHeight(uint32_t level) {
+    return std::max(1, height >> level);
+  }
+
   virtual int getId() const = 0;
   virtual void setSamplerDesc(SamplerDesc &sampler) {};
+  virtual void initImageData() {};
   virtual void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {};
   virtual void setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {};
-  virtual void initImageData(int w, int h) {};
-  virtual void dumpImage(const char *path) {};
-
- public:
-  int width = 0;
-  int height = 0;
-  bool multiSample = false;
-  TextureType type = TextureType_2D;
-  TextureFormat format = TextureFormat_RGBA8;
+  virtual void dumpImage(const char *path, uint32_t layer, uint32_t level) = 0;
 };
 
 }

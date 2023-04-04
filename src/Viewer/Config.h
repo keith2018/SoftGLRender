@@ -21,6 +21,7 @@ enum AAType {
 enum RendererType {
   Renderer_SOFT,
   Renderer_OPENGL,
+  Renderer_Vulkan,
 };
 
 class Config {
@@ -35,18 +36,15 @@ class Config {
   bool wireframe = false;
   bool worldAxis = true;
   bool showSkybox = false;
-
   bool showFloor = true;
-  bool shadowMap = true;
 
+  bool shadowMap = true;
   bool pbrIbl = false;
   bool mipmaps = false;
 
   bool cullFace = true;
   bool depthTest = true;
-
-  bool reverseZ = true;
-  bool earlyZ = false;
+  bool reverseZ = false;
 
   glm::vec4 clearColor = {0.f, 0.f, 0.f, 0.f};
   glm::vec3 ambientColor = {0.5f, 0.5f, 0.5f};

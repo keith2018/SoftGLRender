@@ -10,8 +10,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "Base/Geometry.h"
 #include "Render/Vertex.h"
-#include "Render/BoundingBox.h"
 #include "Material.h"
 
 namespace SoftGL {
@@ -29,6 +29,7 @@ struct ModelVertexes : VertexArray {
   size_t primitiveCnt = 0;
   std::vector<Vertex> vertexes;
   std::vector<int32_t> indices;
+
   std::shared_ptr<VertexArrayObject> vao = nullptr;
 
   void UpdateVertexes() const {
@@ -38,6 +39,8 @@ struct ModelVertexes : VertexArray {
   };
 
   void InitVertexes() {
+    vertexSize = sizeof(Vertex);
+
     vertexesDesc.resize(4);
     vertexesDesc[0] = {3, sizeof(Vertex), offsetof(Vertex, a_position)};
     vertexesDesc[1] = {2, sizeof(Vertex), offsetof(Vertex, a_texCoord)};
@@ -47,40 +50,40 @@ struct ModelVertexes : VertexArray {
     vertexesBuffer = vertexes.empty() ? nullptr : (uint8_t *) &vertexes[0];
     vertexesBufferLength = vertexes.size() * sizeof(Vertex);
 
-    indicesBuffer = indices.empty() ? nullptr : &indices[0];
-    indicesBufferLength = indices.size() * sizeof(int32_t);
+    indexBuffer = indices.empty() ? nullptr : &indices[0];
+    indexBufferLength = indices.size() * sizeof(int32_t);
   }
 };
 
-struct ModelPoints : ModelVertexes {
-  float pointSize;
-  BaseColorMaterial material;
+struct ModelBase : ModelVertexes {
+  BoundingBox aabb{};
+  std::shared_ptr<Material> material = nullptr;
+
+  virtual void resetStates() {
+    vao = nullptr;
+    if (material) {
+      material->resetStates();
+    }
+  }
 };
 
-struct ModelLines : ModelVertexes {
-  float lineWidth;
-  BaseColorMaterial material;
+struct ModelPoints : ModelBase {
 };
 
-struct ModelMesh : ModelVertexes {
-  BoundingBox aabb;
-  BaseColorMaterial materialBaseColor;
-  TexturedMaterial materialTextured;
+struct ModelLines : ModelBase {
 };
 
-struct ModelSkybox : ModelVertexes {
-  std::unordered_map<std::string, SkyboxMaterial> materialCache;
-  SkyboxMaterial *material = nullptr;
+struct ModelMesh : ModelBase {
 };
 
 struct ModelNode {
-  glm::mat4 transform;
+  glm::mat4 transform = glm::mat4(1.f);
   std::vector<ModelMesh> meshes;
   std::vector<ModelNode> children;
 };
 
 struct Model {
-  std::string resDir;
+  std::string resourcePath;
 
   ModelNode rootNode;
   BoundingBox rootAABB;
@@ -90,54 +93,34 @@ struct Model {
   size_t vertexCnt = 0;
 
   glm::mat4 centeredTransform;
+
+  void resetStates() {
+    resetNodeStates(rootNode);
+  }
+
+  void resetNodeStates(ModelNode &node) {
+    for (auto &mesh : node.meshes) {
+      mesh.resetStates();
+    }
+    for (auto &childNode : node.children) {
+      resetNodeStates(childNode);
+    }
+  }
 };
 
 struct DemoScene {
   std::shared_ptr<Model> model;
-  ModelMesh floor;
   ModelLines worldAxis;
   ModelPoints pointLight;
-  ModelSkybox skybox;
+  ModelMesh floor;
+  ModelMesh skybox;
 
-  void resetModelTextures() {
-    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
-      for (auto &mesh : node.meshes) {
-        mesh.materialTextured.resetRuntimeStates();
-      }
-      for (auto &childNode : node.children) {
-        resetNodeFunc(childNode);
-      }
-    };
-    resetNodeFunc(model->rootNode);
-  }
-
-  void resetAllStates() {
-    std::function<void(ModelNode &node)> resetNodeFunc = [&](ModelNode &node) -> void {
-      for (auto &mesh : node.meshes) {
-        mesh.vao = nullptr;
-        mesh.materialBaseColor.resetRuntimeStates();
-        mesh.materialTextured.resetRuntimeStates();
-      }
-      for (auto &childNode : node.children) {
-        resetNodeFunc(childNode);
-      }
-    };
-    resetNodeFunc(model->rootNode);
-
-    floor.vao = nullptr;
-    floor.materialBaseColor.resetRuntimeStates();
-    floor.materialTextured.resetRuntimeStates();
-
-    worldAxis.vao = nullptr;
-    worldAxis.material.resetRuntimeStates();
-
-    pointLight.vao = nullptr;
-    pointLight.material.resetRuntimeStates();
-
-    skybox.vao = nullptr;
-    for (auto &kv : skybox.materialCache) {
-      kv.second.resetRuntimeStates();
-    }
+  void resetStates() {
+    if (model) { model->resetStates(); }
+    worldAxis.resetStates();
+    pointLight.resetStates();
+    floor.resetStates();
+    skybox.resetStates();
   }
 };
 

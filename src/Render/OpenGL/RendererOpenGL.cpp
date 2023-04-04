@@ -40,58 +40,38 @@ std::shared_ptr<ShaderProgram> RendererOpenGL::createShaderProgram() {
   return std::make_shared<ShaderProgramOpenGL>();
 }
 
+// pipeline states
+std::shared_ptr<PipelineStates> RendererOpenGL::createPipelineStates(const RenderStates &renderStates) {
+  return std::make_shared<PipelineStates>(renderStates);
+}
+
 // uniform
 std::shared_ptr<UniformBlock> RendererOpenGL::createUniformBlock(const std::string &name, int size) {
   return std::make_shared<UniformBlockOpenGL>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererOpenGL::createUniformSampler(const std::string &name, TextureType type,
-                                                                     TextureFormat format) {
-  return std::make_shared<UniformSamplerOpenGL>(name, type, format);
+std::shared_ptr<UniformSampler> RendererOpenGL::createUniformSampler(const std::string &name, const TextureDesc &desc) {
+  return std::make_shared<UniformSamplerOpenGL>(name, desc.type, desc.format);
 }
 
 // pipeline
-void RendererOpenGL::setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) {
+void RendererOpenGL::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) {
   auto *fbo = dynamic_cast<FrameBufferOpenGL *>(frameBuffer.get());
   fbo->bind();
-}
 
-void RendererOpenGL::setViewPort(int x, int y, int width, int height) {
-  GL_CHECK(glViewport(x, y, width, height));
-}
-
-void RendererOpenGL::clear(const ClearState &state) {
-  GL_CHECK(glClearColor(state.clearColor.r, state.clearColor.g, state.clearColor.b, state.clearColor.a));
   GLbitfield clearBit = 0;
-  if (state.colorFlag) {
-    clearBit = clearBit | GL_COLOR_BUFFER_BIT;
+  if (states.colorFlag) {
+    GL_CHECK(glClearColor(states.clearColor.r, states.clearColor.g, states.clearColor.b, states.clearColor.a));
+    clearBit |= GL_COLOR_BUFFER_BIT;
   }
-  if (state.depthFlag) {
-    clearBit = clearBit | GL_DEPTH_BUFFER_BIT;
+  if (states.depthFlag) {
+    clearBit |= GL_DEPTH_BUFFER_BIT;
   }
   GL_CHECK(glClear(clearBit));
 }
 
-void RendererOpenGL::setRenderState(const RenderState &state) {
-  // blend
-  GL_STATE_SET(state.blend, GL_BLEND)
-  GL_CHECK(glBlendEquationSeparate(OpenGL::convertBlendFunction(state.blendParams.blendFuncRgb),
-                                   OpenGL::convertBlendFunction(state.blendParams.blendFuncAlpha)));
-  GL_CHECK(glBlendFuncSeparate(OpenGL::convertBlendFactor(state.blendParams.blendSrcRgb),
-                               OpenGL::convertBlendFactor(state.blendParams.blendDstRgb),
-                               OpenGL::convertBlendFactor(state.blendParams.blendSrcAlpha),
-                               OpenGL::convertBlendFactor(state.blendParams.blendDstAlpha)));
-
-  // depth
-  GL_STATE_SET(state.depthTest, GL_DEPTH_TEST)
-  GL_CHECK(glDepthMask(state.depthMask));
-  GL_CHECK(glDepthFunc(OpenGL::convertDepthFunc(state.depthFunc)));
-
-  GL_STATE_SET(state.cullFace, GL_CULL_FACE)
-  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::convertPolygonMode(state.polygonMode)));
-
-  GL_CHECK(glLineWidth(state.lineWidth));
-  GL_CHECK(glPointSize(state.pointSize));
+void RendererOpenGL::setViewPort(int x, int y, int width, int height) {
+  GL_CHECK(glViewport(x, y, width, height));
 }
 
 void RendererOpenGL::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
@@ -107,21 +87,58 @@ void RendererOpenGL::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
     return;
   }
   shaderProgram_ = dynamic_cast<ShaderProgramOpenGL *>(program.get());
-  shaderProgram_->Use();
+  shaderProgram_->use();
 }
 
-void RendererOpenGL::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
-  if (!uniforms) {
+void RendererOpenGL::setShaderResources(std::shared_ptr<ShaderResources> &resources) {
+  if (!resources) {
     return;
   }
   if (shaderProgram_) {
-    shaderProgram_->bindUniforms(*uniforms);
+    shaderProgram_->bindResources(*resources);
   }
 }
 
-void RendererOpenGL::draw(PrimitiveType type) {
-  GLenum mode = OpenGL::convertDrawMode(type);
+void RendererOpenGL::setPipelineStates(std::shared_ptr<PipelineStates> &states) {
+  if (!states) {
+    return;
+  }
+  pipelineStates_ = states.get();
+
+  auto &renderStates = states->renderStates;
+  // blend
+  GL_STATE_SET(renderStates.blend, GL_BLEND)
+  GL_CHECK(glBlendEquationSeparate(OpenGL::cvtBlendFunction(renderStates.blendParams.blendFuncRgb),
+                                   OpenGL::cvtBlendFunction(renderStates.blendParams.blendFuncAlpha)));
+  GL_CHECK(glBlendFuncSeparate(OpenGL::cvtBlendFactor(renderStates.blendParams.blendSrcRgb),
+                               OpenGL::cvtBlendFactor(renderStates.blendParams.blendDstRgb),
+                               OpenGL::cvtBlendFactor(renderStates.blendParams.blendSrcAlpha),
+                               OpenGL::cvtBlendFactor(renderStates.blendParams.blendDstAlpha)));
+
+  // depth
+  GL_STATE_SET(renderStates.depthTest, GL_DEPTH_TEST)
+  GL_CHECK(glDepthMask(renderStates.depthMask));
+  GL_CHECK(glDepthFunc(OpenGL::cvtDepthFunc(renderStates.depthFunc)));
+
+  GL_STATE_SET(renderStates.cullFace, GL_CULL_FACE)
+  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, OpenGL::cvtPolygonMode(renderStates.polygonMode)));
+
+  GL_CHECK(glLineWidth(renderStates.lineWidth));
+  GL_CHECK(glEnable(GL_PROGRAM_POINT_SIZE));
+}
+
+void RendererOpenGL::draw() {
+  GLenum mode = OpenGL::cvtDrawMode(pipelineStates_->renderStates.primitiveType);
   GL_CHECK(glDrawElements(mode, (GLsizei) vao_->getIndicesCnt(), GL_UNSIGNED_INT, nullptr));
+}
+
+void RendererOpenGL::endRenderPass() {
+  // reset gl states
+  GL_CHECK(glDisable(GL_BLEND));
+  GL_CHECK(glDisable(GL_DEPTH_TEST));
+  GL_CHECK(glDepthMask(true));
+  GL_CHECK(glDisable(GL_CULL_FACE));
+  GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 }
 
 }

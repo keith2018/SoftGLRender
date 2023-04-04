@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Render/RenderState.h"
+#include "Render/PipelineStates.h"
 
 namespace SoftGL {
 

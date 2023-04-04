@@ -11,13 +11,13 @@
 #include "Render/OpenGL/RendererOpenGL.h"
 #include "Render/OpenGL/ShaderProgramOpenGL.h"
 #include "Render/OpenGL/OpenGLUtils.h"
-#include "Shader/OpenGL/ShaderGLSL.h"
+#include "Shader/GLSL/ShaderGLSL.h"
 
 namespace SoftGL {
 namespace View {
 
 #define CASE_CREATE_SHADER_GL(shading, source) case shading: \
-  return programGL->CompileAndLink(source##_VS, source##_FS)
+  return programGL->compileAndLink(source##_VS, source##_FS)
 
 class ViewerOpenGL : public Viewer {
  public:
@@ -29,7 +29,9 @@ class ViewerOpenGL : public Viewer {
   void configRenderer() override {
     // disabled
     config_.reverseZ = false;
-    config_.earlyZ = false;
+
+    camera_->setReverseZ(config_.reverseZ);
+    cameraDepth_->setReverseZ(config_.reverseZ);
   }
 
   void swapBuffer() override {
@@ -58,12 +60,18 @@ class ViewerOpenGL : public Viewer {
   }
 
   void destroy() override {
+    Viewer::destroy();
+
     GL_CHECK(glDeleteFramebuffers(1, &fbo_in_));
     GL_CHECK(glDeleteFramebuffers(1, &fbo_out_));
   }
 
   std::shared_ptr<Renderer> createRenderer() override {
-    return std::make_shared<RendererOpenGL>();
+    auto renderer = std::make_shared<RendererOpenGL>();
+    if (!renderer->create()) {
+      return nullptr;
+    }
+    return renderer;
   }
 
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {

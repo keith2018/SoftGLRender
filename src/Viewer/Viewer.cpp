@@ -16,135 +16,168 @@ namespace View {
 #define SHADOW_MAP_WIDTH 512
 #define SHADOW_MAP_HEIGHT 512
 
-void Viewer::create(int width, int height, int outTexId) {
+#define CREATE_UNIFORM_BLOCK(name) renderer_->createUniformBlock(#name, sizeof(name))
+
+bool Viewer::create(int width, int height, int outTexId) {
+  cleanup();
+
   width_ = width;
   height_ = height;
   outTexId_ = outTexId;
 
-  // create renderer
-  renderer_ = createRenderer();
-
-  // create uniforms
-  uniformBlockScene_ = renderer_->createUniformBlock("UniformsScene", sizeof(UniformsScene));
-  uniformsBlockModel_ = renderer_->createUniformBlock("UniformsModel", sizeof(UniformsModel));
-  uniformsBlockMaterial_ = renderer_->createUniformBlock("UniformsMaterial", sizeof(UniformsMaterial));
-
-  // reset variables
+  // main camera
   camera_ = &cameraMain_;
+
+  // depth camera
+  if (!cameraDepth_) {
+    cameraDepth_ = std::make_shared<Camera>();
+    cameraDepth_->setPerspective(glm::radians(CAMERA_FOV),
+                                 (float) SHADOW_MAP_WIDTH / (float) SHADOW_MAP_HEIGHT,
+                                 CAMERA_NEAR, CAMERA_FAR);
+
+  }
+
+  // create renderer
+  if (!renderer_) {
+    renderer_ = createRenderer();
+  }
+  if (!renderer_) {
+    LOGE("Viewer::create failed: createRenderer error");
+    return false;
+  }
+
+  // create default resources
+  uniformBlockScene_ = CREATE_UNIFORM_BLOCK(UniformsScene);
+  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32, TextureUsage_Sampler);
+  iblPlaceholder_ = createTextureCubeDefault(1, 1, TextureUsage_Sampler);
+
+  return true;
+}
+
+void Viewer::destroy() {
+  cleanup();
+  cameraDepth_ = nullptr;
+  if (renderer_) {
+    renderer_->destroy();
+  }
+  renderer_ = nullptr;
+}
+
+void Viewer::cleanup() {
   fboMain_ = nullptr;
   texColorMain_ = nullptr;
   texDepthMain_ = nullptr;
   fboShadow_ = nullptr;
   texDepthShadow_ = nullptr;
-  shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_DEPTH);
+  shadowPlaceholder_ = nullptr;
   fxaaFilter_ = nullptr;
   texColorFxaa_ = nullptr;
-  iblPlaceholder_ = createTextureCubeDefault(1, 1);
+  iblPlaceholder_ = nullptr;
+  uniformBlockScene_ = nullptr;
   programCache_.clear();
+  pipelineCache_.clear();
 }
 
-void Viewer::configRenderer() {}
+void Viewer::onResetReverseZ() {
+  texDepthShadow_ = nullptr;
+}
 
 void Viewer::drawFrame(DemoScene &scene) {
+  if (!renderer_) {
+    return;
+  }
+
   scene_ = &scene;
 
-  // init frame buffers
+  // setup framebuffer
   setupMainBuffers();
+  setupShadowMapBuffers();
 
-  // FXAA
-  if (config_.aaType == AAType_FXAA) {
-    processFXAASetup();
-  }
+  // init skybox textures & ibl
+  initSkyboxIBL();
 
-  // set fbo & viewport
-  renderer_->setFrameBuffer(fboMain_);
-  renderer_->setViewPort(0, 0, width_, height_);
-
-  // clear
-  ClearState clearState;
-  clearState.clearColor = config_.clearColor;
-  renderer_->clear(clearState);
-
-  // update scene uniform
-  updateUniformScene();
-
-  // init skybox ibl
-  if (config_.showSkybox && config_.pbrIbl) {
-    initSkyboxIBL(scene_->skybox);
-  }
+  // setup model materials
+  setupScene();
 
   // draw shadow map
-  if (config_.shadowMap) {
-    // set fbo & viewport
-    setupShowMapBuffers();
-    renderer_->setFrameBuffer(fboShadow_);
-    renderer_->setViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+  drawShadowMap();
 
-    // clear
-    ClearState clearDepth;
-    clearDepth.depthFlag = true;
-    clearDepth.colorFlag = false;
-    renderer_->clear(clearDepth);
+  // setup fxaa
+  processFXAASetup();
 
-    // set camera
-    if (!cameraDepth_) {
-      cameraDepth_ = std::make_shared<Camera>();
-      cameraDepth_->setPerspective(glm::radians(CAMERA_FOV),
-                                   (float) SHADOW_MAP_WIDTH / (float) SHADOW_MAP_HEIGHT,
-                                   CAMERA_NEAR,
-                                   CAMERA_FAR);
-    }
-    cameraDepth_->lookAt(config_.pointLightPosition, glm::vec3(0), glm::vec3(0, 1, 0));
-    cameraDepth_->update();
-    camera_ = cameraDepth_.get();
+  // main pass
+  ClearStates clearStates{};
+  clearStates.colorFlag = true;
+  clearStates.depthFlag = config_.depthTest;
+  clearStates.clearColor = config_.clearColor;
+  clearStates.clearDepth = config_.reverseZ ? 0.f : 1.f;
 
-    // draw scene
-    drawScene(false, false);
-
-    // set back to main camera
-    camera_ = &cameraMain_;
-
-    // set back to main fbo
-    renderer_->setFrameBuffer(fboMain_);
-    renderer_->setViewPort(0, 0, width_, height_);
-  }
-
-  // draw point light
-  if (config_.showLight) {
-    glm::mat4 lightTransform(1.0f);
-    drawPoints(scene_->pointLight, lightTransform);
-  }
-
-  // draw world axis
-  if (config_.worldAxis) {
-    glm::mat4 axisTransform(1.0f);
-    drawLines(scene_->worldAxis, axisTransform);
-  }
+  renderer_->beginRenderPass(fboMain_, clearStates);
+  renderer_->setViewPort(0, 0, width_, height_);
 
   // draw scene
-  drawScene(config_.showFloor, config_.showSkybox);
+  drawScene(false);
 
-  // FXAA
-  if (config_.aaType == AAType_FXAA) {
-    processFXAADraw();
-  }
+  // end main pass
+  renderer_->endRenderPass();
+
+  // draw fxaa
+  processFXAADraw();
 }
 
-void Viewer::destroy() {}
+void Viewer::drawShadowMap() {
+  if (!config_.shadowMap) {
+    return;
+  }
+
+  // shadow pass
+  ClearStates clearDepth{};
+  clearDepth.depthFlag = true;
+  clearDepth.clearDepth = config_.reverseZ ? 0.f : 1.f;
+  renderer_->beginRenderPass(fboShadow_, clearDepth);
+  renderer_->setViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+
+  // set camera
+  cameraDepth_->lookAt(config_.pointLightPosition, glm::vec3(0), glm::vec3(0, 1, 0));
+  cameraDepth_->update();
+  camera_ = cameraDepth_.get();
+
+  // draw scene
+  drawScene(true);
+
+  // end shadow pass
+  renderer_->endRenderPass();
+
+  // set back to main camera
+  camera_ = &cameraMain_;
+}
 
 void Viewer::processFXAASetup() {
-  if (!texColorFxaa_) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
-    sampler.filterMin = Filter_LINEAR;
+  if (config_.aaType != AAType_FXAA) {
+    return;
+  }
 
-    texColorFxaa_ = renderer_->createTexture({TextureType_2D, TextureFormat_RGBA8, false});
+  if (!texColorFxaa_) {
+    TextureDesc texDesc{};
+    texDesc.width = width_;
+    texDesc.height = height_;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_RGBA8;
+    texDesc.usage = TextureUsage_Sampler | TextureUsage_AttachmentColor;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = false;
+    texColorFxaa_ = renderer_->createTexture(texDesc);
+
+    SamplerDesc sampler{};
+    sampler.filterMin = Filter_LINEAR;
+    sampler.filterMag = Filter_LINEAR;
     texColorFxaa_->setSamplerDesc(sampler);
-    texColorFxaa_->initImageData(width_, height_);
+
+    texColorFxaa_->initImageData();
   }
 
   if (!fxaaFilter_) {
-    fxaaFilter_ = std::make_shared<QuadFilter>(createRenderer(),
+    fxaaFilter_ = std::make_shared<QuadFilter>(width_, height_, renderer_,
                                                [&](ShaderProgram &program) -> bool {
                                                  return loadShaders(program, Shading_FXAA);
                                                });
@@ -155,167 +188,210 @@ void Viewer::processFXAASetup() {
 }
 
 void Viewer::processFXAADraw() {
+  if (config_.aaType != AAType_FXAA) {
+    return;
+  }
+
   fxaaFilter_->draw();
 }
 
-void Viewer::drawScene(bool floor, bool skybox) {
-  // draw floor
-  if (floor) {
-    glm::mat4 floorMatrix(1.0f);
-    updateUniformModel(floorMatrix, camera_->viewMatrix(), camera_->projectionMatrix());
+void Viewer::setupScene() {
+  // point light
+  if (config_.showLight) {
+    setupPoints(scene_->pointLight);
+  }
+
+  // world axis
+  if (config_.worldAxis) {
+    setupLines(scene_->worldAxis);
+  }
+
+  // floor
+  if (config_.showFloor) {
     if (config_.wireframe) {
-      drawMeshBaseColor(scene_->floor, true);
+      setupMeshBaseColor(scene_->floor, true);
     } else {
-      drawMeshTextured(scene_->floor, 0.f);
+      setupMeshTextured(scene_->floor);
     }
+  }
+
+  // skybox
+  if (config_.showSkybox) {
+    setupSkybox(scene_->skybox);
+  }
+
+  // model nodes
+  ModelNode &modelNode = scene_->model->rootNode;
+  setupModelNodes(modelNode, config_.wireframe);
+}
+
+void Viewer::setupPoints(ModelPoints &points) {
+  pipelineSetup(points,
+                points.material->shadingModel,
+                {
+                    UniformBlock_Model, UniformBlock_Material
+                });
+}
+
+void Viewer::setupLines(ModelLines &lines) {
+  pipelineSetup(lines,
+                lines.material->shadingModel,
+                {
+                    UniformBlock_Model, UniformBlock_Material
+                });
+}
+
+void Viewer::setupSkybox(ModelMesh &skybox) {
+  pipelineSetup(skybox,
+                skybox.material->shadingModel,
+                {
+                    UniformBlock_Model
+                },
+                [&](RenderStates &rs) -> void {
+                  rs.depthFunc = config_.reverseZ ? DepthFunc_GEQUAL : DepthFunc_LEQUAL;
+                  rs.depthMask = false;
+                });
+}
+
+void Viewer::setupMeshBaseColor(ModelMesh &mesh, bool wireframe) {
+  pipelineSetup(mesh,
+                Shading_BaseColor,
+                {
+                    UniformBlock_Model, UniformBlock_Scene, UniformBlock_Material
+                },
+                [&](RenderStates &rs) -> void {
+                  rs.polygonMode = wireframe ? PolygonMode_LINE : PolygonMode_FILL;
+                });
+}
+
+void Viewer::setupMeshTextured(ModelMesh &mesh) {
+  pipelineSetup(mesh,
+                mesh.material->shadingModel,
+                {
+                    UniformBlock_Model, UniformBlock_Scene, UniformBlock_Material
+                });
+}
+
+void Viewer::setupModelNodes(ModelNode &node, bool wireframe) {
+  for (auto &mesh : node.meshes) {
+    // setup mesh
+    if (wireframe) {
+      setupMeshBaseColor(mesh, true);
+    } else {
+      setupMeshTextured(mesh);
+    }
+  }
+
+  // setup child
+  for (auto &childNode : node.children) {
+    setupModelNodes(childNode, wireframe);
+  }
+}
+
+void Viewer::drawScene(bool shadowPass) {
+  // update scene uniform
+  updateUniformScene();
+
+  // draw point light
+  if (!shadowPass && config_.showLight) {
+    updateUniformModel(scene_->pointLight, glm::mat4(1.0f), camera_->viewMatrix());
+    updateUniformMaterial(*scene_->pointLight.material);
+    pipelineDraw(scene_->pointLight);
+  }
+
+  // draw world axis
+  if (!shadowPass && config_.worldAxis) {
+    updateUniformModel(scene_->worldAxis, glm::mat4(1.0f), camera_->viewMatrix());
+    updateUniformMaterial(*scene_->worldAxis.material);
+    pipelineDraw(scene_->worldAxis);
+  }
+
+  // draw floor
+  if (!shadowPass && config_.showFloor) {
+    drawModelMesh(scene_->floor, glm::mat4(1.0f), 0.f);
   }
 
   // draw model nodes opaque
   ModelNode &modelNode = scene_->model->rootNode;
-  drawModelNodes(modelNode, scene_->model->centeredTransform, Alpha_Opaque, config_.wireframe);
+  drawModelNodes(modelNode, scene_->model->centeredTransform, Alpha_Opaque);
 
   // draw skybox
-  if (skybox) {
-    glm::mat4 skyboxTransform(1.f);
-    drawSkybox(scene_->skybox, skyboxTransform);
+  if (!shadowPass && config_.showSkybox) {
+    updateUniformModel(scene_->skybox, glm::mat4(1.0f), glm::mat3(camera_->viewMatrix()));
+    pipelineDraw(scene_->skybox);
   }
 
   // draw model nodes blend
-  drawModelNodes(modelNode, scene_->model->centeredTransform, Alpha_Blend, config_.wireframe);
+  drawModelNodes(modelNode, scene_->model->centeredTransform, Alpha_Blend);
 }
 
-void Viewer::drawPoints(ModelPoints &points, glm::mat4 &transform) {
-  updateUniformModel(transform, camera_->viewMatrix(), camera_->projectionMatrix());
-  updateUniformMaterial(points.material.baseColor);
+void Viewer::drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, float specular) {
+  glm::mat4 modelMatrix = transform * node.transform;
 
-  pipelineSetup(points,
-                points.material,
-                {
-                    {UniformBlock_Model, uniformsBlockModel_},
-                    {UniformBlock_Material, uniformsBlockMaterial_},
-                },
-                [&](RenderState &rs) -> void {
-                  rs.pointSize = points.pointSize;
-                });
-  pipelineDraw(points, points.material);
+  // draw nodes
+  for (auto &mesh : node.meshes) {
+    if (mesh.material->alphaMode != mode) {
+      continue;
+    }
+
+    drawModelMesh(mesh, modelMatrix, specular);
+  }
+
+  // draw child
+  for (auto &childNode : node.children) {
+    drawModelNodes(childNode, modelMatrix, mode, specular);
+  }
 }
 
-void Viewer::drawLines(ModelLines &lines, glm::mat4 &transform) {
-  updateUniformModel(transform, camera_->viewMatrix(), camera_->projectionMatrix());
-  updateUniformMaterial(lines.material.baseColor);
+void Viewer::drawModelMesh(ModelMesh &mesh, const glm::mat4 &transform, float specular) {
+  // frustum cull
+  if (!checkMeshFrustumCull(mesh, transform)) {
+    return;
+  }
 
-  pipelineSetup(lines,
-                lines.material,
-                {
-                    {UniformBlock_Model, uniformsBlockModel_},
-                    {UniformBlock_Material, uniformsBlockMaterial_},
-                },
-                [&](RenderState &rs) -> void {
-                  rs.lineWidth = lines.lineWidth;
-                });
-  pipelineDraw(lines, lines.material);
-}
+  // update model uniform
+  // TODO: share the same uniform object
+  updateUniformModel(mesh, transform, camera_->viewMatrix());
 
-void Viewer::drawSkybox(ModelSkybox &skybox, glm::mat4 &transform) {
-  updateUniformModel(transform, glm::mat3(camera_->viewMatrix()), camera_->projectionMatrix());
-
-  pipelineSetup(skybox,
-                *skybox.material,
-                {
-                    {UniformBlock_Model, uniformsBlockModel_}
-                },
-                [&](RenderState &rs) -> void {
-                  rs.depthFunc = config_.reverseZ ? DepthFunc_GEQUAL : DepthFunc_LEQUAL;
-                  rs.depthMask = false;
-                });
-  pipelineDraw(skybox, *skybox.material);
-}
-
-void Viewer::drawMeshBaseColor(ModelMesh &mesh, bool wireframe) {
-  updateUniformMaterial(mesh.materialBaseColor.baseColor);
-
-  pipelineSetup(mesh,
-                mesh.materialBaseColor,
-                {
-                    {UniformBlock_Model, uniformsBlockModel_},
-                    {UniformBlock_Scene, uniformBlockScene_},
-                    {UniformBlock_Material, uniformsBlockMaterial_},
-                },
-                [&](RenderState &rs) -> void {
-                  rs.polygonMode = wireframe ? PolygonMode_LINE : PolygonMode_FILL;
-                });
-  pipelineDraw(mesh, mesh.materialBaseColor);
-}
-
-void Viewer::drawMeshTextured(ModelMesh &mesh, float specular) {
-  updateUniformMaterial(glm::vec4(1.f), specular);
-
-  pipelineSetup(mesh,
-                mesh.materialTextured,
-                {
-                    {UniformBlock_Model, uniformsBlockModel_},
-                    {UniformBlock_Scene, uniformBlockScene_},
-                    {UniformBlock_Material, uniformsBlockMaterial_},
-                });
+  // update material
+  updateUniformMaterial(*mesh.material, specular);
 
   // update IBL textures
-  if (mesh.materialTextured.shading == Shading_PBR) {
-    updateIBLTextures(mesh.materialTextured);
+  if (mesh.material->shadingModel == Shading_PBR) {
+    updateIBLTextures(mesh.material->materialObj.get());
   }
 
   // update shadow textures
   if (config_.shadowMap) {
-    updateShadowTextures(mesh.materialTextured);
+    updateShadowTextures(mesh.material->materialObj.get());
   }
 
-  pipelineDraw(mesh, mesh.materialTextured);
+  // draw mesh
+  pipelineDraw(mesh);
 }
 
-void Viewer::drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, bool wireframe) {
-  // update mvp uniform
-  glm::mat4 modelMatrix = transform * node.transform;
-  updateUniformModel(modelMatrix, camera_->viewMatrix(), camera_->projectionMatrix());
+void Viewer::pipelineSetup(ModelBase &model, ShadingModel shading, const std::set<int> &uniformBlocks,
+                           const std::function<void(RenderStates &rs)> &extraStates) {
+  setupVertexArray(model);
 
-  // draw nodes
-  for (auto &mesh : node.meshes) {
-    if (mesh.materialTextured.alphaMode != mode) {
-      continue;
+  // reset materialObj if ShadingModel changed
+  if (model.material->materialObj != nullptr) {
+    if (model.material->materialObj->shadingModel != shading) {
+      model.material->materialObj = nullptr;
     }
-
-    // frustum cull
-    bool meshInside = checkMeshFrustumCull(mesh, modelMatrix);
-    if (!meshInside) {
-      continue;
-    }
-
-    // draw mesh
-    wireframe ? drawMeshBaseColor(mesh, true) : drawMeshTextured(mesh, 1.f);
   }
 
-  // draw child
-  for (auto &child_node : node.children) {
-    drawModelNodes(child_node, modelMatrix, mode, wireframe);
-  }
+  setupMaterial(model, shading, uniformBlocks, extraStates);
 }
 
-void Viewer::pipelineSetup(ModelVertexes &vertexes, Material &material,
-                           const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks,
-                           const std::function<void(RenderState &rs)> &extraStates) {
-  setupVertexArray(vertexes);
-  setupRenderStates(material.renderState, material.alphaMode == Alpha_Blend);
-  material.renderState.cullFace = config_.cullFace && (!material.doubleSided);
-  if (extraStates) {
-    extraStates(material.renderState);
-  }
-  setupMaterial(material, uniformBlocks);
-}
+void Viewer::pipelineDraw(ModelBase &model) {
+  auto &materialObj = model.material->materialObj;
 
-void Viewer::pipelineDraw(ModelVertexes &vertexes, Material &material) {
-  renderer_->setVertexArrayObject(vertexes.vao);
-  renderer_->setRenderState(material.renderState);
-  renderer_->setShaderProgram(material.shaderProgram);
-  renderer_->setShaderUniforms(material.shaderUniforms);
-  renderer_->draw(vertexes.primitiveType);
+  renderer_->setVertexArrayObject(model.vao);
+  renderer_->setShaderProgram(materialObj->shaderProgram);
+  renderer_->setShaderResources(materialObj->shaderResources);
+  renderer_->setPipelineStates(materialObj->pipelineStates);
+  renderer_->draw();
 }
 
 void Viewer::setupMainBuffers() {
@@ -338,51 +414,82 @@ void Viewer::setupMainBuffers() {
   }
 }
 
-void Viewer::setupShowMapBuffers() {
+void Viewer::setupShadowMapBuffers() {
+  if (!config_.shadowMap) {
+    return;
+  }
+
   if (!fboShadow_) {
     fboShadow_ = renderer_->createFrameBuffer();
   }
 
   if (!texDepthShadow_) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
+    TextureDesc texDesc{};
+    texDesc.width = SHADOW_MAP_WIDTH;
+    texDesc.height = SHADOW_MAP_HEIGHT;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_FLOAT32;
+    texDesc.usage = TextureUsage_Sampler | TextureUsage_AttachmentDepth;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = false;
+    texDepthShadow_ = renderer_->createTexture(texDesc);
+
+    SamplerDesc sampler{};
     sampler.filterMin = Filter_NEAREST;
     sampler.filterMag = Filter_NEAREST;
     sampler.wrapS = Wrap_CLAMP_TO_BORDER;
     sampler.wrapT = Wrap_CLAMP_TO_BORDER;
-    sampler.borderColor = glm::vec4(config_.reverseZ ? 0.f : 1.f);
-    texDepthShadow_ = renderer_->createTexture({TextureType_2D, TextureFormat_DEPTH, false});
+    sampler.borderColor = config_.reverseZ ? Border_BLACK : Border_WHITE;
     texDepthShadow_->setSamplerDesc(sampler);
-    texDepthShadow_->initImageData(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
 
+    texDepthShadow_->initImageData();
     fboShadow_->setDepthAttachment(texDepthShadow_);
 
     if (!fboShadow_->isValid()) {
-      LOGE("setupShowMapBuffers failed");
+      LOGE("setupShadowMapBuffers failed");
     }
   }
 }
 
 void Viewer::setupMainColorBuffer(bool multiSample) {
   if (!texColorMain_ || texColorMain_->multiSample != multiSample) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
+    TextureDesc texDesc{};
+    texDesc.width = width_;
+    texDesc.height = height_;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_RGBA8;
+    texDesc.usage = TextureUsage_AttachmentColor;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = multiSample;
+    texColorMain_ = renderer_->createTexture(texDesc);
+
+    SamplerDesc sampler{};
     sampler.filterMin = Filter_LINEAR;
-    texColorMain_ = renderer_->createTexture({TextureType_2D, TextureFormat_RGBA8, multiSample});
+    sampler.filterMag = Filter_LINEAR;
     texColorMain_->setSamplerDesc(sampler);
-    texColorMain_->initImageData(width_, height_);
+
+    texColorMain_->initImageData();
   }
 }
 
 void Viewer::setupMainDepthBuffer(bool multiSample) {
   if (!texDepthMain_ || texDepthMain_->multiSample != multiSample) {
-    Sampler2DDesc sampler;
-    sampler.useMipmaps = false;
+    TextureDesc texDesc{};
+    texDesc.width = width_;
+    texDesc.height = height_;
+    texDesc.type = TextureType_2D;
+    texDesc.format = TextureFormat_FLOAT32;
+    texDesc.usage = TextureUsage_AttachmentDepth;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = multiSample;
+    texDepthMain_ = renderer_->createTexture(texDesc);
+
+    SamplerDesc sampler{};
     sampler.filterMin = Filter_NEAREST;
     sampler.filterMag = Filter_NEAREST;
-    texDepthMain_ = renderer_->createTexture({TextureType_2D, TextureFormat_DEPTH, multiSample});
     texDepthMain_->setSamplerDesc(sampler);
-    texDepthMain_->initImageData(width_, height_);
+
+    texDepthMain_->initImageData();
   }
 }
 
@@ -392,194 +499,275 @@ void Viewer::setupVertexArray(ModelVertexes &vertexes) {
   }
 }
 
-void Viewer::setupRenderStates(RenderState &rs, bool blend) const {
-  rs.blend = blend;
-  rs.blendParams.SetBlendFactor(BlendFactor_SRC_ALPHA, BlendFactor_ONE_MINUS_SRC_ALPHA);
-
-  rs.depthTest = config_.depthTest;
-  rs.depthMask = !blend;  // disable depth write
-  rs.depthFunc = config_.reverseZ ? DepthFunc_GEQUAL : DepthFunc_LESS;
-
-  rs.cullFace = config_.cullFace;
-  rs.polygonMode = PolygonMode_FILL;
-
-  rs.lineWidth = 1.f;
-  rs.pointSize = 1.f;
-}
-
 void Viewer::setupTextures(Material &material) {
   for (auto &kv : material.textureData) {
+    TextureDesc texDesc{};
+    texDesc.width = (int) kv.second.width;
+    texDesc.height = (int) kv.second.height;
+    texDesc.format = TextureFormat_RGBA8;
+    texDesc.usage = TextureUsage_Sampler | TextureUsage_UploadData;
+    texDesc.useMipmaps = false;
+    texDesc.multiSample = false;
+
+    SamplerDesc sampler{};
+    sampler.wrapS = kv.second.wrapMode;
+    sampler.wrapT = kv.second.wrapMode;
+    sampler.filterMin = Filter_LINEAR;
+    sampler.filterMag = Filter_LINEAR;
+
     std::shared_ptr<Texture> texture = nullptr;
     switch (kv.first) {
-      case TextureUsage_IBL_IRRADIANCE:
-      case TextureUsage_IBL_PREFILTER: {
+      case MaterialTexType_IBL_IRRADIANCE:
+      case MaterialTexType_IBL_PREFILTER: {
         // skip ibl textures
         break;
       }
-      case TextureUsage_CUBE: {
-        texture = renderer_->createTexture({TextureType_CUBE, TextureFormat_RGBA8, false});
-        SamplerCubeDesc samplerCube;
-        samplerCube.wrapS = kv.second.wrapMode;
-        samplerCube.wrapT = kv.second.wrapMode;
-        samplerCube.wrapR = kv.second.wrapMode;
-        texture->setSamplerDesc(samplerCube);
+      case MaterialTexType_CUBE: {
+        texDesc.type = TextureType_CUBE;
+        sampler.wrapR = kv.second.wrapMode;
         break;
       }
       default: {
-        texture = renderer_->createTexture({TextureType_2D, TextureFormat_RGBA8, false});
-        Sampler2DDesc sampler2d;
-        sampler2d.wrapS = kv.second.wrapMode;
-        sampler2d.wrapT = kv.second.wrapMode;
-        if (config_.mipmaps) {
-          sampler2d.useMipmaps = true;
-          sampler2d.filterMin = Filter_LINEAR_MIPMAP_LINEAR;
-        }
-        texture->setSamplerDesc(sampler2d);
+        texDesc.type = TextureType_2D;
+        texDesc.useMipmaps = config_.mipmaps;
+        sampler.filterMin = config_.mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
         break;
       }
     }
-
-    // upload image data
+    texture = renderer_->createTexture(texDesc);
+    texture->setSamplerDesc(sampler);
     texture->setImageData(kv.second.data);
     material.textures[kv.first] = texture;
   }
 
   // default shadow depth texture
-  material.textures[TextureUsage_SHADOWMAP] = shadowPlaceholder_;
+  if (material.shadingModel != Shading_Skybox) {
+    material.textures[MaterialTexType_SHADOWMAP] = shadowPlaceholder_;
+  }
 
   // default IBL texture
-  if (material.shading == Shading_PBR) {
-    material.textures[TextureUsage_IBL_IRRADIANCE] = iblPlaceholder_;
-    material.textures[TextureUsage_IBL_PREFILTER] = iblPlaceholder_;
+  if (material.shadingModel == Shading_PBR) {
+    material.textures[MaterialTexType_IBL_IRRADIANCE] = iblPlaceholder_;
+    material.textures[MaterialTexType_IBL_PREFILTER] = iblPlaceholder_;
   }
 }
 
 void Viewer::setupSamplerUniforms(Material &material) {
   for (auto &kv : material.textures) {
     // create sampler uniform
-    const char *samplerName = Material::samplerName((TextureUsage) kv.first);
+    const char *samplerName = Material::samplerName((MaterialTexType) kv.first);
     if (samplerName) {
-      auto uniform = renderer_->createUniformSampler(samplerName, kv.second->type, kv.second->format);
+      auto uniform = renderer_->createUniformSampler(samplerName, *kv.second);
       uniform->setTexture(kv.second);
-      material.shaderUniforms->samplers[kv.first] = std::move(uniform);
+      material.materialObj->shaderResources->samplers[kv.first] = std::move(uniform);
     }
   }
 }
 
-bool Viewer::setupShaderProgram(Material &material) {
-  auto shaderDefines = generateShaderDefines(material);
-  size_t cacheKey = getShaderProgramCacheKey(material.shading, shaderDefines);
+bool Viewer::setupShaderProgram(Material &material, ShadingModel shading) {
+  size_t cacheKey = getShaderProgramCacheKey(shading, material.shaderDefines);
 
   // try cache
   auto cachedProgram = programCache_.find(cacheKey);
   if (cachedProgram != programCache_.end()) {
-    material.shaderProgram = cachedProgram->second;
-    material.shaderUniforms = std::make_shared<ShaderUniforms>();
+    material.materialObj->shaderProgram = cachedProgram->second;
+    material.materialObj->shaderResources = std::make_shared<ShaderResources>();
     return true;
   }
 
   auto program = renderer_->createShaderProgram();
-  program->addDefines(shaderDefines);
+  program->addDefines(material.shaderDefines);
 
-  bool success = loadShaders(*program, material.shading);
+  bool success = loadShaders(*program, shading);
   if (success) {
     // add to cache
     programCache_[cacheKey] = program;
-    material.shaderProgram = program;
-    material.shaderUniforms = std::make_shared<ShaderUniforms>();
+    material.materialObj->shaderProgram = program;
+    material.materialObj->shaderResources = std::make_shared<ShaderResources>();
   } else {
-    LOGE("setupShaderProgram failed: %s", Material::shadingModelStr(material.shading));
+    LOGE("setupShaderProgram failed: %s", Material::shadingModelStr(shading));
   }
 
   return success;
 }
 
-void Viewer::setupMaterial(Material &material,
-                           const std::unordered_map<int, std::shared_ptr<UniformBlock>> &uniformBlocks) {
-  material.createTextures([&]() -> void {
-    setupTextures(material);
-  });
+void Viewer::setupPipelineStates(ModelBase &model, const std::function<void(RenderStates &rs)> &extraStates) {
+  auto &material = *model.material;
+  RenderStates rs;
+  rs.blend = material.alphaMode == Alpha_Blend;
+  rs.blendParams.SetBlendFactor(BlendFactor_SRC_ALPHA, BlendFactor_ONE_MINUS_SRC_ALPHA);
 
-  material.createProgram([&]() -> void {
-    if (setupShaderProgram(material)) {
+  rs.depthTest = config_.depthTest;
+  rs.depthMask = !rs.blend;   // disable depth write if blending enabled
+  rs.depthFunc = config_.reverseZ ? DepthFunc_GREATER : DepthFunc_LESS;
+
+  rs.cullFace = config_.cullFace && (!material.doubleSided);
+  rs.primitiveType = model.primitiveType;
+  rs.polygonMode = PolygonMode_FILL;
+
+  rs.lineWidth = material.lineWidth;
+
+  if (extraStates) {
+    extraStates(rs);
+  }
+
+  size_t cacheKey = getPipelineCacheKey(material, rs);
+  auto it = pipelineCache_.find(cacheKey);
+  if (it != pipelineCache_.end()) {
+    material.materialObj->pipelineStates = it->second;
+  } else {
+    auto pipelineStates = renderer_->createPipelineStates(rs);
+    material.materialObj->pipelineStates = pipelineStates;
+    pipelineCache_[cacheKey] = pipelineStates;
+  }
+}
+
+void Viewer::setupMaterial(ModelBase &model, ShadingModel shading, const std::set<int> &uniformBlocks,
+                           const std::function<void(RenderStates &rs)> &extraStates) {
+  auto &material = *model.material;
+  if (material.textures.empty()) {
+    setupTextures(material);
+    material.shaderDefines = generateShaderDefines(material);
+  }
+
+  if (!material.materialObj) {
+    material.materialObj = std::make_shared<MaterialObject>();
+    material.materialObj->shadingModel = shading;
+
+    // setup uniform samplers
+    if (setupShaderProgram(material, shading)) {
       setupSamplerUniforms(material);
-      for (auto &kv : uniformBlocks) {
-        material.shaderUniforms->blocks.insert(kv);
+    }
+
+    // setup uniform blocks
+    for (auto &key : uniformBlocks) {
+      std::shared_ptr<UniformBlock> uniform = nullptr;
+      switch (key) {
+        case UniformBlock_Scene: {
+          uniform = uniformBlockScene_;
+          break;
+        }
+        case UniformBlock_Model: {
+          uniform = CREATE_UNIFORM_BLOCK(UniformsModel);
+          break;
+        }
+        case UniformBlock_Material: {
+          uniform = CREATE_UNIFORM_BLOCK(UniformsMaterial);
+          break;
+        }
+        default:
+          break;
+      }
+      if (uniform) {
+        material.materialObj->shaderResources->blocks[key] = uniform;
       }
     }
-  });
+  }
+
+  setupPipelineStates(model, extraStates);
 }
 
 void Viewer::updateUniformScene() {
-  uniformsScene_.u_ambientColor = config_.ambientColor;
-  uniformsScene_.u_cameraPosition = camera_->eye();
-  uniformsScene_.u_pointLightPosition = config_.pointLightPosition;
-  uniformsScene_.u_pointLightColor = config_.pointLightColor;
-  uniformBlockScene_->setData(&uniformsScene_, sizeof(UniformsScene));
+  UniformsScene uniformsScene{};
+  uniformsScene.u_ambientColor = config_.ambientColor;
+  uniformsScene.u_cameraPosition = camera_->eye();
+  uniformsScene.u_pointLightPosition = config_.pointLightPosition;
+  uniformsScene.u_pointLightColor = config_.pointLightColor;
+  uniformBlockScene_->setData(&uniformsScene, sizeof(UniformsScene));
 }
 
-void Viewer::updateUniformModel(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &proj) {
-  uniformsModel_.u_reverseZ = config_.reverseZ ? 1 : 0;
+void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &v) {
+  if (!model.material->materialObj) {
+    return;
+  }
 
-  uniformsModel_.u_modelMatrix = model;
-  uniformsModel_.u_modelViewProjectionMatrix = proj * view * model;
-  uniformsModel_.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+  auto &blocks = model.material->materialObj->shaderResources->blocks;
+  auto it = blocks.find(UniformBlock_Model);
+  if (it == blocks.end()) {
+    return;
+  }
+
+  UniformsModel uniformsModel{};
+  uniformsModel.u_reverseZ = config_.reverseZ ? 1u : 0u;
+  uniformsModel.u_pointSize = model.material->pointSize;
+  uniformsModel.u_modelMatrix = m;
+  uniformsModel.u_modelViewProjectionMatrix = camera_->projectionMatrix() * v * m;
+  uniformsModel.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(m)));
 
   // shadow mvp
   if (config_.shadowMap && cameraDepth_) {
-    uniformsModel_.u_shadowMVPMatrix = cameraDepth_->projectionMatrix() * cameraDepth_->viewMatrix() * model;
+    const glm::mat4 biasMat = glm::mat4(0.5f, 0.0f, 0.0f, 0.0f,
+                                        0.0f, 0.5f, 0.0f, 0.0f,
+                                        0.0f, 0.0f, 1.0f, 0.0f,
+                                        0.5f, 0.5f, 0.0f, 1.0f);
+    uniformsModel.u_shadowMVPMatrix = biasMat * cameraDepth_->projectionMatrix() * cameraDepth_->viewMatrix() * m;
   }
 
-  uniformsBlockModel_->setData(&uniformsModel_, sizeof(UniformsModel));
+  it->second->setData(&uniformsModel, sizeof(UniformsModel));
 }
 
-void Viewer::updateUniformMaterial(const glm::vec4 &color, float specular) {
-  uniformsMaterial_.u_enableLight = config_.showLight ? 1 : 0;
-  uniformsMaterial_.u_enableIBL = iBLEnabled() ? 1 : 0;
-  uniformsMaterial_.u_enableShadow = config_.shadowMap;
-
-  uniformsMaterial_.u_kSpecular = specular;
-  uniformsMaterial_.u_baseColor = color;
-
-  uniformsBlockMaterial_->setData(&uniformsMaterial_, sizeof(UniformsMaterial));
-}
-
-bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
-  if (skybox.material->iblReady) {
-    return true;
+void Viewer::updateUniformMaterial(Material &material, float specular) {
+  if (!material.materialObj) {
+    return;
   }
 
-  if (skybox.material->iblError) {
+  auto &blocks = material.materialObj->shaderResources->blocks;
+  auto it = blocks.find(UniformBlock_Material);
+  if (it == blocks.end()) {
+    return;
+  }
+
+  UniformsMaterial uniformsMaterial{};
+  uniformsMaterial.u_enableLight = config_.showLight ? 1u : 0u;
+  uniformsMaterial.u_enableIBL = iBLEnabled() ? 1u : 0u;
+  uniformsMaterial.u_enableShadow = config_.shadowMap ? 1u : 0u;
+
+  uniformsMaterial.u_kSpecular = specular;
+  uniformsMaterial.u_baseColor = material.baseColor;
+
+  it->second->setData(&uniformsMaterial, sizeof(UniformsMaterial));
+}
+
+bool Viewer::initSkyboxIBL() {
+  if (!(config_.showSkybox && config_.pbrIbl)) {
     return false;
   }
 
-  skybox.material->createTextures([&]() -> void {
+  if (getSkyboxMaterial()->iblReady) {
+    return true;
+  }
+
+  auto &skybox = scene_->skybox;
+  if (skybox.material->textures.empty()) {
     setupTextures(*skybox.material);
-  });
+  }
 
   std::shared_ptr<Texture> textureCube = nullptr;
 
   // convert equirectangular to cube map if needed
-  auto texCubeIt = skybox.material->textures.find(TextureUsage_CUBE);
+  auto texCubeIt = skybox.material->textures.find(MaterialTexType_CUBE);
   if (texCubeIt == skybox.material->textures.end()) {
-    auto texEqIt = skybox.material->textures.find(TextureUsage_EQUIRECTANGULAR);
+    auto texEqIt = skybox.material->textures.find(MaterialTexType_EQUIRECTANGULAR);
     if (texEqIt != skybox.material->textures.end()) {
       auto tex2d = std::dynamic_pointer_cast<Texture>(texEqIt->second);
       auto cubeSize = std::min(tex2d->width, tex2d->height);
-      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize);
-      auto success = Environment::convertEquirectangular(createRenderer(),
+      auto texCvt = createTextureCubeDefault(cubeSize, cubeSize, TextureUsage_AttachmentColor | TextureUsage_Sampler);
+      auto success = Environment::convertEquirectangular(renderer_,
                                                          [&](ShaderProgram &program) -> bool {
                                                            return loadShaders(program, Shading_Skybox);
                                                          },
                                                          tex2d,
                                                          texCvt);
+
+      LOGD("convert equirectangular to cube map: %s.", success ? "success" : "failed");
       if (success) {
         textureCube = texCvt;
-        skybox.material->textures[TextureUsage_CUBE] = texCvt;
+        skybox.material->textures[MaterialTexType_CUBE] = texCvt;
 
         // update skybox material
-        skybox.material->textures.erase(TextureUsage_EQUIRECTANGULAR);
-        skybox.material->resetProgram();
+        skybox.material->textures.erase(MaterialTexType_EQUIRECTANGULAR);
+        skybox.material->shaderDefines = generateShaderDefines(*skybox.material);
+        skybox.material->materialObj = nullptr;
       }
     }
   } else {
@@ -588,109 +776,132 @@ bool Viewer::initSkyboxIBL(ModelSkybox &skybox) {
 
   if (!textureCube) {
     LOGE("initSkyboxIBL failed: skybox texture cube not available");
-    skybox.material->iblError = true;
     return false;
   }
 
   // generate irradiance map
   LOGD("generate ibl irradiance map ...");
-  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize);
-  if (Environment::generateIrradianceMap(createRenderer(),
+  auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize, TextureUsage_AttachmentColor | TextureUsage_Sampler);
+  if (Environment::generateIrradianceMap(renderer_,
                                          [&](ShaderProgram &program) -> bool {
                                            return loadShaders(program, Shading_IBL_Irradiance);
                                          },
                                          textureCube,
                                          texIrradiance)) {
-    skybox.material->textures[TextureUsage_IBL_IRRADIANCE] = std::move(texIrradiance);
+    skybox.material->textures[MaterialTexType_IBL_IRRADIANCE] = std::move(texIrradiance);
   } else {
     LOGE("initSkyboxIBL failed: generate irradiance map failed");
-    skybox.material->iblError = true;
     return false;
   }
   LOGD("generate ibl irradiance map done.");
 
   // generate prefilter map
   LOGD("generate ibl prefilter map ...");
-  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, true);
-  if (Environment::generatePrefilterMap(createRenderer(),
+  auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, TextureUsage_AttachmentColor | TextureUsage_Sampler, true);
+  if (Environment::generatePrefilterMap(renderer_,
                                         [&](ShaderProgram &program) -> bool {
                                           return loadShaders(program, Shading_IBL_Prefilter);
                                         },
                                         textureCube,
                                         texPrefilter)) {
-    skybox.material->textures[TextureUsage_IBL_PREFILTER] = std::move(texPrefilter);
+    skybox.material->textures[MaterialTexType_IBL_PREFILTER] = std::move(texPrefilter);
   } else {
     LOGE("initSkyboxIBL failed: generate prefilter map failed");
-    skybox.material->iblError = true;
     return false;
   }
   LOGD("generate ibl prefilter map done.");
 
-  skybox.material->iblReady = true;
+  getSkyboxMaterial()->iblReady = true;
   return true;
 }
 
 bool Viewer::iBLEnabled() {
-  return config_.showSkybox && config_.pbrIbl && scene_->skybox.material->iblReady;
+  return config_.showSkybox && config_.pbrIbl && getSkyboxMaterial()->iblReady;
 }
 
-void Viewer::updateIBLTextures(Material &material) {
-  if (!material.shaderUniforms) {
+SkyboxMaterial *Viewer::getSkyboxMaterial() {
+  return dynamic_cast<SkyboxMaterial *>(scene_->skybox.material.get());
+}
+
+void Viewer::updateIBLTextures(MaterialObject *materialObj) {
+  if (!materialObj->shaderResources) {
     return;
   }
 
-  auto &samplers = material.shaderUniforms->samplers;
+  auto &samplers = materialObj->shaderResources->samplers;
   if (iBLEnabled()) {
     auto &skyboxTextures = scene_->skybox.material->textures;
-    samplers[TextureUsage_IBL_IRRADIANCE]->setTexture(skyboxTextures[TextureUsage_IBL_IRRADIANCE]);
-    samplers[TextureUsage_IBL_PREFILTER]->setTexture(skyboxTextures[TextureUsage_IBL_PREFILTER]);
+    samplers[MaterialTexType_IBL_IRRADIANCE]->setTexture(skyboxTextures[MaterialTexType_IBL_IRRADIANCE]);
+    samplers[MaterialTexType_IBL_PREFILTER]->setTexture(skyboxTextures[MaterialTexType_IBL_PREFILTER]);
   } else {
-    samplers[TextureUsage_IBL_IRRADIANCE]->setTexture(iblPlaceholder_);
-    samplers[TextureUsage_IBL_PREFILTER]->setTexture(iblPlaceholder_);
+    samplers[MaterialTexType_IBL_IRRADIANCE]->setTexture(iblPlaceholder_);
+    samplers[MaterialTexType_IBL_PREFILTER]->setTexture(iblPlaceholder_);
   }
 }
 
-void Viewer::updateShadowTextures(Material &material) {
-  if (!material.shaderUniforms) {
+void Viewer::updateShadowTextures(MaterialObject *materialObj) {
+  if (!materialObj->shaderResources) {
     return;
   }
 
-  auto &samplers = material.shaderUniforms->samplers;
+  auto &samplers = materialObj->shaderResources->samplers;
   if (config_.shadowMap) {
-    samplers[TextureUsage_SHADOWMAP]->setTexture(texDepthShadow_);
+    samplers[MaterialTexType_SHADOWMAP]->setTexture(texDepthShadow_);
   } else {
-    samplers[TextureUsage_SHADOWMAP]->setTexture(shadowPlaceholder_);
+    samplers[MaterialTexType_SHADOWMAP]->setTexture(shadowPlaceholder_);
   }
 }
 
-std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height, bool mipmaps) {
-  SamplerCubeDesc samplerCube;
-  samplerCube.useMipmaps = mipmaps;
-  samplerCube.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
+std::shared_ptr<Texture> Viewer::createTextureCubeDefault(int width, int height, uint32_t usage, bool mipmaps) {
+  TextureDesc texDesc{};
+  texDesc.width = width;
+  texDesc.height = height;
+  texDesc.type = TextureType_CUBE;
+  texDesc.format = TextureFormat_RGBA8;
+  texDesc.usage = usage;
+  texDesc.useMipmaps = mipmaps;
+  texDesc.multiSample = false;
+  auto textureCube = renderer_->createTexture(texDesc);
+  if (!textureCube) {
+    return nullptr;
+  }
 
-  auto textureCube = renderer_->createTexture({TextureType_CUBE, TextureFormat_RGBA8, false});
-  textureCube->setSamplerDesc(samplerCube);
-  textureCube->initImageData(width, height);
+  SamplerDesc sampler{};
+  sampler.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
+  sampler.filterMag = Filter_LINEAR;
+  textureCube->setSamplerDesc(sampler);
 
+  textureCube->initImageData();
   return textureCube;
 }
 
-std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, TextureFormat format, bool mipmaps) {
-  Sampler2DDesc sampler2d;
-  sampler2d.useMipmaps = mipmaps;
-  sampler2d.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
+std::shared_ptr<Texture> Viewer::createTexture2DDefault(int width, int height, TextureFormat format, uint32_t usage, bool mipmaps) {
+  TextureDesc texDesc{};
+  texDesc.width = width;
+  texDesc.height = height;
+  texDesc.type = TextureType_2D;
+  texDesc.format = format;
+  texDesc.usage = usage;
+  texDesc.useMipmaps = mipmaps;
+  texDesc.multiSample = false;
+  auto texture2d = renderer_->createTexture(texDesc);
+  if (!texture2d) {
+    return nullptr;
+  }
 
-  auto texture_2d = renderer_->createTexture({TextureType_2D, format, false});
-  texture_2d->setSamplerDesc(sampler2d);
-  texture_2d->initImageData(width, height);
+  SamplerDesc sampler{};
+  sampler.filterMin = mipmaps ? Filter_LINEAR_MIPMAP_LINEAR : Filter_LINEAR;
+  sampler.filterMag = Filter_LINEAR;
+  texture2d->setSamplerDesc(sampler);
 
-  return texture_2d;
+  texture2d->initImageData();
+  return texture2d;
 }
 
 std::set<std::string> Viewer::generateShaderDefines(Material &material) {
   std::set<std::string> shaderDefines;
   for (auto &kv : material.textures) {
-    const char *samplerDefine = Material::samplerDefine((TextureUsage) kv.first);
+    const char *samplerDefine = Material::samplerDefine((MaterialTexType) kv.first);
     if (samplerDefine) {
       shaderDefines.insert(samplerDefine);
     }
@@ -707,7 +918,34 @@ size_t Viewer::getShaderProgramCacheKey(ShadingModel shading, const std::set<std
   return seed;
 }
 
-bool Viewer::checkMeshFrustumCull(ModelMesh &mesh, glm::mat4 &transform) {
+size_t Viewer::getPipelineCacheKey(Material &material, const RenderStates &rs) {
+  size_t seed = 0;
+
+  HashUtils::hashCombine(seed, (int) material.materialObj->shadingModel);
+
+  // TODO pack together
+  HashUtils::hashCombine(seed, rs.blend);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendFuncRgb);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendSrcRgb);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendDstRgb);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendFuncAlpha);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendSrcAlpha);
+  HashUtils::hashCombine(seed, (int) rs.blendParams.blendDstAlpha);
+
+  HashUtils::hashCombine(seed, rs.depthTest);
+  HashUtils::hashCombine(seed, rs.depthMask);
+  HashUtils::hashCombine(seed, (int) rs.depthFunc);
+
+  HashUtils::hashCombine(seed, rs.cullFace);
+  HashUtils::hashCombine(seed, (int) rs.primitiveType);
+  HashUtils::hashCombine(seed, (int) rs.polygonMode);
+
+  HashUtils::hashCombine(seed, rs.lineWidth);
+
+  return seed;
+}
+
+bool Viewer::checkMeshFrustumCull(ModelMesh &mesh, const glm::mat4 &transform) {
   BoundingBox bbox = mesh.aabb.transform(transform);
   return camera_->getFrustum().intersects(bbox);
 }

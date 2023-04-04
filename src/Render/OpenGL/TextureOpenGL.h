@@ -32,7 +32,7 @@ class TextureOpenGL : public Texture {
         ret.type = GL_UNSIGNED_BYTE;
         break;
       }
-      case TextureFormat_DEPTH: {
+      case TextureFormat_FLOAT32: {
         ret.internalformat = GL_DEPTH_COMPONENT;
         ret.format = GL_DEPTH_COMPONENT;
         ret.type = GL_FLOAT;
@@ -42,6 +42,43 @@ class TextureOpenGL : public Texture {
 
     return ret;
   }
+
+  void dumpImage(const char *path, uint32_t layer, uint32_t level) override {
+    if (multiSample) {
+      return;
+    }
+
+    GLuint fbo;
+    GL_CHECK(glGenFramebuffers(1, &fbo));
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
+
+    GLenum attachment = format == TextureFormat_FLOAT32 ? GL_DEPTH_ATTACHMENT : GL_COLOR_ATTACHMENT0;
+    GLenum target = multiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+    if (type == TextureType_CUBE) {
+      target = OpenGL::cvtCubeFace(static_cast<CubeMapFace>(layer));
+    }
+    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, target, texId_, level));
+
+    auto levelWidth = (int32_t) getLevelWidth(level);
+    auto levelHeight = (int32_t) getLevelHeight(level);
+
+    auto *pixels = new uint8_t[levelWidth * levelHeight * 4];
+    GL_CHECK(glReadPixels(0, 0, levelWidth, levelHeight, glDesc_.format, glDesc_.type, pixels));
+
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    GL_CHECK(glDeleteFramebuffers(1, &fbo));
+
+    // convert float to rgba
+    if (format == TextureFormat_FLOAT32) {
+      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels), levelWidth, levelHeight);
+    }
+    ImageUtils::writeImage(path, levelWidth, levelHeight, 4, pixels, levelWidth * 4, true);
+    delete[] pixels;
+  }
+
+ protected:
+  GLuint texId_ = 0;
+  TextureOpenGLDesc glDesc_{};
 };
 
 class Texture2DOpenGL : public TextureOpenGL {
@@ -49,8 +86,12 @@ class Texture2DOpenGL : public TextureOpenGL {
   explicit Texture2DOpenGL(const TextureDesc &desc) {
     assert(desc.type == TextureType_2D);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_2D;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
     target_ = multiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
@@ -71,15 +112,14 @@ class Texture2DOpenGL : public TextureOpenGL {
       return;
     }
 
-    auto &sampler2d = dynamic_cast<Sampler2DDesc &>(sampler);
     GL_CHECK(glBindTexture(target_, texId_));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(sampler2d.wrapS)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(sampler2d.wrapT)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::ConvertFilter(sampler2d.filterMin)));
-    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::ConvertFilter(sampler2d.filterMag)));
-    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &sampler2d.borderColor[0]));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(sampler.wrapS)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(sampler.wrapT)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, OpenGL::cvtFilter(sampler.filterMin)));
+    GL_CHECK(glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, OpenGL::cvtFilter(sampler.filterMag)));
 
-    useMipmaps = sampler2d.useMipmaps;
+    glm::vec4 borderColor = OpenGL::cvtBorderColor(sampler.borderColor);
+    GL_CHECK(glTexParameterfv(target_, GL_TEXTURE_BORDER_COLOR, &borderColor[0]));
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
@@ -93,8 +133,10 @@ class Texture2DOpenGL : public TextureOpenGL {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     GL_CHECK(glBindTexture(target_, texId_));
     GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, width, height, 0, glDesc_.format, glDesc_.type,
@@ -105,18 +147,12 @@ class Texture2DOpenGL : public TextureOpenGL {
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     GL_CHECK(glBindTexture(target_, texId_));
     if (multiSample) {
-      GL_CHECK(glTexImage2DMultisample(target_, 4, glDesc_.internalformat, w, h, GL_TRUE));
+      GL_CHECK(glTexImage2DMultisample(target_, 4, glDesc_.internalformat, width, height, GL_TRUE));
     } else {
-      GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, w, h, 0, glDesc_.format, glDesc_.type, nullptr));
+      GL_CHECK(glTexImage2D(target_, 0, glDesc_.internalformat, width, height, 0, glDesc_.format, glDesc_.type, nullptr));
 
       if (useMipmaps) {
         GL_CHECK(glGenerateMipmap(target_));
@@ -124,38 +160,8 @@ class Texture2DOpenGL : public TextureOpenGL {
     }
   }
 
-  void dumpImage(const char *path) override {
-    if (multiSample) {
-      return;
-    }
-
-    GLuint fbo;
-    GL_CHECK(glGenFramebuffers(1, &fbo));
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
-
-    GLenum attachment = format == TextureFormat_DEPTH ? GL_DEPTH_ATTACHMENT : GL_COLOR_ATTACHMENT0;
-    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texId_, 0));
-
-    auto *pixels = new uint8_t[width * height * 4];
-    GL_CHECK(glReadPixels(0, 0, width, height, glDesc_.format, glDesc_.type, pixels));
-
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-    GL_CHECK(glDeleteFramebuffers(1, &fbo));
-
-    // convert float to rgba
-    if (format == TextureFormat_DEPTH) {
-      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels),
-                                    width, height);
-    }
-    ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
-    delete[] pixels;
-  }
-
  private:
-  GLuint texId_ = 0;
   GLenum target_ = 0;
-  bool useMipmaps = false;
-  TextureOpenGLDesc glDesc_{};
 };
 
 class TextureCubeOpenGL : public TextureOpenGL {
@@ -163,8 +169,12 @@ class TextureCubeOpenGL : public TextureOpenGL {
   explicit TextureCubeOpenGL(const TextureDesc &desc) {
     assert(desc.type == TextureType_CUBE);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_CUBE;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
 
     glDesc_ = GetOpenGLDesc(format);
@@ -184,18 +194,17 @@ class TextureCubeOpenGL : public TextureOpenGL {
       return;
     }
 
-    auto &samplerCube = dynamic_cast<SamplerCubeDesc &>(sampler);
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::ConvertWrap(samplerCube.wrapS)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::ConvertWrap(samplerCube.wrapT)));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::ConvertWrap(samplerCube.wrapR)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, OpenGL::cvtWrap(sampler.wrapS)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, OpenGL::cvtWrap(sampler.wrapT)));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, OpenGL::cvtWrap(sampler.wrapR)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
-                             OpenGL::ConvertFilter(samplerCube.filterMin)));
+                             OpenGL::cvtFilter(sampler.filterMin)));
     GL_CHECK(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
-                             OpenGL::ConvertFilter(samplerCube.filterMag)));
-    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &samplerCube.borderColor[0]));
+                             OpenGL::cvtFilter(sampler.filterMag)));
 
-    useMipmaps = samplerCube.useMipmaps;
+    glm::vec4 borderColor = OpenGL::cvtBorderColor(sampler.borderColor);
+    GL_CHECK(glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, &borderColor[0]));
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override {
@@ -208,8 +217,10 @@ class TextureCubeOpenGL : public TextureOpenGL {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
     for (int i = 0; i < 6; i++) {
@@ -221,16 +232,10 @@ class TextureCubeOpenGL : public TextureOpenGL {
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texId_));
     for (int i = 0; i < 6; i++) {
-      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glDesc_.internalformat, w, h, 0,
+      GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, glDesc_.internalformat, width, height, 0,
                             glDesc_.format, glDesc_.type, nullptr));
     }
 
@@ -238,11 +243,6 @@ class TextureCubeOpenGL : public TextureOpenGL {
       GL_CHECK(glGenerateMipmap(GL_TEXTURE_CUBE_MAP));
     }
   }
-
- private:
-  GLuint texId_ = 0;
-  bool useMipmaps = false;
-  TextureOpenGLDesc glDesc_{};
 };
 
 }

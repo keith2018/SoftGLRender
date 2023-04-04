@@ -29,9 +29,16 @@ glm::mat4 Camera::projectionMatrix() const {
   glm::mat4 projection(0.f);
   projection[0][0] = tanHalfFovInverse / aspect_;
   projection[1][1] = tanHalfFovInverse;
-  projection[2][2] = -far_ / (far_ - near_);
-  projection[3][2] = -(far_ * near_) / (far_ - near_);
-  projection[2][3] = -1.f;
+
+  if (reverseZ_) {
+    projection[2][2] = 0.f;
+    projection[2][3] = -1.f;
+    projection[3][2] = near_;
+  } else {
+    projection[2][2] = -1.f;
+    projection[2][3] = -1.f;
+    projection[3][2] = -near_;
+  }
 
   return projection;
 }

@@ -8,6 +8,7 @@
 
 #include <thread>
 #include <atomic>
+#include "Base/UUID.h"
 #include "Base/Buffer.h"
 #include "Base/ImageUtils.h"
 #include "Render/Texture.h"
@@ -69,7 +70,7 @@ class TextureImageSoft {
     return levels.empty();
   }
 
-  inline std::shared_ptr<ImageBufferSoft<T>> &getBuffer(int level = 0) {
+  inline std::shared_ptr<ImageBufferSoft<T>> &getBuffer(uint32_t level = 0) {
     return levels[level];
   }
 
@@ -79,23 +80,61 @@ class TextureImageSoft {
   std::vector<std::shared_ptr<ImageBufferSoft<T>>> levels;
 };
 
+class TextureSoft : public Texture {
+ protected:
+  static inline glm::vec4 cvtBorderColor(BorderColor color) {
+    switch (color) {
+      case Border_BLACK: return glm::vec4(0.f);
+      case Border_WHITE: return glm::vec4(1.f);
+      default:
+        break;
+    }
+    return glm::vec4(0.f);
+  }
+
+  template<typename T>
+  void dumpImageSoft(const char *path, TextureImageSoft<T> image, uint32_t level) {
+    if (multiSample) {
+      return;
+    }
+
+    void *pixels = image.getBuffer(level)->buffer->getRawDataPtr();
+    auto levelWidth = (int32_t) getLevelWidth(level);
+    auto levelHeight = (int32_t) getLevelHeight(level);
+
+    // convert float to rgba
+    if (format == TextureFormat_FLOAT32) {
+      auto *rgba_pixels = new uint8_t[levelWidth * levelHeight * 4];
+      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels), reinterpret_cast<float *>(pixels), levelWidth, levelHeight);
+      ImageUtils::writeImage(path, levelWidth, levelHeight, 4, rgba_pixels, levelWidth * 4, true);
+      delete[] rgba_pixels;
+    } else {
+      ImageUtils::writeImage(path, levelWidth, levelHeight, 4, pixels, levelWidth * 4, true);
+    }
+  }
+};
+
 template<typename T>
-class Texture2DSoft : public Texture {
+class Texture2DSoft : public TextureSoft {
  public:
-  explicit Texture2DSoft(const TextureDesc &desc) : uuid_(uuidCounter_++) {
+  explicit Texture2DSoft(const TextureDesc &desc) {
     assert(desc.type == TextureType_2D);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_2D;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
   }
 
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
   void setSamplerDesc(SamplerDesc &sampler) override {
-    samplerDesc_ = dynamic_cast<Sampler2DDesc &>(sampler);
+    samplerDesc_ = sampler;
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<T>>> &buffers) override {
@@ -104,51 +143,32 @@ class Texture2DSoft : public Texture {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     image_.levels.resize(1);
     image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(buffers[0]);
 
-    if (samplerDesc_.useMipmaps) {
+    if (useMipmaps) {
       image_.generateMipmap();
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     image_.levels.resize(1);
-    image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(w, h, multiSample ? SOFT_MS_CNT : 1);
-    if (samplerDesc_.useMipmaps) {
+    image_.levels[0] = std::make_shared<ImageBufferSoft<T>>(width, height, multiSample ? SOFT_MS_CNT : 1);
+    if (useMipmaps) {
       image_.generateMipmap(false);
     }
   }
 
-  void dumpImage(const char *path) override {
-    if (multiSample) {
-      return;
-    }
-
-    void *pixels = image_.getBuffer()->buffer->getRawDataPtr();
-
-    // convert float to rgba
-    if (format == TextureFormat_DEPTH) {
-      auto *rgba_pixels = new uint8_t[width * height * 4];
-      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels), reinterpret_cast<float *>(pixels),
-                                    width, height);
-      ImageUtils::writeImage(path, width, height, 4, rgba_pixels, width * 4, true);
-      delete[] rgba_pixels;
-    } else {
-      ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
-    }
+  void dumpImage(const char *path, uint32_t layer, uint32_t level) override {
+    dumpImageSoft(path, image_, level);
   }
 
-  inline Sampler2DDesc &getSamplerDesc() {
+  inline SamplerDesc &getSamplerDesc() {
     return samplerDesc_;
   }
 
@@ -157,39 +177,42 @@ class Texture2DSoft : public Texture {
   }
 
   inline void getBorderColor(float &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor.r, 0.f, 1.f);
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor).r, 0.f, 1.f);
   }
 
   inline void getBorderColor(RGBA &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor * 255.f, {0, 0, 0, 0},
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor) * 255.f, {0, 0, 0, 0},
                      {255, 255, 255, 255});
   }
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
-  Sampler2DDesc samplerDesc_;
+  UUID<Texture2DSoft<T>> uuid_;
+  SamplerDesc samplerDesc_;
   TextureImageSoft<T> image_;
 };
 
 template<typename T>
-class TextureCubeSoft : public Texture {
+class TextureCubeSoft : public TextureSoft {
  public:
-  explicit TextureCubeSoft(const TextureDesc &desc) : uuid_(uuidCounter_++) {
+  explicit TextureCubeSoft(const TextureDesc &desc) {
     assert(desc.type == TextureType_CUBE);
     assert(desc.multiSample == false);
 
+    width = desc.width;
+    height = desc.height;
     type = TextureType_CUBE;
     format = desc.format;
+    usage = desc.usage;
+    useMipmaps = desc.useMipmaps;
     multiSample = desc.multiSample;
   }
 
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
   void setSamplerDesc(SamplerDesc &sampler) override {
-    samplerDesc_ = dynamic_cast<SamplerCubeDesc &>(sampler);
+    samplerDesc_ = sampler;
   }
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<T>>> &buffers) override {
@@ -198,39 +221,36 @@ class TextureCubeSoft : public Texture {
       return;
     }
 
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
-
-    width = (int) buffers[0]->getWidth();
-    height = (int) buffers[0]->getHeight();
+    if (width != buffers[0]->getWidth() || height != buffers[0]->getHeight()) {
+      LOGE("setImageData error: size not match");
+      return;
+    }
 
     for (int i = 0; i < 6; i++) {
       images_[i].levels.resize(1);
       images_[i].levels[0] = std::make_shared<ImageBufferSoft<T>>(buffers[i]);
 
-      if (samplerDesc_.useMipmaps) {
+      if (useMipmaps) {
         images_[i].generateMipmap();
       }
     }
   }
 
-  void initImageData(int w, int h) override {
-    if (width == w && height == h) {
-      return;
-    }
-    width = w;
-    height = h;
-
+  void initImageData() override {
     for (auto &image : images_) {
       image.levels.resize(1);
-      image.levels[0] = std::make_shared<ImageBufferSoft<T>>(w, h);
-      if (samplerDesc_.useMipmaps) {
+      image.levels[0] = std::make_shared<ImageBufferSoft<T>>(width, height);
+      if (useMipmaps) {
         image.generateMipmap(false);
       }
     }
   }
 
-  inline SamplerCubeDesc &getSamplerDesc() {
+  void dumpImage(const char *path, uint32_t layer, uint32_t level) override {
+    dumpImageSoft(path, images_[layer], level);
+  }
+
+  inline SamplerDesc &getSamplerDesc() {
     return samplerDesc_;
   }
 
@@ -239,25 +259,18 @@ class TextureCubeSoft : public Texture {
   }
 
   inline void getBorderColor(float &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor.r, 0.f, 1.f);
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor).r, 0.f, 1.f);
   }
 
   inline void getBorderColor(RGBA &ret) {
-    ret = glm::clamp(samplerDesc_.borderColor * 255.f, {0, 0, 0, 0},
+    ret = glm::clamp(cvtBorderColor(samplerDesc_.borderColor) * 255.f, {0, 0, 0, 0},
                      {255, 255, 255, 255});
   }
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
-  SamplerCubeDesc samplerDesc_;
+  UUID<TextureCubeSoft<T>> uuid_;
+  SamplerDesc samplerDesc_;
   TextureImageSoft<T> images_[6];
 };
-
-template<typename T>
-int Texture2DSoft<T>::uuidCounter_ = 0;
-
-template<typename T>
-int TextureCubeSoft<T>::uuidCounter_ = 0;
 
 }

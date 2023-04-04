@@ -22,23 +22,23 @@ class ShaderProgramOpenGL : public ShaderProgram {
     programGLSL_.addDefine(def);
   }
 
-  bool CompileAndLink(const std::string &vsSource, const std::string &fsSource) {
+  bool compileAndLink(const std::string &vsSource, const std::string &fsSource) {
     bool ret = programGLSL_.loadSource(vsSource, fsSource);
     programId_ = programGLSL_.getId();
     return ret;
   }
 
-  inline void Use() {
+  inline void use() {
     programGLSL_.use();
     uniformBlockBinding_ = 0;
     uniformSamplerBinding_ = 0;
   }
 
-  inline int GetUniformBlockBinding() {
+  inline int getUniformBlockBinding() {
     return uniformBlockBinding_++;
   }
 
-  inline int GetUniformSamplerBinding() {
+  inline int getUniformSamplerBinding() {
     return uniformSamplerBinding_++;
   }
 

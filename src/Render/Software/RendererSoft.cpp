@@ -7,7 +7,6 @@
 #include "RendererSoft.h"
 #include "Base/SIMD.h"
 #include "Base/HashUtils.h"
-#include "Render/Geometry.h"
 #include "FramebufferSoft.h"
 #include "TextureSoft.h"
 #include "UniformSoft.h"
@@ -30,13 +29,13 @@ std::shared_ptr<Texture> RendererSoft::createTexture(const TextureDesc &desc) {
   switch (desc.type) {
     case TextureType_2D:
       switch (desc.format) {
-        case TextureFormat_RGBA8: return std::make_shared<Texture2DSoft<RGBA>>(desc);
-        case TextureFormat_DEPTH: return std::make_shared<Texture2DSoft<float>>(desc);
+        case TextureFormat_RGBA8:     return std::make_shared<Texture2DSoft<RGBA>>(desc);
+        case TextureFormat_FLOAT32:   return std::make_shared<Texture2DSoft<float>>(desc);
       }
     case TextureType_CUBE:
       switch (desc.format) {
-        case TextureFormat_RGBA8: return std::make_shared<TextureCubeSoft<RGBA>>(desc);
-        case TextureFormat_DEPTH: return std::make_shared<TextureCubeSoft<float>>(desc);
+        case TextureFormat_RGBA8:     return std::make_shared<TextureCubeSoft<RGBA>>(desc);
+        case TextureFormat_FLOAT32:   return std::make_shared<TextureCubeSoft<float>>(desc);
       }
   }
   return nullptr;
@@ -52,19 +51,50 @@ std::shared_ptr<ShaderProgram> RendererSoft::createShaderProgram() {
   return std::make_shared<ShaderProgramSoft>();
 }
 
+// pipeline states
+std::shared_ptr<PipelineStates> RendererSoft::createPipelineStates(const RenderStates &renderStates) {
+  return std::make_shared<PipelineStates>(renderStates);
+}
+
 // uniform
 std::shared_ptr<UniformBlock> RendererSoft::createUniformBlock(const std::string &name, int size) {
   return std::make_shared<UniformBlockSoft>(name, size);
 }
 
-std::shared_ptr<UniformSampler> RendererSoft::createUniformSampler(const std::string &name, TextureType type,
-                                                                   TextureFormat format) {
-  return std::make_shared<UniformSamplerSoft>(name, type, format);
+std::shared_ptr<UniformSampler> RendererSoft::createUniformSampler(const std::string &name, const TextureDesc &desc) {
+  return std::make_shared<UniformSamplerSoft>(name, desc.type, desc.format);
 }
 
 // pipeline
-void RendererSoft::setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) {
+void RendererSoft::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) {
   fbo_ = dynamic_cast<FrameBufferSoft *>(frameBuffer.get());
+
+  if (!fbo_) {
+    return;
+  }
+
+  fboColor_ = fbo_->getColorBuffer();
+  fboDepth_ = fbo_->getDepthBuffer();
+
+  if (states.colorFlag && fboColor_) {
+    RGBA color = RGBA(states.clearColor.r * 255,
+                      states.clearColor.g * 255,
+                      states.clearColor.b * 255,
+                      states.clearColor.a * 255);
+    if (fboColor_->multiSample) {
+      fboColor_->bufferMs4x->setAll(glm::tvec4<RGBA>(color));
+    } else {
+      fboColor_->buffer->setAll(color);
+    }
+  }
+
+  if (states.depthFlag && fboDepth_) {
+    if (fboDepth_->multiSample) {
+      fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(states.clearDepth));
+    } else {
+      fboDepth_->buffer->setAll(states.clearDepth);
+    }
+  }
 }
 
 void RendererSoft::setViewPort(int x, int y, int width, int height) {
@@ -73,59 +103,21 @@ void RendererSoft::setViewPort(int x, int y, int width, int height) {
   viewport_.width = (float) width;
   viewport_.height = (float) height;
 
-  viewport_.depthNear = 0.f;
-  viewport_.depthFar = 1.f;
+  viewport_.minDepth = 0.f;
+  viewport_.maxDepth = 1.f;
 
-  if (reverseZ_) {
-    std::swap(viewport_.depthNear, viewport_.depthFar);
-  }
-
-  viewport_.depthMin = std::min(viewport_.depthNear, viewport_.depthFar);
-  viewport_.depthMax = std::max(viewport_.depthNear, viewport_.depthFar);
+  viewport_.absMinDepth = std::min(viewport_.minDepth, viewport_.maxDepth);
+  viewport_.absMaxDepth = std::max(viewport_.minDepth, viewport_.maxDepth);
 
   viewport_.innerO.x = viewport_.x + viewport_.width / 2.f;
   viewport_.innerO.y = viewport_.y + viewport_.height / 2.f;
-  viewport_.innerO.z = viewport_.depthNear;
+  viewport_.innerO.z = viewport_.minDepth;
   viewport_.innerO.w = 0.f;
 
   viewport_.innerP.x = viewport_.width / 2.f;    // divide by 2 in advance
   viewport_.innerP.y = viewport_.height / 2.f;   // divide by 2 in advance
-  viewport_.innerP.z = viewport_.depthFar - viewport_.depthNear;
+  viewport_.innerP.z = viewport_.maxDepth - viewport_.minDepth;
   viewport_.innerP.w = 1.f;
-}
-
-void RendererSoft::clear(const ClearState &state) {
-  if (!fbo_) {
-    return;
-  }
-
-  fboColor_ = fbo_->getColorBuffer();
-  fboDepth_ = fbo_->getDepthBuffer();
-
-  if (state.colorFlag && fboColor_) {
-    RGBA color = RGBA(state.clearColor.r * 255,
-                      state.clearColor.g * 255,
-                      state.clearColor.b * 255,
-                      state.clearColor.a * 255);
-    if (fboColor_->multiSample) {
-      fboColor_->bufferMs4x->setAll(glm::tvec4<RGBA>(color));
-    } else {
-      fboColor_->buffer->setAll(color);
-    }
-  }
-
-  if (state.depthFlag && fboDepth_) {
-    float depth = viewport_.depthFar;
-    if (fboDepth_->multiSample) {
-      fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(depth));
-    } else {
-      fboDepth_->buffer->setAll(depth);
-    }
-  }
-}
-
-void RendererSoft::setRenderState(const RenderState &state) {
-  renderState_ = &state;
 }
 
 void RendererSoft::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
@@ -136,23 +128,27 @@ void RendererSoft::setShaderProgram(std::shared_ptr<ShaderProgram> &program) {
   shaderProgram_ = dynamic_cast<ShaderProgramSoft *>(program.get());
 }
 
-void RendererSoft::setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) {
-  if (!uniforms) {
+void RendererSoft::setShaderResources(std::shared_ptr<ShaderResources> &resources) {
+  if (!resources) {
     return;
   }
   if (shaderProgram_) {
-    shaderProgram_->bindUniforms(*uniforms);
+    shaderProgram_->bindResources(*resources);
   }
 }
 
-void RendererSoft::draw(PrimitiveType type) {
+void RendererSoft::setPipelineStates(std::shared_ptr<PipelineStates> &states) {
+  renderState_ = &states->renderStates;
+}
+
+void RendererSoft::draw() {
   if (!fbo_ || !vao_ || !shaderProgram_) {
     return;
   }
 
   fboColor_ = fbo_->getColorBuffer();
   fboDepth_ = fbo_->getDepthBuffer();
-  primitiveType_ = type;
+  primitiveType_ = renderState_->primitiveType;
 
   if (fboColor_) {
     rasterSamples_ = fboColor_->sampleCnt;
@@ -174,6 +170,8 @@ void RendererSoft::draw(PrimitiveType type) {
     multiSampleResolve();
   }
 }
+
+void RendererSoft::endRenderPass() {}
 
 void RendererSoft::processVertexShader() {
   // init shader varyings
@@ -312,7 +310,7 @@ void RendererSoft::processRasterization() {
           continue;
         }
         auto *vert0 = &vertexes_[primitive.indices[0]];
-        rasterizationPoint(vert0, renderState_->pointSize);
+        rasterizationPoint(vert0, pointSize_);
       }
       break;
     case Primitive_LINE:
@@ -386,7 +384,7 @@ bool RendererSoft::processDepthTest(int x, int y, float depth, int sample, bool 
   }
 
   // depth clamping
-  depth = glm::clamp(depth, viewport_.depthMin, viewport_.depthMax);
+  depth = glm::clamp(depth, viewport_.absMinDepth, viewport_.absMaxDepth);
 
   // depth comparison
   float *zPtr = getFrameDepth(x, y, sample);
@@ -595,8 +593,7 @@ void RendererSoft::rasterizationPolygonsPoint(std::vector<PrimitiveHolder> &prim
       }
 
       // rasterization
-      rasterizationPoint(&vertexes_[point.indices[0]],
-                         renderState_->pointSize);
+      rasterizationPoint(&vertexes_[point.indices[0]], pointSize_);
     }
   }
 }
@@ -799,8 +796,8 @@ void RendererSoft::rasterizationPixelQuad(PixelQuadContext &quad) {
       // interpolate z, w
       interpolateBarycentric(&sample.position.z, quad.vertZ, 2, sample.barycentric);
 
-      // depth clip
-      if (sample.position.z < viewport_.depthMin || sample.position.z > viewport_.depthMax) {
+      // depth clipping
+      if (sample.position.z < viewport_.absMinDepth || sample.position.z > viewport_.absMaxDepth) {
         sample.inside = false;
       }
 
@@ -979,6 +976,7 @@ void RendererSoft::vertexShaderImpl(VertexHolder &vertex) {
   shaderProgram_->bindVertexShaderVaryings(vertex.varyings);
   shaderProgram_->execVertexShader();
 
+  pointSize_ = shaderProgram_->getShaderBuiltin().PointSize;
   vertex.clipPos = shaderProgram_->getShaderBuiltin().Position;
   vertex.clipMask = countFrustumClipMask(vertex.clipPos);
 }

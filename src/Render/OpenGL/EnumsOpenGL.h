@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include "Render/RenderState.h"
+#include "Render/PipelineStates.h"
 
 namespace SoftGL {
 namespace OpenGL {
 
 #define CASE_CVT_GL(PRE, TOKEN) case PRE##TOKEN: return GL_##TOKEN
 
-static inline GLint ConvertWrap(WrapMode mode) {
+static inline GLint cvtWrap(WrapMode mode) {
   switch (mode) {
     CASE_CVT_GL(Wrap_, REPEAT);
     CASE_CVT_GL(Wrap_, MIRRORED_REPEAT);
@@ -25,7 +25,7 @@ static inline GLint ConvertWrap(WrapMode mode) {
   return GL_REPEAT;
 }
 
-static inline GLint ConvertFilter(FilterMode mode) {
+static inline GLint cvtFilter(FilterMode mode) {
   switch (mode) {
     CASE_CVT_GL(Filter_, LINEAR);
     CASE_CVT_GL(Filter_, NEAREST);
@@ -39,7 +39,7 @@ static inline GLint ConvertFilter(FilterMode mode) {
   return GL_NEAREST;
 }
 
-static inline GLint convertCubeFace(CubeMapFace face) {
+static inline GLint cvtCubeFace(CubeMapFace face) {
   switch (face) {
     CASE_CVT_GL(, TEXTURE_CUBE_MAP_POSITIVE_X);
     CASE_CVT_GL(, TEXTURE_CUBE_MAP_NEGATIVE_X);
@@ -53,7 +53,7 @@ static inline GLint convertCubeFace(CubeMapFace face) {
   return 0;
 }
 
-static inline GLint convertDepthFunc(DepthFunction func) {
+static inline GLint cvtDepthFunc(DepthFunction func) {
   switch (func) {
     CASE_CVT_GL(DepthFunc_, NEVER);
     CASE_CVT_GL(DepthFunc_, LESS);
@@ -69,7 +69,7 @@ static inline GLint convertDepthFunc(DepthFunction func) {
   return 0;
 }
 
-static inline GLint convertBlendFactor(BlendFactor factor) {
+static inline GLint cvtBlendFactor(BlendFactor factor) {
   switch (factor) {
     CASE_CVT_GL(BlendFactor_, ZERO);
     CASE_CVT_GL(BlendFactor_, ONE);
@@ -87,7 +87,7 @@ static inline GLint convertBlendFactor(BlendFactor factor) {
   return 0;
 }
 
-static inline GLint convertBlendFunction(BlendFunction func) {
+static inline GLint cvtBlendFunction(BlendFunction func) {
   switch (func) {
     case BlendFunc_ADD:               return GL_FUNC_ADD;
     case BlendFunc_SUBTRACT:          return GL_FUNC_SUBTRACT;
@@ -100,7 +100,7 @@ static inline GLint convertBlendFunction(BlendFunction func) {
   return 0;
 }
 
-static inline GLint convertPolygonMode(PolygonMode mode) {
+static inline GLint cvtPolygonMode(PolygonMode mode) {
   switch (mode) {
     CASE_CVT_GL(PolygonMode_, POINT);
     CASE_CVT_GL(PolygonMode_, LINE);
@@ -111,7 +111,7 @@ static inline GLint convertPolygonMode(PolygonMode mode) {
   return 0;
 }
 
-static inline GLint convertDrawMode(PrimitiveType type) {
+static inline GLint cvtDrawMode(PrimitiveType type) {
   switch (type) {
     case Primitive_POINT:       return GL_POINTS;
     case Primitive_LINE:        return GL_LINES;
@@ -120,6 +120,16 @@ static inline GLint convertDrawMode(PrimitiveType type) {
       break;
   }
   return 0;
+}
+
+static inline glm::vec4 cvtBorderColor(BorderColor color) {
+  switch (color) {
+    case Border_BLACK:          return glm::vec4(0.f);
+    case Border_WHITE:          return glm::vec4(1.f);
+    default:
+      break;
+  }
+  return glm::vec4(0.f);
 }
 
 }

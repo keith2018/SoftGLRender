@@ -7,24 +7,16 @@
 #pragma once
 
 #include "RendererInternal.h"
+#include "Base/Geometry.h"
 #include "Base/ThreadPool.h"
 #include "Render/Renderer.h"
 #include "Render/Software/VertexSoft.h"
 #include "Render/Software/FramebufferSoft.h"
-#include "Render/BoundingBox.h"
 
 namespace SoftGL {
 
 class RendererSoft : public Renderer {
  public:
-  // config reverse z
-  void setReverseZ(bool enable) override { reverseZ_ = enable; };
-  bool getReverseZ() override { return reverseZ_; };
-
-  // config early z
-  void setEarlyZ(bool enable) override { earlyZ_ = enable; };
-  bool getEarlyZ() override { return earlyZ_; };
-
   // framebuffer
   std::shared_ptr<FrameBuffer> createFrameBuffer() override;
 
@@ -37,20 +29,25 @@ class RendererSoft : public Renderer {
   // shader program
   std::shared_ptr<ShaderProgram> createShaderProgram() override;
 
+  // pipeline states
+  std::shared_ptr<PipelineStates> createPipelineStates(const RenderStates &renderStates) override;
+
   // uniform
   std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
-                                                       TextureFormat format) override;
+  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
 
   // pipeline
-  void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;
+  void beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) override;
   void setViewPort(int x, int y, int width, int height) override;
-  void clear(const ClearState &state) override;
-  void setRenderState(const RenderState &state) override;
   void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
   void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
-  void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
-  void draw(PrimitiveType type) override;
+  void setShaderResources(std::shared_ptr<ShaderResources> &resources) override;
+  void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
+  void draw() override;
+  void endRenderPass() override;
+
+ public:
+  inline void setEnableEarlyZ(bool enable) { earlyZ_ = enable; };
 
  private:
   void processVertexShader();
@@ -107,7 +104,7 @@ class RendererSoft : public Renderer {
   Viewport viewport_{};
   PrimitiveType primitiveType_ = Primitive_TRIANGLE;
   FrameBufferSoft *fbo_ = nullptr;
-  const RenderState *renderState_ = nullptr;
+  const RenderStates *renderState_ = nullptr;
   VertexArrayObjectSoft *vao_ = nullptr;
   ShaderProgramSoft *shaderProgram_ = nullptr;
 
@@ -122,8 +119,8 @@ class RendererSoft : public Renderer {
   size_t varyingsAlignedCnt_ = 0;
   size_t varyingsAlignedSize_ = 0;
 
-  bool reverseZ_ = true;
-  bool earlyZ_ = false;
+  float pointSize_ = 1.f;
+  bool earlyZ_ = true;
   int rasterSamples_ = 1;
   int rasterBlockSize_ = 32;
 

@@ -95,10 +95,9 @@ void BaseSampler<T>::generateMipmaps(TextureImageSoft<T> *tex, bool sample) {
   tex->levels.resize(1);
   tex->levels[0] = level0;
 
-  while (width > 2 && height > 2) {
-    width = glm::max((int) glm::floor((float) width / 2.f), 1);
-    height = glm::max((int) glm::floor((float) height / 2.f), 1);
-    tex->levels.push_back(std::make_shared<ImageBufferSoft<T>>(width, height));
+  uint32_t levelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+  for (uint32_t level = 1; level < levelCount; level++) {
+    tex->levels.push_back(std::make_shared<ImageBufferSoft<T>>(std::max(1, width >> level), std::max(1, height >> level)));
   }
 
   if (!sample) {
@@ -202,11 +201,6 @@ T BaseSampler<T>::pixelWithWrapMode(Buffer<T> *buffer, int x, int y, WrapMode wr
     case Wrap_CLAMP_TO_BORDER: {
       if (x < 0 || x >= w) return border;
       if (y < 0 || y >= h) return border;
-      break;
-    }
-    case Wrap_CLAMP_TO_ZERO: {
-      if (x < 0 || x >= w) return T(0);
-      if (y < 0 || y >= h) return T(0);
       break;
     }
   }

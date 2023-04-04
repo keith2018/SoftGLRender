@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Base/UUID.h"
 #include "Render/Framebuffer.h"
 #include "Render/Software/TextureSoft.h"
 
@@ -13,30 +14,27 @@ namespace SoftGL {
 
 class FrameBufferSoft : public FrameBuffer {
  public:
-  FrameBufferSoft() : uuid_(uuidCounter_++) {
-  }
-
   int getId() const override {
-    return uuid_;
+    return uuid_.get();
   }
 
   bool isValid() override {
-    return colorReady || depthReady;
+    return colorReady_ || depthReady_;
   }
 
   std::shared_ptr<ImageBufferSoft<RGBA>> getColorBuffer() const {
-    if (!colorReady) {
+    if (!colorReady_) {
       return nullptr;
     }
 
-    switch (colorTexType) {
+    switch (colorAttachment_.tex->type) {
       case TextureType_2D: {
-        auto *color2d = dynamic_cast<Texture2DSoft<RGBA> *>(colorAttachment2d.tex.get());
-        return color2d->getImage().getBuffer(colorAttachment2d.level);
+        auto *color2d = dynamic_cast<Texture2DSoft<RGBA> *>(colorAttachment_.tex.get());
+        return color2d->getImage().getBuffer(colorAttachment_.level);
       }
       case TextureType_CUBE: {
-        auto *colorCube = dynamic_cast<TextureCubeSoft<RGBA> *>(colorAttachmentCube.tex.get());
-        return colorCube->getImage(colorAttachmentCube.face).getBuffer(colorAttachmentCube.level);
+        auto *colorCube = dynamic_cast<TextureCubeSoft<RGBA> *>(colorAttachment_.tex.get());
+        return colorCube->getImage(static_cast<CubeMapFace>(colorAttachment_.layer)).getBuffer(colorAttachment_.level);
       }
       default:
         break;
@@ -46,16 +44,15 @@ class FrameBufferSoft : public FrameBuffer {
   };
 
   std::shared_ptr<ImageBufferSoft<float>> getDepthBuffer() const {
-    if (!depthReady) {
+    if (!depthReady_) {
       return nullptr;
     }
-    auto *depthTex = dynamic_cast<Texture2DSoft<float> *>(depthAttachment.get());
+    auto *depthTex = dynamic_cast<Texture2DSoft<float> *>(depthAttachment_.tex.get());
     return depthTex->getImage().getBuffer();
   };
 
  private:
-  int uuid_ = -1;
-  static int uuidCounter_;
+  UUID<FrameBufferSoft> uuid_;
 };
 
 }

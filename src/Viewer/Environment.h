@@ -23,7 +23,7 @@ struct CubeRenderContext {
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<FrameBuffer> fbo;
   Camera camera;
-  ModelSkybox modelSkybox;
+  ModelMesh modelSkybox;
   std::shared_ptr<UniformBlock> uniformsBlockModel;
 };
 
@@ -48,10 +48,10 @@ class Environment {
   static bool createCubeRenderContext(CubeRenderContext &context,
                                       const std::function<bool(ShaderProgram &program)> &shaderFunc,
                                       const std::shared_ptr<Texture> &texIn,
-                                      TextureUsage texUsage);
+                                      MaterialTexType texType);
 
-  static void drawCubeFaces(CubeRenderContext &context, int width, int height, std::shared_ptr<Texture> &texOut,
-                            int texOutLevel = 0, const std::function<void()> &beforeDraw = nullptr);
+  static void drawCubeFaces(CubeRenderContext &context, uint32_t width, uint32_t height, std::shared_ptr<Texture> &texOut,
+                            uint32_t texOutLevel = 0, const std::function<void()> &beforeDraw = nullptr);
 };
 
 }

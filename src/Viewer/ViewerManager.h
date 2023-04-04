@@ -10,8 +10,9 @@
 #include "OrbitController.h"
 #include "ConfigPanel.h"
 #include "ModelLoader.h"
+#include "ViewerSoftware.h"
 #include "ViewerOpenGL.h"
-#include "ViewerSoft.h"
+#include "ViewerVulkan.h"
 
 namespace SoftGL {
 namespace View {
@@ -38,16 +39,24 @@ class ViewerManager {
       orbitController_->reset();
     });
     configPanel_->setResetMipmapsFunc([&]() -> void {
-      modelLoader_->getScene().resetModelTextures();
+      modelLoader_->getScene().model->resetStates();
+    });
+    configPanel_->setResetReverseZFunc([&]() -> void {
+      auto &viewer = viewers_[config_->rendererType];
+      viewer->onResetReverseZ();
     });
 
-    // viewer soft
-    auto viewer_soft = std::make_shared<ViewerSoft>(*config_, *camera_);
+    // viewer software
+    auto viewer_soft = std::make_shared<ViewerSoftware>(*config_, *camera_);
     viewers_[Renderer_SOFT] = std::move(viewer_soft);
 
     // viewer opengl
     auto viewer_opengl = std::make_shared<ViewerOpenGL>(*config_, *camera_);
     viewers_[Renderer_OPENGL] = std::move(viewer_opengl);
+
+    // viewer vulkan
+    auto viewer_vulkan = std::make_shared<ViewerVulkan>(*config_, *camera_);
+    viewers_[Renderer_Vulkan] = std::move(viewer_vulkan);
 
     // model loader
     modelLoader_ = std::make_shared<ModelLoader>(*config_, *configPanel_);
@@ -67,7 +76,8 @@ class ViewerManager {
     auto &viewer = viewers_[config_->rendererType];
     if (rendererType_ != config_->rendererType) {
       rendererType_ = config_->rendererType;
-      modelLoader_->getScene().resetAllStates();
+      modelLoader_->resetAllModelStates();
+      modelLoader_->getScene().resetStates();
       viewer->create(width_, height_, outTexId_);
     }
     viewer->configRenderer();
@@ -76,6 +86,8 @@ class ViewerManager {
   }
 
   inline void destroy() {
+    modelLoader_->resetAllModelStates();
+    modelLoader_->getScene().resetStates();
     for (auto &it : viewers_) {
       it.second->destroy();
     }

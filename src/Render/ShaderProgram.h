@@ -24,12 +24,12 @@ class ShaderProgram {
     }
   }
 
-  virtual void bindUniforms(ShaderUniforms &uniforms) {
-    for (auto &kv : uniforms.blocks) {
+  virtual void bindResources(ShaderResources &resources) {
+    for (auto &kv : resources.blocks) {
       bindUniform(*kv.second);
     }
 
-    for (auto &kv : uniforms.samplers) {
+    for (auto &kv : resources.samplers) {
       bindUniform(*kv.second);
     }
   }
@@ -37,19 +37,19 @@ class ShaderProgram {
  protected:
   virtual bool bindUniform(Uniform &uniform) {
     int hash = uniform.getHash();
-    int loc = -1;
+    int location = -1;
     if (uniformLocations_.find(hash) == uniformLocations_.end()) {
-      loc = uniform.getLocation(*this);
-      uniformLocations_[hash] = loc;
+      location = uniform.getLocation(*this);
+      uniformLocations_[hash] = location;
     } else {
-      loc = uniformLocations_[hash];
+      location = uniformLocations_[hash];
     }
 
-    if (loc < 0) {
+    if (location < 0) {
       return false;
     }
 
-    uniform.bindProgram(*this, loc);
+    uniform.bindProgram(*this, location);
     return true;
   };
 

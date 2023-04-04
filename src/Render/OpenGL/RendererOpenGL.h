@@ -26,24 +26,27 @@ class RendererOpenGL : public Renderer {
   // shader program
   std::shared_ptr<ShaderProgram> createShaderProgram() override;
 
+  // pipeline states
+  std::shared_ptr<PipelineStates> createPipelineStates(const RenderStates &renderStates) override;
+
   // uniform
   std::shared_ptr<UniformBlock> createUniformBlock(const std::string &name, int size) override;
-  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, TextureType type,
-                                                       TextureFormat format) override;
+  std::shared_ptr<UniformSampler> createUniformSampler(const std::string &name, const TextureDesc &desc) override;
 
   // pipeline
-  void setFrameBuffer(std::shared_ptr<FrameBuffer> &frameBuffer) override;
+  void beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, const ClearStates &states) override;
   void setViewPort(int x, int y, int width, int height) override;
-  void clear(const ClearState &state) override;
-  void setRenderState(const RenderState &state) override;
   void setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) override;
   void setShaderProgram(std::shared_ptr<ShaderProgram> &program) override;
-  void setShaderUniforms(std::shared_ptr<ShaderUniforms> &uniforms) override;
-  void draw(PrimitiveType type) override;
+  void setShaderResources(std::shared_ptr<ShaderResources> &resources) override;
+  void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
+  void draw() override;
+  void endRenderPass() override;
 
  private:
   VertexArrayObjectOpenGL *vao_ = nullptr;
   ShaderProgramOpenGL *shaderProgram_ = nullptr;
+  PipelineStates *pipelineStates_ = nullptr;
 };
 
 }
