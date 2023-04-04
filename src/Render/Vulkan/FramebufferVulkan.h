@@ -38,8 +38,8 @@ class FrameBufferVulkan : public FrameBuffer {
     }
 
     FrameBuffer::setColorAttachment(color, level);
-    width_ = color->width;
-    height_ = color->height;
+    width_ = color->getLevelWidth(level);
+    height_ = color->getLevelHeight(level);
     dirty_ = true;
   }
 
@@ -49,8 +49,8 @@ class FrameBufferVulkan : public FrameBuffer {
     }
 
     FrameBuffer::setColorAttachment(color, face, level);
-    width_ = color->width;
-    height_ = color->height;
+    width_ = color->getLevelWidth(level);
+    height_ = color->getLevelHeight(level);
     dirty_ = true;
   }
 

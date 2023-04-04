@@ -99,16 +99,17 @@ class TextureSoft : public Texture {
     }
 
     void *pixels = image.getBuffer(level)->buffer->getRawDataPtr();
+    auto levelWidth = (int32_t) getLevelWidth(level);
+    auto levelHeight = (int32_t) getLevelHeight(level);
 
     // convert float to rgba
     if (format == TextureFormat_FLOAT32) {
-      auto *rgba_pixels = new uint8_t[width * height * 4];
-      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels), reinterpret_cast<float *>(pixels),
-                                    width, height);
-      ImageUtils::writeImage(path, width, height, 4, rgba_pixels, width * 4, true);
+      auto *rgba_pixels = new uint8_t[levelWidth * levelHeight * 4];
+      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(rgba_pixels), reinterpret_cast<float *>(pixels), levelWidth, levelHeight);
+      ImageUtils::writeImage(path, levelWidth, levelHeight, 4, rgba_pixels, levelWidth * 4, true);
       delete[] rgba_pixels;
     } else {
-      ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
+      ImageUtils::writeImage(path, levelWidth, levelHeight, 4, pixels, levelWidth * 4, true);
     }
   }
 };

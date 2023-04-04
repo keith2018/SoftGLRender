@@ -90,13 +90,10 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
 
   UniformsIBLPrefilter uniformsPrefilter{};
 
-  for (int mip = 0; mip < kPrefilterMaxMipLevels; mip++) {
-    int mipWidth = (int) (texOut->width * glm::pow(0.5f, mip));
-    int mipHeight = (int) (texOut->height * glm::pow(0.5f, mip));
-
-    drawCubeFaces(ctx, mipWidth, mipHeight, texOut, mip, [&]() -> void {
+  for (int level = 0; level < kPrefilterMaxMipLevels; level++) {
+    drawCubeFaces(ctx, texOut->getLevelWidth(level), texOut->getLevelHeight(level), texOut, level, [&]() -> void {
       uniformsPrefilter.u_srcResolution = (float) texIn->width;
-      uniformsPrefilter.u_roughness = (float) mip / (float) (kPrefilterMaxMipLevels - 1);
+      uniformsPrefilter.u_roughness = (float) level / (float) (kPrefilterMaxMipLevels - 1);
       uniformsBlockPrefilter->setData(&uniformsPrefilter, sizeof(UniformsIBLPrefilter));
     });
   }
@@ -141,9 +138,8 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
   uniform->setTexture(texIn);
   ctx.modelSkybox.material->materialObj->shaderResources->samplers[texType] = uniform;
 
-  for (auto &block : ctx.uniformsBlockModels) {
-    block = ctx.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
-  }
+  ctx.uniformsBlockModel = ctx.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
+  ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_Model] = ctx.uniformsBlockModel;
 
   // pipeline
   ctx.modelSkybox.material->materialObj->pipelineStates = ctx.renderer->createPipelineStates({});
@@ -151,8 +147,8 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
   return true;
 }
 
-void Environment::drawCubeFaces(CubeRenderContext &ctx, int width, int height, std::shared_ptr<Texture> &texOut,
-                                int texOutLevel, const std::function<void()> &beforeDraw) {
+void Environment::drawCubeFaces(CubeRenderContext &ctx, uint32_t width, uint32_t height, std::shared_ptr<Texture> &texOut,
+                                uint32_t texOutLevel, const std::function<void()> &beforeDraw) {
   static LookAtParam captureViews[] = {
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
@@ -172,8 +168,7 @@ void Environment::drawCubeFaces(CubeRenderContext &ctx, int width, int height, s
     // update mvp
     glm::mat4 viewMatrix = glm::mat3(ctx.camera.viewMatrix());  // only rotation
     uniformsModel.u_modelViewProjectionMatrix = ctx.camera.projectionMatrix() * viewMatrix * modelMatrix;
-    ctx.uniformsBlockModels[i]->setData(&uniformsModel, sizeof(UniformsModel));
-    ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_Model] = ctx.uniformsBlockModels[i];
+    ctx.uniformsBlockModel->setData(&uniformsModel, sizeof(UniformsModel));
 
     if (beforeDraw) {
       beforeDraw();

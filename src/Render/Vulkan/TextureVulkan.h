@@ -34,7 +34,7 @@ class TextureVulkan : public Texture {
     }
   };
 
-  void dumpImage(const char *path, uint32_t layer, uint32_t level) override;
+  void dumpImage(const char *path, uint32_t w, uint32_t h) override;
 
   void setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) override;
 
@@ -95,7 +95,7 @@ class TextureVulkan : public Texture {
  protected:
   void createImage();
   void createImageResolve();
-  void createImageHost();
+  bool createImageHost(uint32_t level);
   void createImageView(VkImageView &view, VkImage &image);
   void generateMipmaps();
   void setImageDataInternal(const std::vector<const void *> &buffers, VkDeviceSize imageSize);
@@ -128,6 +128,7 @@ class TextureVulkan : public Texture {
   // for memory dump
   VkImage hostImage_ = VK_NULL_HANDLE;
   VkDeviceMemory hostMemory_ = VK_NULL_HANDLE;
+  uint32_t hostImageLevel_ = 0;
 };
 
 }

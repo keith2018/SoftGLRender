@@ -27,7 +27,6 @@ bool RendererVulkan::create() {
 }
 
 void RendererVulkan::destroy() {
-  vkDestroyFence(device_, drawFence_, nullptr);
   vkFreeCommandBuffers(device_, vkCtx_.getCommandPool(), 1, &drawCmd_);
   vkCtx_.destroy();
 }
@@ -95,8 +94,6 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
     clearValues_.push_back(depthClear);
   }
 
-  vkWaitForFences(device_, 1, &drawFence_, VK_TRUE, UINT64_MAX);
-  vkResetFences(device_, 1, &drawFence_);
   vkResetCommandBuffer(drawCmd_, 0);
 
   VkCommandBufferBeginInfo beginInfo{};
@@ -161,7 +158,16 @@ void RendererVulkan::draw() {
 void RendererVulkan::endRenderPass() {
   vkCmdEndRenderPass(drawCmd_);
   VK_CHECK(vkEndCommandBuffer(drawCmd_));
-  vkCtx_.submitWork(drawCmd_, drawFence_);
+
+  VkFence fence;
+  VkFenceCreateInfo fenceInfo{};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &fence));
+
+  vkCtx_.submitWork(drawCmd_, fence);
+
+  VK_CHECK(vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX));
+  vkDestroyFence(device_, fence, nullptr);
 }
 
 void RendererVulkan::prepare() {
@@ -171,11 +177,6 @@ void RendererVulkan::prepare() {
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   allocInfo.commandBufferCount = 1;
   VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &drawCmd_));
-
-  VkFenceCreateInfo fenceInfo{};
-  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &drawFence_));
 }
 
 void RendererVulkan::recordDraw() {

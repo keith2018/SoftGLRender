@@ -59,18 +59,20 @@ class TextureOpenGL : public Texture {
     }
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, target, texId_, level));
 
-    auto *pixels = new uint8_t[width * height * 4];
-    GL_CHECK(glReadPixels(0, 0, width, height, glDesc_.format, glDesc_.type, pixels));
+    auto levelWidth = (int32_t) getLevelWidth(level);
+    auto levelHeight = (int32_t) getLevelHeight(level);
+
+    auto *pixels = new uint8_t[levelWidth * levelHeight * 4];
+    GL_CHECK(glReadPixels(0, 0, levelWidth, levelHeight, glDesc_.format, glDesc_.type, pixels));
 
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     GL_CHECK(glDeleteFramebuffers(1, &fbo));
 
     // convert float to rgba
     if (format == TextureFormat_FLOAT32) {
-      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels),
-                                    width, height);
+      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels), levelWidth, levelHeight);
     }
-    ImageUtils::writeImage(path, width, height, 4, pixels, width * 4, true);
+    ImageUtils::writeImage(path, levelWidth, levelHeight, 4, pixels, levelWidth * 4, true);
     delete[] pixels;
   }
 

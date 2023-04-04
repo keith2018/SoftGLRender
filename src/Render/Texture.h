@@ -83,6 +83,14 @@ struct TextureDesc {
 
 class Texture : public TextureDesc {
  public:
+  inline uint32_t getLevelWidth(uint32_t level) {
+    return std::max(1, width >> level);
+  }
+
+  inline uint32_t getLevelHeight(uint32_t level) {
+    return std::max(1, height >> level);
+  }
+
   virtual int getId() const = 0;
   virtual void setSamplerDesc(SamplerDesc &sampler) {};
   virtual void initImageData() {};

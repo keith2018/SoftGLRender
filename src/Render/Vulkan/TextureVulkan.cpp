@@ -71,18 +71,17 @@ void TextureVulkan::dumpImage(const char *path, uint32_t layer, uint32_t level) 
     return;
   }
 
-  readPixels(layer, level, [&](uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride) -> void {
-    auto *pixels = new uint8_t[width * height * 4];
-    for (uint32_t i = 0; i < height; i++) {
-      memcpy(pixels + i * rowStride, buffer + i * rowStride, width * getPixelByteSize());
+  readPixels(layer, level, [&](uint8_t *buffer, uint32_t w, uint32_t h, uint32_t rowStride) -> void {
+    auto *pixels = new uint8_t[w * h * 4];
+    for (uint32_t i = 0; i < h; i++) {
+      memcpy(pixels + i * rowStride, buffer + i * rowStride, w * getPixelByteSize());
     }
 
     // convert float to rgba
     if (format == TextureFormat_FLOAT32) {
-      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels),
-                                    width, height);
+      ImageUtils::convertFloatImage(reinterpret_cast<RGBA *>(pixels), reinterpret_cast<float *>(pixels), w, h);
     }
-    ImageUtils::writeImage(path, (int) width, (int) height, 4, pixels, (int) width * 4, true);
+    ImageUtils::writeImage(path, (int) w, (int) h, 4, pixels, (int) w * 4, true);
     delete[] pixels;
   });
 }
@@ -116,8 +115,14 @@ VkSampler &TextureVulkan::getSampler() {
 
 void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
                                const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func) {
-  createImageHost();
-  vkCtx_.createImageMemory(hostMemory_, hostImage_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  bool needResetMemory = createImageHost(level);
+  if (needResetMemory) {
+    if (hostMemory_ != VK_NULL_HANDLE) {
+      vkFreeMemory(device_, hostMemory_, nullptr);
+      hostMemory_ = VK_NULL_HANDLE;
+    }
+    vkCtx_.createImageMemory(hostMemory_, hostImage_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  }
 
   // copy
   VkCommandBuffer copyCmd = vkCtx_.beginSingleTimeCommands();
@@ -135,8 +140,8 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   imageCopyRegion.dstSubresource.baseArrayLayer = 0;
   imageCopyRegion.dstSubresource.layerCount = 1;
   imageCopyRegion.dstSubresource.mipLevel = 0;
-  imageCopyRegion.extent.width = width;
-  imageCopyRegion.extent.height = height;
+  imageCopyRegion.extent.width = getLevelWidth(level);
+  imageCopyRegion.extent.height = getLevelHeight(level);
   imageCopyRegion.extent.depth = 1;
   vkCmdCopyImage(copyCmd,
                  needResolve_ ? imageResolve_ : image_,
@@ -165,7 +170,7 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   pixelPtr += subResourceLayout.offset;
 
   if (func) {
-    func(pixelPtr, width, height, subResourceLayout.rowPitch);
+    func(pixelPtr, getLevelWidth(level), getLevelHeight(level), subResourceLayout.rowPitch);
   }
 
   vkUnmapMemory(device_, hostMemory_);
@@ -243,17 +248,21 @@ void TextureVulkan::createImageResolve() {
   VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &imageResolve_));
 }
 
-void TextureVulkan::createImageHost() {
+bool TextureVulkan::createImageHost(uint32_t level) {
+  if (hostImage_ != VK_NULL_HANDLE && level == hostImageLevel_) {
+    return false;
+  }
+  hostImageLevel_ = level;
   if (hostImage_ != VK_NULL_HANDLE) {
-    return;
+    vkDestroyImage(device_, hostImage_, nullptr);
   }
 
   VkImageCreateInfo imageInfo{};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   imageInfo.imageType = VK_IMAGE_TYPE_2D;
   imageInfo.format = vkFormat_;
-  imageInfo.extent.width = width;
-  imageInfo.extent.height = height;
+  imageInfo.extent.width = getLevelWidth(level);
+  imageInfo.extent.height = getLevelHeight(level);
   imageInfo.extent.depth = 1;
   imageInfo.arrayLayers = 1;
   imageInfo.mipLevels = 1;
@@ -262,6 +271,8 @@ void TextureVulkan::createImageHost() {
   imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
   imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &hostImage_));
+
+  return true;
 }
 
 void TextureVulkan::createImageView(VkImageView &view, VkImage &image) {
@@ -283,7 +294,7 @@ VkImageView TextureVulkan::createAttachmentView(uint32_t layer, uint32_t level) 
   VkImageView view{};
   VkImageViewCreateInfo imageViewCreateInfo{};
   imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  imageViewCreateInfo.viewType = VK::cvtImageViewType(type);
+  imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;  // force view type 2D
   imageViewCreateInfo.format = vkFormat_;
   imageViewCreateInfo.subresourceRange = {};
   imageViewCreateInfo.subresourceRange.aspectMask = imageAspect_;
@@ -308,9 +319,6 @@ void TextureVulkan::generateMipmaps() {
   barrier.subresourceRange.layerCount = 1;
   barrier.subresourceRange.levelCount = 1;
 
-  int32_t mipWidth = width;
-  int32_t mipHeight = height;
-
   for (uint32_t layer = 0; layer < layerCount_; layer++) {
     barrier.subresourceRange.baseArrayLayer = layer;
     for (uint32_t level = 1; level < levelCount_; level++) {
@@ -328,13 +336,13 @@ void TextureVulkan::generateMipmaps() {
 
       VkImageBlit blit{};
       blit.srcOffsets[0] = {0, 0, 0};
-      blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
+      blit.srcOffsets[1] = {(int32_t) getLevelWidth(level - 1), (int32_t) getLevelHeight(level - 1), 1};
       blit.srcSubresource.aspectMask = imageAspect_;
       blit.srcSubresource.mipLevel = level - 1;
       blit.srcSubresource.baseArrayLayer = layer;
       blit.srcSubresource.layerCount = 1;
       blit.dstOffsets[0] = {0, 0, 0};
-      blit.dstOffsets[1] = {mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1};
+      blit.dstOffsets[1] = {(int32_t) getLevelWidth(level), (int32_t) getLevelHeight(level), 1};
       blit.dstSubresource.aspectMask = imageAspect_;
       blit.dstSubresource.mipLevel = level;
       blit.dstSubresource.baseArrayLayer = layer;
@@ -356,9 +364,6 @@ void TextureVulkan::generateMipmaps() {
                            0, nullptr,
                            0, nullptr,
                            1, &barrier);
-
-      if (mipWidth > 1) mipWidth /= 2;
-      if (mipHeight > 1) mipHeight /= 2;
     }
 
     barrier.subresourceRange.baseMipLevel = levelCount_ - 1;

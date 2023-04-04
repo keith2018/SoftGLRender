@@ -77,7 +77,6 @@ class RendererVulkan : public Renderer {
   VkDevice device_ = VK_NULL_HANDLE;
 
   VkCommandBuffer drawCmd_ = VK_NULL_HANDLE;
-  VkFence drawFence_ = VK_NULL_HANDLE;
 };
 
 }
