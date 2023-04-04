@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <functional>
 #include "Base/UUID.h"
 #include "Base/ImageUtils.h"
 #include "Render/Texture.h"
