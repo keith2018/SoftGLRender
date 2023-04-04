@@ -20,13 +20,6 @@ class Renderer {
   virtual bool create() { return true; };
   virtual void destroy() {};
 
-  // config reverse z
-  virtual void setReverseZ(bool enable) {};
-  virtual bool isReverseZ() { return false; };
-
-  // config early z
-  virtual void setEarlyZ(bool enable) {};
-
   // framebuffer
   virtual std::shared_ptr<FrameBuffer> createFrameBuffer() = 0;
 

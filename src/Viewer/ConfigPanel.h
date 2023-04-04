@@ -45,6 +45,9 @@ class ConfigPanel {
   inline void setResetMipmapsFunc(const std::function<void(void)> &func) {
     resetMipmapsFunc_ = func;
   }
+  inline void setResetReverseZFunc(const std::function<void(void)> &func) {
+    resetReverseZFunc_ = func;
+  }
 
  private:
   bool loadConfig();
@@ -75,6 +78,7 @@ class ConfigPanel {
   std::function<void(glm::vec3 &position, glm::vec3 &color)> updateLightFunc_;
   std::function<void(void)> resetCameraFunc_;
   std::function<void(void)> resetMipmapsFunc_;
+  std::function<void(void)> resetReverseZFunc_;
 };
 
 }

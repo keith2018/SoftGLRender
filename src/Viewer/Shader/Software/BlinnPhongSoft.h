@@ -170,7 +170,7 @@ class FS : public ShaderBlinnPhong {
     }
 
     float bias = glm::max(depthBiasCoeff * (1.0f - glm::dot(normal, glm::normalize(v->v_lightDirection))), depthBiasMin);
-    float shadow = 0.0;
+    float shadow = 0.0f;
 
     // PCF
     glm::vec2 pixelOffset = 1.0f / (glm::vec2) textureSize(u->u_shadowMap, 0);
@@ -178,12 +178,13 @@ class FS : public ShaderBlinnPhong {
       for (int y = -1; y <= 1; ++y) {
         float pcfDepth = texture(u->u_shadowMap, glm::vec2(projCoords) + glm::vec2(x, y) * pixelOffset);
         if (u->u_reverseZ) {
-          pcfDepth = 1.f - pcfDepth;
+          shadow += currentDepth + bias < pcfDepth ? 1.0f : 0.0f;
+        } else {
+          shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
         }
-        shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
       }
     }
-    shadow /= 9.0;
+    shadow /= 9.0f;
     return shadow;
   }
 

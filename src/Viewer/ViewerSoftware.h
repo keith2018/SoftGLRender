@@ -23,11 +23,8 @@ class ViewerSoftware : public Viewer {
   ViewerSoftware(Config &config, Camera &camera) : Viewer(config, camera) {}
 
   void configRenderer() override {
-    if (renderer_->isReverseZ() != config_.reverseZ) {
-      texDepthShadow_ = nullptr;
-    }
-    renderer_->setReverseZ(config_.reverseZ);
-    renderer_->setEarlyZ(config_.earlyZ);
+    camera_->setReverseZ(config_.reverseZ);
+    cameraDepth_->setReverseZ(config_.reverseZ);
   }
 
   void swapBuffer() override {
@@ -43,13 +40,6 @@ class ViewerSoftware : public Viewer {
                           GL_RGBA,
                           GL_UNSIGNED_BYTE,
                           buffer->getRawDataPtr()));
-  }
-
-  void destroy() override {
-    Viewer::destroy();
-    if (renderer_) {
-      renderer_->destroy();
-    }
   }
 
   std::shared_ptr<Renderer> createRenderer() override {

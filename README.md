@@ -1,7 +1,7 @@
 # SoftGLRender
 
-Tiny C++ Software Renderer/Rasterizer, it implements the main GPU rendering pipeline, 3D models (GLTF) are loaded
-by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.com/g-truc/glm) as math library.
+Tiny C++ Software Renderer/Rasterizer, It implements the GPU's main rendering pipeline, including point, line, and polygon drawing, texture mapping, and emulates vertex shaders and fragment shaders, 3D models (GLTF) are loaded
+by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.com/g-truc/glm) as math library. The project also adds OpenGL and Vulkan renderers, so you can switch between them in real time to see the comparison of the rendering output while running.
 
 <div align="center">
 
@@ -69,8 +69,6 @@ class Renderer {
   virtual void endRenderPass() = 0;
 };
 ```
-
-![](screenshot/pipeline.jpg)
 
 #### Software Renderer Features
 

@@ -19,6 +19,10 @@ class Camera {
  public:
   void update();
 
+  inline void setReverseZ(bool reverse) {
+    reverseZ_ = reverse;
+  }
+
   void setPerspective(float fov, float aspect, float near, float far);
 
   void lookAt(const glm::vec3 &eye, const glm::vec3 &center, const glm::vec3 &up);
@@ -44,6 +48,8 @@ class Camera {
   float aspect_ = 1.0f;
   float near_ = 0.01f;
   float far_ = 100.f;
+
+  bool reverseZ_ = false;
 
   glm::vec3 eye_{};
   glm::vec3 center_{};

@@ -19,59 +19,68 @@ namespace View {
 #define CREATE_UNIFORM_BLOCK(name) renderer_->createUniformBlock(#name, sizeof(name))
 
 bool Viewer::create(int width, int height, int outTexId) {
+  cleanup();
+
   width_ = width;
   height_ = height;
   outTexId_ = outTexId;
+
+  // main camera
+  camera_ = &cameraMain_;
+
+  // depth camera
+  if (!cameraDepth_) {
+    cameraDepth_ = std::make_shared<Camera>();
+    cameraDepth_->setPerspective(glm::radians(CAMERA_FOV),
+                                 (float) SHADOW_MAP_WIDTH / (float) SHADOW_MAP_HEIGHT,
+                                 CAMERA_NEAR, CAMERA_FAR);
+
+  }
 
   // create renderer
   if (!renderer_) {
     renderer_ = createRenderer();
   }
   if (!renderer_) {
+    LOGE("Viewer::create failed: createRenderer error");
     return false;
   }
 
-  // create uniforms
+  // create default resources
   uniformBlockScene_ = CREATE_UNIFORM_BLOCK(UniformsScene);
-
-  // reset variables
-  camera_ = &cameraMain_;
-  fboMain_ = nullptr;
-  texColorMain_ = nullptr;
-  texDepthMain_ = nullptr;
-  fboShadow_ = nullptr;
-  texDepthShadow_ = nullptr;
   shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32, TextureUsage_Sampler);
-  fxaaFilter_ = nullptr;
-  texColorFxaa_ = nullptr;
   iblPlaceholder_ = createTextureCubeDefault(1, 1, TextureUsage_Sampler);
-  programCache_.clear();
-  pipelineCache_.clear();
 
   return true;
 }
 
 void Viewer::destroy() {
+  cleanup();
+  cameraDepth_ = nullptr;
+  if (renderer_) {
+    renderer_->destroy();
+  }
+  renderer_ = nullptr;
+}
+
+void Viewer::cleanup() {
   fboMain_ = nullptr;
   texColorMain_ = nullptr;
   texDepthMain_ = nullptr;
-
   fboShadow_ = nullptr;
   texDepthShadow_ = nullptr;
   shadowPlaceholder_ = nullptr;
-
   fxaaFilter_ = nullptr;
   texColorFxaa_ = nullptr;
-
   iblPlaceholder_ = nullptr;
-
   uniformBlockScene_ = nullptr;
-
   programCache_.clear();
   pipelineCache_.clear();
 }
 
-void Viewer::configRenderer() {}
+void Viewer::onResetReverseZ() {
+  texDepthShadow_ = nullptr;
+}
 
 void Viewer::drawFrame(DemoScene &scene) {
   if (!renderer_) {
@@ -101,6 +110,7 @@ void Viewer::drawFrame(DemoScene &scene) {
   clearStates.colorFlag = true;
   clearStates.depthFlag = config_.depthTest;
   clearStates.clearColor = config_.clearColor;
+  clearStates.clearDepth = config_.reverseZ ? 0.f : 1.f;
 
   renderer_->beginRenderPass(fboMain_, clearStates);
   renderer_->setViewPort(0, 0, width_, height_);
@@ -123,17 +133,11 @@ void Viewer::drawShadowMap() {
   // shadow pass
   ClearStates clearDepth{};
   clearDepth.depthFlag = true;
+  clearDepth.clearDepth = config_.reverseZ ? 0.f : 1.f;
   renderer_->beginRenderPass(fboShadow_, clearDepth);
   renderer_->setViewPort(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
 
   // set camera
-  if (!cameraDepth_) {
-    cameraDepth_ = std::make_shared<Camera>();
-    cameraDepth_->setPerspective(glm::radians(CAMERA_FOV),
-                                 (float) SHADOW_MAP_WIDTH / (float) SHADOW_MAP_HEIGHT,
-                                 CAMERA_NEAR,
-                                 CAMERA_FAR);
-  }
   cameraDepth_->lookAt(config_.pointLightPosition, glm::vec3(0), glm::vec3(0, 1, 0));
   cameraDepth_->update();
   camera_ = cameraDepth_.get();

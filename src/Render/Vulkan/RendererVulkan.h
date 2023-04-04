@@ -21,10 +21,6 @@ class RendererVulkan : public Renderer {
   bool create() override;
   void destroy() override;
 
-  // config reverse z
-  void setReverseZ(bool enable) override { reverseZ_ = enable; };
-  bool isReverseZ() override { return reverseZ_; };
-
   // framebuffer
   std::shared_ptr<FrameBuffer> createFrameBuffer() override;
 
@@ -69,7 +65,6 @@ class RendererVulkan : public Renderer {
   ShaderProgramVulkan *shaderProgram_ = nullptr;
   PipelineStatesVulkan *pipelineStates_ = nullptr;
 
-  bool reverseZ_ = true;
   VkViewport viewport_{};
   std::vector<VkClearValue> clearValues_;
 

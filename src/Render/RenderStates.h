@@ -95,6 +95,7 @@ struct ClearStates {
   bool depthFlag = false;
   bool colorFlag = false;
   glm::vec4 clearColor = glm::vec4(0.f);
+  float clearDepth = 1.f;
 };
 
 }

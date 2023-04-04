@@ -23,15 +23,19 @@ class Viewer {
   virtual bool create(int width, int height, int outTexId);
   virtual void destroy();
 
-  virtual void configRenderer();
+  virtual void configRenderer() {};
   virtual void drawFrame(DemoScene &scene);
   virtual void swapBuffer() = 0;
+
+  void onResetReverseZ();
 
  protected:
   virtual std::shared_ptr<Renderer> createRenderer() = 0;
   virtual bool loadShaders(ShaderProgram &program, ShadingModel shading) = 0;
 
  private:
+  void cleanup();
+
   void drawShadowMap();
 
   void processFXAASetup();

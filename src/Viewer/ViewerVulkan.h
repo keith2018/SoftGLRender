@@ -23,13 +23,8 @@ class ViewerVulkan : public Viewer {
   }
 
   void configRenderer() override {
-    if (renderer_->isReverseZ() != config_.reverseZ) {
-      texDepthShadow_ = nullptr;
-    }
-    renderer_->setReverseZ(config_.reverseZ);
-
-    // not available
-    config_.earlyZ = false;
+    camera_->setReverseZ(config_.reverseZ);
+    cameraDepth_->setReverseZ(config_.reverseZ);
   }
 
   void swapBuffer() override {
@@ -48,13 +43,6 @@ class ViewerVulkan : public Viewer {
                             buffer));
       GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
     });
-  }
-
-  void destroy() override {
-    Viewer::destroy();
-    if (renderer_) {
-      renderer_->destroy();
-    }
   }
 
   std::shared_ptr<Renderer> createRenderer() override {

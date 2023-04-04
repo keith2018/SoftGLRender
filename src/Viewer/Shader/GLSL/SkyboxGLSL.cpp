@@ -28,6 +28,10 @@ void main() {
     vec4 pos = u_modelViewProjectionMatrix * vec4(a_position, 1.0);
     gl_Position = pos.xyww;
 
+    if (u_reverseZ) {
+        gl_Position.z = 0.0;
+    }
+
     v_worldPos = a_position;
 }
 )";

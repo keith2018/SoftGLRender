@@ -29,7 +29,9 @@ class ViewerOpenGL : public Viewer {
   void configRenderer() override {
     // disabled
     config_.reverseZ = false;
-    config_.earlyZ = false;
+
+    camera_->setReverseZ(config_.reverseZ);
+    cameraDepth_->setReverseZ(config_.reverseZ);
   }
 
   void swapBuffer() override {
@@ -59,9 +61,7 @@ class ViewerOpenGL : public Viewer {
 
   void destroy() override {
     Viewer::destroy();
-    if (renderer_) {
-      renderer_->destroy();
-    }
+
     GL_CHECK(glDeleteFramebuffers(1, &fbo_in_));
     GL_CHECK(glDeleteFramebuffers(1, &fbo_out_));
   }

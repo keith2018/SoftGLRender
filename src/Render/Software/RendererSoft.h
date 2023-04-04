@@ -17,13 +17,6 @@ namespace SoftGL {
 
 class RendererSoft : public Renderer {
  public:
-  // config reverse z
-  void setReverseZ(bool enable) override { reverseZ_ = enable; };
-  bool isReverseZ() override { return reverseZ_; };
-
-  // config early z
-  void setEarlyZ(bool enable) override { earlyZ_ = enable; };
-
   // framebuffer
   std::shared_ptr<FrameBuffer> createFrameBuffer() override;
 
@@ -52,6 +45,9 @@ class RendererSoft : public Renderer {
   void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
   void draw() override;
   void endRenderPass() override;
+
+ public:
+  inline void setEnableEarlyZ(bool enable) { earlyZ_ = enable; };
 
  private:
   void processVertexShader();
@@ -124,8 +120,7 @@ class RendererSoft : public Renderer {
   size_t varyingsAlignedSize_ = 0;
 
   float pointSize_ = 1.f;
-  bool reverseZ_ = true;
-  bool earlyZ_ = false;
+  bool earlyZ_ = true;
   int rasterSamples_ = 1;
   int rasterBlockSize_ = 32;
 

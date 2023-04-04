@@ -142,7 +142,7 @@ float ShadowCalculation(vec4 fragPos, vec3 normal) {
     vec3 projCoords = fragPos.xyz / fragPos.w;
     float currentDepth = projCoords.z;
 
-    #if defined(OpenGL)
+    #if defined(OpenGL)   // [-1, 1] -> [0, 1]
     currentDepth = currentDepth * 0.5 + 0.5;
     #endif
 
@@ -163,9 +163,10 @@ float ShadowCalculation(vec4 fragPos, vec3 normal) {
         for(int y = -1; y <= 1; ++y) {
             float pcfDepth = texture(u_shadowMap, projCoords.xy + vec2(x, y) * pixelOffset).r;
             if (u_reverseZ) {
-                pcfDepth = 1.0 - pcfDepth;
+                shadow += currentDepth + bias < pcfDepth  ? 1.0 : 0.0;
+            } else {
+                shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;
             }
-            shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;
         }
     }
     shadow /= 9.0;

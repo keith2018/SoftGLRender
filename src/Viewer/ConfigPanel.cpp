@@ -175,11 +175,11 @@ void ConfigPanel::drawSettings() {
 
   // reverse z
   ImGui::Separator();
-  ImGui::Checkbox("reverse z", &config_.reverseZ);
-
-  // early z
-  ImGui::Separator();
-  ImGui::Checkbox("early z", &config_.earlyZ);
+  if (ImGui::Checkbox("reverse z", &config_.reverseZ)) {
+    if (resetReverseZFunc_) {
+      resetReverseZFunc_();
+    }
+  }
 
   // Anti aliasing
   const char *aaItems[] = {

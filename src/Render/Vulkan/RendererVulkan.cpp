@@ -90,7 +90,7 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
   }
   if (fbo_->isDepthReady()) {
     VkClearValue depthClear;
-    depthClear.depthStencil = {reverseZ_ ? 0.f : 1.f, 0};
+    depthClear.depthStencil = {states.clearDepth, 0};
     clearValues_.push_back(depthClear);
   }
 
@@ -118,8 +118,8 @@ void RendererVulkan::setViewPort(int x, int y, int width, int height) {
   viewport_.y = (float) y;
   viewport_.width = (float) width;
   viewport_.height = (float) height;
-  viewport_.minDepth = reverseZ_ ? 1.f : 0.f;
-  viewport_.maxDepth = reverseZ_ ? 0.f : 1.f;
+  viewport_.minDepth = 0.f;
+  viewport_.maxDepth = 1.f;
 }
 
 void RendererVulkan::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {

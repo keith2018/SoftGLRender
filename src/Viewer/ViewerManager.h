@@ -41,6 +41,10 @@ class ViewerManager {
     configPanel_->setResetMipmapsFunc([&]() -> void {
       modelLoader_->getScene().model->resetStates();
     });
+    configPanel_->setResetReverseZFunc([&]() -> void {
+      auto &viewer = viewers_[config_->rendererType];
+      viewer->onResetReverseZ();
+    });
 
     // viewer software
     auto viewer_soft = std::make_shared<ViewerSoftware>(*config_, *camera_);

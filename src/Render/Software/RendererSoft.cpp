@@ -89,11 +89,10 @@ void RendererSoft::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, co
   }
 
   if (states.depthFlag && fboDepth_) {
-    float clearDepth = reverseZ_ ? 0.f : 1.f;
     if (fboDepth_->multiSample) {
-      fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(clearDepth));
+      fboDepth_->bufferMs4x->setAll(glm::tvec4<float>(states.clearDepth));
     } else {
-      fboDepth_->buffer->setAll(clearDepth);
+      fboDepth_->buffer->setAll(states.clearDepth);
     }
   }
 }
@@ -104,8 +103,8 @@ void RendererSoft::setViewPort(int x, int y, int width, int height) {
   viewport_.width = (float) width;
   viewport_.height = (float) height;
 
-  viewport_.minDepth = reverseZ_ ? 1.f : 0.f;
-  viewport_.maxDepth = reverseZ_ ? 0.f : 1.f;
+  viewport_.minDepth = 0.f;
+  viewport_.maxDepth = 1.f;
 
   viewport_.absMinDepth = std::min(viewport_.minDepth, viewport_.maxDepth);
   viewport_.absMaxDepth = std::max(viewport_.minDepth, viewport_.maxDepth);

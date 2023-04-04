@@ -69,6 +69,10 @@ class VS : public ShaderSkybox {
     glm::vec4 pos = u->u_modelViewProjectionMatrix * glm::vec4(a->a_position, 1.0f);
     gl->Position = glm::vec4(pos.x, pos.y, pos.w, pos.w);
 
+    if (u->u_reverseZ) {
+      gl->Position.z = 0.f;
+    }
+
     v->v_worldPos = a->a_position;
   }
 };
