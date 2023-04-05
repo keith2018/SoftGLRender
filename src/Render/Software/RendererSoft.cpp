@@ -20,8 +20,8 @@ namespace SoftGL {
 #define RASTER_MULTI_THREAD
 
 // framebuffer
-std::shared_ptr<FrameBuffer> RendererSoft::createFrameBuffer() {
-  return std::make_shared<FrameBufferSoft>();
+std::shared_ptr<FrameBuffer> RendererSoft::createFrameBuffer(bool offscreen) {
+  return std::make_shared<FrameBufferSoft>(offscreen);
 }
 
 // texture

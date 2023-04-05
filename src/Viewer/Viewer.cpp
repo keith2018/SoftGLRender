@@ -184,6 +184,8 @@ void Viewer::processFXAASetup() {
   }
 
   fboMain_->setColorAttachment(texColorFxaa_, 0);
+  fboMain_->setOffscreen(true);
+
   fxaaFilter_->setTextures(texColorFxaa_, texColorMain_);
 }
 
@@ -404,10 +406,11 @@ void Viewer::setupMainBuffers() {
   }
 
   if (!fboMain_) {
-    fboMain_ = renderer_->createFrameBuffer();
+    fboMain_ = renderer_->createFrameBuffer(false);
   }
   fboMain_->setColorAttachment(texColorMain_, 0);
   fboMain_->setDepthAttachment(texDepthMain_);
+  fboMain_->setOffscreen(false);
 
   if (!fboMain_->isValid()) {
     LOGE("setupMainBuffers failed");
@@ -420,7 +423,7 @@ void Viewer::setupShadowMapBuffers() {
   }
 
   if (!fboShadow_) {
-    fboShadow_ = renderer_->createFrameBuffer();
+    fboShadow_ = renderer_->createFrameBuffer(true);
   }
 
   if (!texDepthShadow_) {
@@ -676,7 +679,7 @@ void Viewer::updateUniformScene() {
   uniformBlockScene_->setData(&uniformsScene, sizeof(UniformsScene));
 }
 
-void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &v) {
+void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &view) {
   if (!model.material->materialObj) {
     return;
   }
@@ -691,7 +694,7 @@ void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm:
   uniformsModel.u_reverseZ = config_.reverseZ ? 1u : 0u;
   uniformsModel.u_pointSize = model.material->pointSize;
   uniformsModel.u_modelMatrix = m;
-  uniformsModel.u_modelViewProjectionMatrix = camera_->projectionMatrix() * v * m;
+  uniformsModel.u_modelViewProjectionMatrix = camera_->projectionMatrix() * view * m;
   uniformsModel.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(m)));
 
   // shadow mvp

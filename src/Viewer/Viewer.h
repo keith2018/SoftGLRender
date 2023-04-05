@@ -71,7 +71,7 @@ class Viewer {
                      const std::function<void(RenderStates &rs)> &extraStates);
 
   void updateUniformScene();
-  void updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &v);
+  void updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &view);
   void updateUniformMaterial(Material &material, float specular = 1.f);
 
   inline SkyboxMaterial *getSkyboxMaterial();

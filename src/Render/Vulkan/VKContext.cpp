@@ -36,7 +36,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(VkDebugUtilsMessageSeverit
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
       level = LOG_INFO;
+#ifndef VULKAN_LOG_INFO
+      return VK_FALSE;
+#else
       break;
+#endif
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
       level = LOG_WARNING;
       break;
@@ -69,6 +73,14 @@ bool VKContext::create(bool debugOutput) {
 }
 
 void VKContext::destroy() {
+  for (auto &cmd : commandBuffers_) {
+    vkDestroyFence(device_, cmd.fence, nullptr);
+    vkDestroySemaphore(device_, cmd.semaphore, nullptr);
+    if (cmd.cmdBuffer != VK_NULL_HANDLE) {
+      vkFreeCommandBuffers(device_, commandPool_, 1, &cmd.cmdBuffer);
+    }
+  }
+
   vkDestroyCommandPool(device_, commandPool_, nullptr);
   vkDestroyDevice(device_, nullptr);
 
@@ -83,43 +95,92 @@ void VKContext::destroy() {
   vkDestroyInstance(instance_, nullptr);
 }
 
-VkCommandBuffer VKContext::beginSingleTimeCommands() {
+CommandBuffer &VKContext::getCommandBuffer() {
+  for (auto &cmd : commandBuffers_) {
+    if (!cmd.inUse) {
+      if (cmd.cmdBuffer == VK_NULL_HANDLE) {
+        AllocateCommandBuffer(cmd.cmdBuffer);
+      }
+
+      cmd.inUse = true;
+      return cmd;
+    }
+  }
+
+  CommandBuffer cmd{};
+  cmd.inUse = true;
+  AllocateCommandBuffer(cmd.cmdBuffer);
+
+  VkSemaphoreCreateInfo sci{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+  vkCreateSemaphore(device_, &sci, nullptr, &cmd.semaphore);
+
+  VkFenceCreateInfo fenceInfo{};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &cmd.fence));
+
+  commandBuffers_.push_back(cmd);
+  return commandBuffers_.back();
+}
+
+void VKContext::purgeCommandBuffers() {
+  for (auto &cmd : commandBuffers_) {
+    if (!cmd.inUse) {
+      continue;
+    }
+    VkResult waitRet = vkGetFenceStatus(device_, cmd.fence);
+    if (waitRet == VK_SUCCESS) {
+      vkResetFences(device_, 1, &cmd.fence);
+      vkFreeCommandBuffers(device_, commandPool_, 1, &cmd.cmdBuffer);
+      cmd.cmdBuffer = VK_NULL_HANDLE;
+      cmd.inUse = false;
+    }
+  }
+}
+
+CommandBuffer &VKContext::beginCommands() {
+  auto &commandBuffer = getCommandBuffer();
+
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  VK_CHECK(vkBeginCommandBuffer(commandBuffer.cmdBuffer, &beginInfo));
+
+  return commandBuffer;
+}
+
+void VKContext::endCommands(CommandBuffer &commandBuffer, VkSemaphore semaphore, bool waitOnHost) {
+  VK_CHECK(vkEndCommandBuffer(commandBuffer.cmdBuffer));
+
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &commandBuffer.cmdBuffer;
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores = &commandBuffer.semaphore;
+  if (semaphore != VK_NULL_HANDLE) {
+    VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &semaphore;
+    submitInfo.pWaitDstStageMask = &waitStageMask;
+  }
+  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, commandBuffer.fence));
+
+  if (waitOnHost) {
+    VK_CHECK(vkWaitForFences(device_, 1, &commandBuffer.fence, VK_TRUE, UINT64_MAX));
+  }
+
+  purgeCommandBuffers();
+}
+
+void VKContext::AllocateCommandBuffer(VkCommandBuffer &cmdBuffer) {
   VkCommandBufferAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   allocInfo.commandPool = commandPool_;
   allocInfo.commandBufferCount = 1;
 
-  VkCommandBuffer commandBuffer;
-  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer));
-
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-
-  return commandBuffer;
-}
-
-void VKContext::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-  VK_CHECK(vkEndCommandBuffer(commandBuffer));
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer;
-
-  VkFence fence;
-  VkFenceCreateInfo fenceInfo{};
-  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &fence));
-
-  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, fence));
-
-  VK_CHECK(vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX));
-  vkDestroyFence(device_, fence, nullptr);
-  vkFreeCommandBuffers(device_, commandPool_, 1, &commandBuffer);
+  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &cmdBuffer));
 }
 
 uint32_t VKContext::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties) {
@@ -328,10 +389,14 @@ QueueFamilyIndices VKContext::findQueueFamilies(VkPhysicalDevice physicalDevice)
   return indices;
 }
 
-void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImageInfo imageInfo,
-                                      VkImageLayout oldLayout, VkImageLayout newLayout,
-                                      VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
-                                      VkAccessFlags srcMask, VkAccessFlags dstMask) {
+void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
+                                      VkImageSubresourceRange subresourceRange,
+                                      VkAccessFlags srcMask,
+                                      VkAccessFlags dstMask,
+                                      VkImageLayout oldLayout,
+                                      VkImageLayout newLayout,
+                                      VkPipelineStageFlags srcStage,
+                                      VkPipelineStageFlags dstStage) {
   VkImageMemoryBarrier barrier{};
   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   barrier.oldLayout = oldLayout;
@@ -340,73 +405,46 @@ void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImageInfo
   barrier.dstAccessMask = dstMask;
   barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.image = imageInfo.image;
-  barrier.subresourceRange.aspectMask = imageInfo.aspect;
-  barrier.subresourceRange.baseMipLevel = 0;
-  barrier.subresourceRange.levelCount = imageInfo.levelCount;
-  barrier.subresourceRange.baseArrayLayer = 0;
-  barrier.subresourceRange.layerCount = imageInfo.layerCount;
+  barrier.image = image;
+  barrier.subresourceRange = subresourceRange;
 
   vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
-void VKContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-                             VkBuffer &buffer, VkDeviceMemory &bufferMemory) {
+void VKContext::createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
   VkBufferCreateInfo bufferInfo{};
   bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bufferInfo.size = size;
   bufferInfo.usage = usage;
   bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-  VK_CHECK(vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer));
+  VK_CHECK(vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer.buffer));
+  buffer.size = size;
 
   VkMemoryRequirements memRequirements;
-  vkGetBufferMemoryRequirements(device_, buffer, &memRequirements);
+  vkGetBufferMemoryRequirements(device_, buffer.buffer, &memRequirements);
 
   VkMemoryAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits, properties);
 
-  VK_CHECK(vkAllocateMemory(device_, &allocInfo, nullptr, &bufferMemory));
-  VK_CHECK(vkBindBufferMemory(device_, buffer, bufferMemory, 0));
+  VK_CHECK(vkAllocateMemory(device_, &allocInfo, nullptr, &buffer.memory));
+  VK_CHECK(vkBindBufferMemory(device_, buffer.buffer, buffer.memory, 0));
 }
 
-void VKContext::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-  VkBufferCopy copyRegion{};
-  copyRegion.size = size;
-  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-  endSingleTimeCommands(commandBuffer);
+void VKContext::createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size) {
+  createBuffer(buffer, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
-void VKContext::uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize) {
-  VkBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
-  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-               stagingBuffer, stagingBufferMemory);
-
-  void *dataPtr = nullptr;
-  VK_CHECK(vkMapMemory(device_, stagingBufferMemory, 0, bufferSize, 0, &dataPtr));
-  memcpy(dataPtr, bufferData, (size_t) bufferSize);
-  vkUnmapMemory(device_, stagingBufferMemory);
-
-  copyBuffer(stagingBuffer, buffer, bufferSize);
-
-  vkDestroyBuffer(device_, stagingBuffer, nullptr);
-  vkFreeMemory(device_, stagingBufferMemory, nullptr);
-}
-
-bool VKContext::createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32_t properties) {
-  if (memory != VK_NULL_HANDLE) {
+bool VKContext::createImageMemory(AllocatedImage &image, uint32_t properties) {
+  if (image.memory != VK_NULL_HANDLE) {
     return true;
   }
 
   VkMemoryRequirements memReqs;
-  vkGetImageMemoryRequirements(device_, image, &memReqs);
+  vkGetImageMemoryRequirements(device_, image.image, &memReqs);
 
   VkMemoryAllocateInfo memAllocInfo{};
   memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -416,8 +454,8 @@ bool VKContext::createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32
     LOGE("vulkan memory type not available, property flags: 0x%x", properties);
     return false;
   }
-  VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &memory));
-  VK_CHECK(vkBindImageMemory(device_, image, memory, 0));
+  VK_CHECK(vkAllocateMemory(device_, &memAllocInfo, nullptr, &image.memory));
+  VK_CHECK(vkBindImageMemory(device_, image.image, image.memory, 0));
 
   return true;
 }
@@ -431,14 +469,6 @@ bool VKContext::linearBlitAvailable(VkFormat format) {
   }
 
   return true;
-}
-
-void VKContext::submitWork(VkCommandBuffer cmdBuffer, VkFence fence) {
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &cmdBuffer;
-  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, fence));
 }
 
 }

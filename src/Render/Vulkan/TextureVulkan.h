@@ -29,11 +29,7 @@ class TextureVulkan : public Texture {
     samplerDesc_ = sampler;
   };
 
-  void initImageData() override {
-    if (needMipmaps_) {
-      generateMipmaps();
-    }
-  };
+  void initImageData() override {};
 
   void dumpImage(const char *path, uint32_t w, uint32_t h) override;
 
@@ -48,6 +44,14 @@ class TextureVulkan : public Texture {
 
   inline VkSampleCountFlagBits getSampleCount() {
     return multiSample ? VK_SAMPLE_COUNT_4_BIT : VK_SAMPLE_COUNT_1_BIT;
+  }
+
+  inline VkImage getVkImage() {
+    return image_.image;
+  }
+
+  inline uint32_t getLevelCount() {
+    return levelCount_;
   }
 
   inline uint32_t getLayerCount() {
@@ -82,7 +86,7 @@ class TextureVulkan : public Texture {
 
   inline VkImageView &getSampleImageView() {
     if (sampleView_ == VK_NULL_HANDLE) {
-      createImageView(sampleView_, image_);
+      createImageView(sampleView_, image_.image);
     }
     return sampleView_;
   }
@@ -102,6 +106,10 @@ class TextureVulkan : public Texture {
   void setImageDataInternal(const std::vector<const void *> &buffers, VkDeviceSize imageSize);
 
  protected:
+  UUID<TextureVulkan> uuid_;
+  VKContext &vkCtx_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
   SamplerDesc samplerDesc_;
   bool needResolve_ = false;
   bool needMipmaps_ = false;
@@ -111,24 +119,20 @@ class TextureVulkan : public Texture {
   uint32_t imageAspect_ = VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
   VkFormat vkFormat_ = VK_FORMAT_MAX_ENUM;
 
-  VkImage image_ = VK_NULL_HANDLE;
-  VkDeviceMemory memory_ = VK_NULL_HANDLE;
+  AllocatedImage image_{};
 
   VkSampler sampler_ = VK_NULL_HANDLE;
   VkImageView sampleView_ = VK_NULL_HANDLE;
 
   // msaa resolve (only color)
-  VkImage imageResolve_ = VK_NULL_HANDLE;
-  VkDeviceMemory memoryResolve_ = VK_NULL_HANDLE;
+  AllocatedImage imageResolve_{};
   VkImageView viewResolve_ = VK_NULL_HANDLE;
 
-  UUID<TextureVulkan> uuid_;
-  VKContext &vkCtx_;
-  VkDevice device_ = VK_NULL_HANDLE;
+  // for image data upload
+  AllocatedBuffer stagingBuffer_{};
 
   // for memory dump
-  VkImage hostImage_ = VK_NULL_HANDLE;
-  VkDeviceMemory hostMemory_ = VK_NULL_HANDLE;
+  AllocatedImage hostImage_{};
   uint32_t hostImageLevel_ = 0;
 };
 

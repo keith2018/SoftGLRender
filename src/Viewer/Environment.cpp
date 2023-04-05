@@ -115,7 +115,7 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
   ctx.modelSkybox.material->materialObj = std::make_shared<MaterialObject>();
 
   // fbo
-  ctx.fbo = ctx.renderer->createFrameBuffer();
+  ctx.fbo = ctx.renderer->createFrameBuffer(true);
 
   // vao
   ctx.modelSkybox.vao = ctx.renderer->createVertexArrayObject(ctx.modelSkybox);

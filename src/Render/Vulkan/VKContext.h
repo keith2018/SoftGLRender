@@ -20,11 +20,22 @@ struct QueueFamilyIndices {
   }
 };
 
-struct VkImageInfo {
-  VkImage image;
-  uint32_t aspect;
-  uint32_t layerCount;
-  uint32_t levelCount;
+struct AllocatedImage {
+  VkImage image = VK_NULL_HANDLE;
+  VkDeviceMemory memory = VK_NULL_HANDLE;
+};
+
+struct AllocatedBuffer {
+  VkBuffer buffer = VK_NULL_HANDLE;
+  VkDeviceMemory memory = VK_NULL_HANDLE;
+  VkDeviceSize size = 0;
+};
+
+struct CommandBuffer {
+  VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
+  VkSemaphore semaphore = VK_NULL_HANDLE;
+  VkFence fence = VK_NULL_HANDLE;
+  bool inUse = false;
 };
 
 class VKContext {
@@ -58,23 +69,26 @@ class VKContext {
 
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
 
-  VkCommandBuffer beginSingleTimeCommands();
-  void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+  CommandBuffer &getCommandBuffer();
+  void purgeCommandBuffers();
 
-  void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-                    VkBuffer &buffer, VkDeviceMemory &bufferMemory);
-  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-  void uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize);
+  CommandBuffer &beginCommands();
+  void endCommands(CommandBuffer &commandBuffer, VkSemaphore semaphore = VK_NULL_HANDLE, bool waitOnHost = false);
 
-  bool createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32_t properties);
+  void createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+  void createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size);
+  bool createImageMemory(AllocatedImage &image, uint32_t properties);
+
   bool linearBlitAvailable(VkFormat imageFormat);
 
-  void submitWork(VkCommandBuffer cmdBuffer, VkFence fence);
-
-  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImageInfo imageInfo,
-                                    VkImageLayout oldLayout, VkImageLayout newLayout,
-                                    VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
-                                    VkAccessFlags srcMask, VkAccessFlags dstMask);
+  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
+                                    VkImageSubresourceRange subresourceRange,
+                                    VkAccessFlags srcMask,
+                                    VkAccessFlags dstMask,
+                                    VkImageLayout oldLayout,
+                                    VkImageLayout newLayout,
+                                    VkPipelineStageFlags srcStage,
+                                    VkPipelineStageFlags dstStage);
 
  private:
   bool createInstance();
@@ -82,6 +96,8 @@ class VKContext {
   bool pickPhysicalDevice();
   bool createLogicalDevice();
   bool createCommandPool();
+
+  void AllocateCommandBuffer(VkCommandBuffer &cmdBuffer);
 
   static bool checkValidationLayerSupport();
   static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
@@ -98,6 +114,8 @@ class VKContext {
   QueueFamilyIndices queueIndices_;
   VkQueue graphicsQueue_ = VK_NULL_HANDLE;
   VkCommandPool commandPool_ = VK_NULL_HANDLE;
+
+  std::vector<CommandBuffer> commandBuffers_;
 
   VkPhysicalDeviceProperties deviceProperties_{};
   VkPhysicalDeviceMemoryProperties deviceMemoryProperties_{};

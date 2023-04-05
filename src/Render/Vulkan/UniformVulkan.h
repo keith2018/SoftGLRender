@@ -14,21 +14,26 @@ class UniformBlockVulkan : public UniformBlock {
     device_ = ctx.device();
 
     VkDeviceSize bufferSize = size;
-    vkCtx_.createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                        buffer_, memory_);
+    vkCtx_.createBuffer(buffer_, bufferSize,
+                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vkCtx_.createStagingBuffer(stagingBuffer_, bufferSize);
 
-    descriptorBufferInfo_.buffer = buffer_;
+    descriptorBufferInfo_.buffer = buffer_.buffer;
     descriptorBufferInfo_.offset = 0;
     descriptorBufferInfo_.range = bufferSize;
 
-    VK_CHECK(vkMapMemory(device_, memory_, 0, bufferSize, 0, &buffersMapped_));
+    VK_CHECK(vkMapMemory(device_, stagingBuffer_.memory, 0, bufferSize, 0, &buffersMapped_));
   }
 
   ~UniformBlockVulkan() {
-    vkDestroyBuffer(device_, buffer_, nullptr);
-    vkUnmapMemory(device_, memory_);
-    vkFreeMemory(device_, memory_, nullptr);
+    vkUnmapMemory(device_, stagingBuffer_.memory);
+
+    vkDestroyBuffer(device_, stagingBuffer_.buffer, nullptr);
+    vkFreeMemory(device_, stagingBuffer_.memory, nullptr);
+
+    vkDestroyBuffer(device_, buffer_.buffer, nullptr);
+    vkFreeMemory(device_, buffer_.memory, nullptr);
   }
 
   int getLocation(ShaderProgram &program) override {
@@ -42,19 +47,46 @@ class UniformBlockVulkan : public UniformBlock {
   }
 
   void setSubData(void *data, int len, int offset) override {
-    memcpy((uint8_t *) buffersMapped_ + offset, data, len);
+    uploadBufferData(data, len, offset);
   }
 
   void setData(void *data, int len) override {
-    memcpy(buffersMapped_, data, len);
+    uploadBufferData(data, len);
+  }
+
+ private:
+  void uploadBufferData(void *bufferData, int bufferSize, int offset = 0) {
+    memcpy((uint8_t *) buffersMapped_ + offset, bufferData, bufferSize);
+
+    auto &commandBuffer = vkCtx_.beginCommands();
+
+    VkBufferCopy copyRegion{};
+    copyRegion.size = bufferSize;
+    vkCmdCopyBuffer(commandBuffer.cmdBuffer, stagingBuffer_.buffer, buffer_.buffer, 1, &copyRegion);
+
+    // use barrier to ensure that data is uploaded to the GPU before it is accessed
+    VkBufferMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer = buffer_.buffer;
+    barrier.offset = 0;
+    barrier.size = VK_WHOLE_SIZE;
+    vkCmdPipelineBarrier(commandBuffer.cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+
+    vkCtx_.endCommands(commandBuffer);
   }
 
  private:
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
 
-  VkBuffer buffer_ = VK_NULL_HANDLE;
-  VkDeviceMemory memory_ = VK_NULL_HANDLE;
+  AllocatedBuffer buffer_{};
+  AllocatedBuffer stagingBuffer_{};
+
   void *buffersMapped_ = nullptr;
   VkDescriptorBufferInfo descriptorBufferInfo_{};
 };

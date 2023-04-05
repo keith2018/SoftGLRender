@@ -21,7 +21,7 @@ class Renderer {
   virtual void destroy() {};
 
   // framebuffer
-  virtual std::shared_ptr<FrameBuffer> createFrameBuffer() = 0;
+  virtual std::shared_ptr<FrameBuffer> createFrameBuffer(bool offscreen) = 0;
 
   // texture
   virtual std::shared_ptr<Texture> createTexture(const TextureDesc &desc) = 0;
