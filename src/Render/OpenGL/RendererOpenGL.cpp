@@ -17,8 +17,8 @@
 namespace SoftGL {
 
 // framebuffer
-std::shared_ptr<FrameBuffer> RendererOpenGL::createFrameBuffer() {
-  return std::make_shared<FrameBufferOpenGL>();
+std::shared_ptr<FrameBuffer> RendererOpenGL::createFrameBuffer(bool offscreen) {
+  return std::make_shared<FrameBufferOpenGL>(offscreen);
 }
 
 // texture

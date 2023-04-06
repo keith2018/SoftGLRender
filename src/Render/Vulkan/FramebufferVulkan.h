@@ -15,13 +15,17 @@ namespace SoftGL {
 
 class FrameBufferVulkan : public FrameBuffer {
  public:
-  explicit FrameBufferVulkan(VKContext &ctx) : vkCtx_(ctx) {
+  FrameBufferVulkan(VKContext &ctx, bool offscreen) : FrameBuffer(offscreen), vkCtx_(ctx) {
     device_ = ctx.device();
   }
 
   virtual ~FrameBufferVulkan() {
     vkDestroyFramebuffer(device_, framebuffer_, nullptr);
     vkDestroyRenderPass(device_, renderPass_, nullptr);
+
+    for (auto &view : attachments_) {
+      vkDestroyImageView(device_, view, nullptr);
+    }
   }
 
   int getId() const override {
@@ -112,10 +116,6 @@ class FrameBufferVulkan : public FrameBuffer {
     return height_;
   }
 
- private:
-  void createVkRenderPass();
-  bool createVkFramebuffer();
-
   inline TextureVulkan *getAttachmentColor() {
     if (colorReady_) {
       return dynamic_cast<TextureVulkan *>(colorAttachment_.tex.get());
@@ -131,14 +131,19 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
  private:
+  void createVkRenderPass();
+  bool createVkFramebuffer();
+
+ private:
   UUID<FrameBufferVulkan> uuid_;
+  VKContext &vkCtx_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
   uint32_t width_ = 0;
   uint32_t height_ = 0;
   bool dirty_ = true;
 
-  VKContext &vkCtx_;
-  VkDevice device_ = VK_NULL_HANDLE;
-
+  std::vector<VkImageView> attachments_;
   VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
   VkRenderPass renderPass_ = VK_NULL_HANDLE;
 

@@ -37,17 +37,16 @@ TextureVulkan::TextureVulkan(VKContext &ctx, const TextureDesc &desc) : vkCtx_(c
   bool memoryReady = false;
   if (needResolve_) {
     // check if lazy allocate available
-    memoryReady = vkCtx_.createImageMemory(memory_, image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+    memoryReady = vkCtx_.createImageMemory(image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
   }
   if (!memoryReady) {
-    vkCtx_.createImageMemory(memory_, image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vkCtx_.createImageMemory(image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
   // resolve
   if (needResolve_) {
     createImageResolve();
-    vkCtx_.createImageMemory(memoryResolve_, imageResolve_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    createImageView(viewResolve_, imageResolve_);
+    vkCtx_.createImageMemory(imageResolve_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 }
 
@@ -55,15 +54,11 @@ TextureVulkan::~TextureVulkan() {
   vkDestroySampler(device_, sampler_, nullptr);
   vkDestroyImageView(device_, sampleView_, nullptr);
 
-  vkDestroyImage(device_, image_, nullptr);
-  vkFreeMemory(device_, memory_, nullptr);
+  image_.destroy(device_);
+  imageResolve_.destroy(device_);
+  hostImage_.destroy(device_);
 
-  vkDestroyImageView(device_, viewResolve_, nullptr);
-  vkDestroyImage(device_, imageResolve_, nullptr);
-  vkFreeMemory(device_, memoryResolve_, nullptr);
-
-  vkDestroyImage(device_, hostImage_, nullptr);
-  vkFreeMemory(device_, hostMemory_, nullptr);
+  uploadStagingBuffer_.destroy(device_);
 }
 
 void TextureVulkan::dumpImage(const char *path, uint32_t layer, uint32_t level) {
@@ -86,6 +81,7 @@ void TextureVulkan::dumpImage(const char *path, uint32_t layer, uint32_t level) 
   });
 }
 
+// TODO enable cache
 VkSampler &TextureVulkan::getSampler() {
   if (sampler_ != VK_NULL_HANDLE) {
     return sampler_;
@@ -117,19 +113,30 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
                                const std::function<void(uint8_t *buffer, uint32_t width, uint32_t height, uint32_t rowStride)> &func) {
   bool needResetMemory = createImageHost(level);
   if (needResetMemory) {
-    if (hostMemory_ != VK_NULL_HANDLE) {
-      vkFreeMemory(device_, hostMemory_, nullptr);
-      hostMemory_ = VK_NULL_HANDLE;
+    if (hostImage_.memory != VK_NULL_HANDLE) {
+      vkFreeMemory(device_, hostImage_.memory, nullptr);
+      hostImage_.memory = VK_NULL_HANDLE;
     }
-    vkCtx_.createImageMemory(hostMemory_, hostImage_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    vkCtx_.createImageMemory(hostImage_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
 
   // copy
-  VkCommandBuffer copyCmd = vkCtx_.beginSingleTimeCommands();
-  VKContext::transitionImageLayout(copyCmd, {hostImage_, imageAspect_, 1, 1},
-                                   VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   0, VK_ACCESS_TRANSFER_WRITE_BIT);
+  auto *copyCmd = vkCtx_.beginCommands();
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = imageAspect_;
+  subRange.baseMipLevel = 0;
+  subRange.baseArrayLayer = 0;
+  subRange.levelCount = 1;
+  subRange.layerCount = 1;
+
+  transitionImageLayout(copyCmd->cmdBuffer, hostImage_.image, subRange,
+                        0,
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT);
 
   VkImageCopy imageCopyRegion{};
   imageCopyRegion.srcSubresource.aspectMask = imageAspect_;
@@ -143,41 +150,44 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   imageCopyRegion.extent.width = getLevelWidth(level);
   imageCopyRegion.extent.height = getLevelHeight(level);
   imageCopyRegion.extent.depth = 1;
-  vkCmdCopyImage(copyCmd,
-                 needResolve_ ? imageResolve_ : image_,
+  vkCmdCopyImage(copyCmd->cmdBuffer,
+                 needResolve_ ? imageResolve_.image : image_.image,
                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 hostImage_,
+                 hostImage_.image,
                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                  1,
                  &imageCopyRegion);
 
-  VKContext::transitionImageLayout(copyCmd, {hostImage_, imageAspect_, 1, 1},
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
-                                   VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT);
+  transitionImageLayout(copyCmd->cmdBuffer, hostImage_.image, subRange,
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_ACCESS_MEMORY_READ_BIT,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_IMAGE_LAYOUT_GENERAL,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-  vkCtx_.endSingleTimeCommands(copyCmd);
+  vkCtx_.endCommands(copyCmd, VK_NULL_HANDLE, true);
 
   // map to host memory
   VkImageSubresource subResource{};
   subResource.aspectMask = imageAspect_;
   VkSubresourceLayout subResourceLayout;
 
-  vkGetImageSubresourceLayout(device_, hostImage_, &subResource, &subResourceLayout);
+  vkGetImageSubresourceLayout(device_, hostImage_.image, &subResource, &subResourceLayout);
 
   uint8_t *pixelPtr = nullptr;
-  vkMapMemory(device_, hostMemory_, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
+  vkMapMemory(device_, hostImage_.memory, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
   pixelPtr += subResourceLayout.offset;
 
   if (func) {
     func(pixelPtr, getLevelWidth(level), getLevelHeight(level), subResourceLayout.rowPitch);
   }
 
-  vkUnmapMemory(device_, hostMemory_);
+  vkUnmapMemory(device_, hostImage_.memory);
 }
 
 void TextureVulkan::createImage() {
-  if (image_ != VK_NULL_HANDLE) {
+  if (image_.image != VK_NULL_HANDLE) {
     return;
   }
 
@@ -215,11 +225,11 @@ void TextureVulkan::createImage() {
     imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   }
 
-  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_));
+  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_.image));
 }
 
 void TextureVulkan::createImageResolve() {
-  if (imageResolve_ != VK_NULL_HANDLE) {
+  if (imageResolve_.image != VK_NULL_HANDLE) {
     return;
   }
 
@@ -245,16 +255,16 @@ void TextureVulkan::createImageResolve() {
     imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   }
 
-  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &imageResolve_));
+  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &imageResolve_.image));
 }
 
 bool TextureVulkan::createImageHost(uint32_t level) {
-  if (hostImage_ != VK_NULL_HANDLE && level == hostImageLevel_) {
+  if (hostImage_.image != VK_NULL_HANDLE && level == hostImageLevel_) {
     return false;
   }
   hostImageLevel_ = level;
-  if (hostImage_ != VK_NULL_HANDLE) {
-    vkDestroyImage(device_, hostImage_, nullptr);
+  if (hostImage_.image != VK_NULL_HANDLE) {
+    vkDestroyImage(device_, hostImage_.image, nullptr);
   }
 
   VkImageCreateInfo imageInfo{};
@@ -270,7 +280,7 @@ bool TextureVulkan::createImageHost(uint32_t level) {
   imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
   imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
   imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &hostImage_));
+  VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &hostImage_.image));
 
   return true;
 }
@@ -290,6 +300,12 @@ void TextureVulkan::createImageView(VkImageView &view, VkImage &image) {
   VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &view));
 }
 
+VkImageView TextureVulkan::createResolveView() {
+  VkImageView view{};
+  createImageView(view, imageResolve_.image);
+  return view;
+}
+
 VkImageView TextureVulkan::createAttachmentView(uint32_t layer, uint32_t level) {
   VkImageView view{};
   VkImageViewCreateInfo imageViewCreateInfo{};
@@ -302,37 +318,34 @@ VkImageView TextureVulkan::createAttachmentView(uint32_t layer, uint32_t level) 
   imageViewCreateInfo.subresourceRange.levelCount = 1;
   imageViewCreateInfo.subresourceRange.baseArrayLayer = layer;
   imageViewCreateInfo.subresourceRange.layerCount = 1;
-  imageViewCreateInfo.image = image_;
+  imageViewCreateInfo.image = image_.image;
   VK_CHECK(vkCreateImageView(device_, &imageViewCreateInfo, nullptr, &view));
   return view;
 }
 
 void TextureVulkan::generateMipmaps() {
-  VkCommandBuffer commandBuffer = vkCtx_.beginSingleTimeCommands();
+  auto *cmd = vkCtx_.beginCommands();
 
-  VkImageMemoryBarrier barrier{};
-  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  barrier.image = image_;
-  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.subresourceRange.aspectMask = imageAspect_;
-  barrier.subresourceRange.layerCount = 1;
-  barrier.subresourceRange.levelCount = 1;
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = imageAspect_;
+  subRange.baseMipLevel = 0;
+  subRange.baseArrayLayer = 0;
+  subRange.levelCount = 1;
+  subRange.layerCount = 1;
 
   for (uint32_t layer = 0; layer < layerCount_; layer++) {
-    barrier.subresourceRange.baseArrayLayer = layer;
-    for (uint32_t level = 1; level < levelCount_; level++) {
-      barrier.subresourceRange.baseMipLevel = level - 1;
-      barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-      barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-      barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    subRange.baseArrayLayer = layer;
 
-      vkCmdPipelineBarrier(commandBuffer,
-                           VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-                           0, nullptr,
-                           0, nullptr,
-                           1, &barrier);
+    for (uint32_t level = 1; level < levelCount_; level++) {
+      // set src level layout to transfer read
+      subRange.baseMipLevel = level - 1;
+      transitionImageLayout(cmd->cmdBuffer, image_.image, subRange,
+                            VK_ACCESS_TRANSFER_WRITE_BIT,
+                            VK_ACCESS_TRANSFER_READ_BIT,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT);
 
       VkImageBlit blit{};
       blit.srcOffsets[0] = {0, 0, 0};
@@ -348,38 +361,34 @@ void TextureVulkan::generateMipmaps() {
       blit.dstSubresource.baseArrayLayer = layer;
       blit.dstSubresource.layerCount = 1;
 
-      vkCmdBlitImage(commandBuffer,
-                     image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                     image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      vkCmdBlitImage(cmd->cmdBuffer,
+                     image_.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                     image_.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                      1, &blit,
                      VK_FILTER_LINEAR);
 
-      barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-      barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-      barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-      vkCmdPipelineBarrier(commandBuffer,
-                           VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                           0, nullptr,
-                           0, nullptr,
-                           1, &barrier);
+      // set src level layout to shader read
+      transitionImageLayout(cmd->cmdBuffer, image_.image, subRange,
+                            VK_ACCESS_TRANSFER_READ_BIT,
+                            VK_ACCESS_SHADER_READ_BIT,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
 
-    barrier.subresourceRange.baseMipLevel = levelCount_ - 1;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(commandBuffer,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                         0, nullptr,
-                         0, nullptr,
-                         1, &barrier);
+    // set last level layout to shader read
+    subRange.baseMipLevel = levelCount_ - 1;
+    transitionImageLayout(cmd->cmdBuffer, image_.image, subRange,
+                          VK_ACCESS_TRANSFER_WRITE_BIT,
+                          VK_ACCESS_SHADER_READ_BIT,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT,
+                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
   }
 
-  vkCtx_.endSingleTimeCommands(commandBuffer);
+  vkCtx_.endCommands(cmd);
 }
 
 void TextureVulkan::setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>> &buffers) {
@@ -407,10 +416,6 @@ void TextureVulkan::setImageData(const std::vector<std::shared_ptr<Buffer<RGBA>>
   }
 
   setImageDataInternal(buffersPtr, imageSize);
-
-  if (needMipmaps_) {
-    generateMipmaps();
-  }
 }
 
 void TextureVulkan::setImageData(const std::vector<std::shared_ptr<Buffer<float>>> &buffers) {
@@ -438,33 +443,38 @@ void TextureVulkan::setImageData(const std::vector<std::shared_ptr<Buffer<float>
   }
 
   setImageDataInternal(buffersPtr, imageSize);
-
-  if (needMipmaps_) {
-    generateMipmaps();
-  }
 }
 
 void TextureVulkan::setImageDataInternal(const std::vector<const void *> &buffers, VkDeviceSize imageSize) {
   VkDeviceSize bufferSize = imageSize * layerCount_;
-  VkBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
-  vkCtx_.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                      stagingBuffer, stagingBufferMemory);
+  if (uploadStagingBuffer_.buffer == VK_NULL_HANDLE) {
+    vkCtx_.createStagingBuffer(uploadStagingBuffer_, bufferSize);
+  }
 
   uint8_t *dataPtr;
-  VK_CHECK(vkMapMemory(device_, stagingBufferMemory, 0, bufferSize, 0, reinterpret_cast<void **>(&dataPtr)));
+  VK_CHECK(vkMapMemory(device_, uploadStagingBuffer_.memory, 0, bufferSize, 0, reinterpret_cast<void **>(&dataPtr)));
   for (auto &ptr : buffers) {
     memcpy(dataPtr, ptr, static_cast<size_t>(imageSize));
     dataPtr += imageSize;
   }
-  vkUnmapMemory(device_, stagingBufferMemory);
+  vkUnmapMemory(device_, uploadStagingBuffer_.memory);
 
-  VkCommandBuffer copyCmd = vkCtx_.beginSingleTimeCommands();
-  VKContext::transitionImageLayout(copyCmd, {image_, imageAspect_, layerCount_, levelCount_},
-                                   VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   0, VK_ACCESS_TRANSFER_WRITE_BIT);
+  auto *copyCmd = vkCtx_.beginCommands();
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = imageAspect_;
+  subRange.baseMipLevel = 0;
+  subRange.baseArrayLayer = 0;
+  subRange.levelCount = 1;
+  subRange.layerCount = layerCount_;
+
+  transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
+                        0,
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT);
 
   std::vector<VkBufferImageCopy> copyRegions;
   for (uint32_t layer = 0; layer < layerCount_; layer++) {
@@ -479,19 +489,51 @@ void TextureVulkan::setImageDataInternal(const std::vector<const void *> &buffer
     copyRegions.push_back(region);
   }
 
-  vkCmdCopyBufferToImage(copyCmd, stagingBuffer, image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copyRegions.size(), copyRegions.data());
+  vkCmdCopyBufferToImage(copyCmd->cmdBuffer,
+                         uploadStagingBuffer_.buffer,
+                         image_.image,
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         copyRegions.size(),
+                         copyRegions.data());
 
   // transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
   if (!needMipmaps_) {
-    VKContext::transitionImageLayout(copyCmd, {image_, imageAspect_, layerCount_, levelCount_},
-                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                     VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+    transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
+                          VK_ACCESS_TRANSFER_WRITE_BIT,
+                          VK_ACCESS_SHADER_READ_BIT,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT,
+                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
   }
-  vkCtx_.endSingleTimeCommands(copyCmd);
 
-  vkDestroyBuffer(device_, stagingBuffer, nullptr);
-  vkFreeMemory(device_, stagingBufferMemory, nullptr);
+  vkCtx_.endCommands(copyCmd);
+
+  if (needMipmaps_) {
+    generateMipmaps();
+  }
+}
+
+void TextureVulkan::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
+                                          VkImageSubresourceRange subresourceRange,
+                                          VkAccessFlags srcMask,
+                                          VkAccessFlags dstMask,
+                                          VkImageLayout oldLayout,
+                                          VkImageLayout newLayout,
+                                          VkPipelineStageFlags srcStage,
+                                          VkPipelineStageFlags dstStage) {
+  VkImageMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.oldLayout = oldLayout;
+  barrier.newLayout = newLayout;
+  barrier.srcAccessMask = srcMask;
+  barrier.dstAccessMask = dstMask;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image = image;
+  barrier.subresourceRange = subresourceRange;
+
+  vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
 }

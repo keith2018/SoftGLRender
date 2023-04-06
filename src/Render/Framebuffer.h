@@ -19,6 +19,8 @@ struct FrameBufferAttachment {
 
 class FrameBuffer {
  public:
+  explicit FrameBuffer(bool offscreen) : offscreen_(offscreen) {}
+
   virtual int getId() const = 0;
   virtual bool isValid() = 0;
 
@@ -70,7 +72,16 @@ class FrameBuffer {
     return false;
   }
 
+  inline bool isOffscreen() const {
+    return offscreen_;
+  }
+
+  inline void setOffscreen(bool offscreen) {
+    offscreen_ = offscreen;
+  }
+
  protected:
+  bool offscreen_ = false;
   bool colorReady_ = false;
   bool depthReady_ = false;
 

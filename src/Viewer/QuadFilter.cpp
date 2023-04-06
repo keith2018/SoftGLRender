@@ -36,7 +36,7 @@ QuadFilter::QuadFilter(int width, int height, const std::shared_ptr<Renderer> &r
   renderer_ = renderer;
 
   // fbo
-  fbo_ = renderer_->createFrameBuffer();
+  fbo_ = renderer_->createFrameBuffer(false);
 
   // vao
   quadMesh_.vao = renderer_->createVertexArrayObject(quadMesh_);

@@ -15,7 +15,7 @@ namespace SoftGL {
 
 class FrameBufferOpenGL : public FrameBuffer {
  public:
-  FrameBufferOpenGL() {
+  explicit FrameBufferOpenGL(bool offscreen) : FrameBuffer(offscreen) {
     GL_CHECK(glGenFramebuffers(1, &fbo_));
   }
 

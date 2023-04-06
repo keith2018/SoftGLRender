@@ -48,6 +48,10 @@ class ShaderProgramVulkan : public ShaderProgram {
     glslDefines_ += ("#define " + def + " \n");
   }
 
+  bool compileAndLinkGLSLFile(const std::string &vsPath, const std::string &fsPath) {
+    return compileAndLinkGLSL(FileUtils::readText(vsPath), FileUtils::readText(fsPath));
+  }
+
   bool compileAndLinkGLSL(const std::string &vsSource, const std::string &fsSource) {
     std::string vsStr = glslHeader_ + glslDefines_ + vsSource;
     std::string fsStr = glslHeader_ + glslDefines_ + fsSource;
@@ -119,7 +123,8 @@ class ShaderProgramVulkan : public ShaderProgram {
     writeDescriptorSets_.push_back(writeDesc);
   }
 
-  void beginBindUniforms() {
+  void beginBindUniforms(CommandBuffer *cmd) {
+    currCmdBuffer_ = cmd;
     writeDescriptorSets_.clear();
   }
 
@@ -128,6 +133,10 @@ class ShaderProgramVulkan : public ShaderProgram {
       return;
     }
     vkUpdateDescriptorSets(device_, writeDescriptorSets_.size(), writeDescriptorSets_.data(), 0, nullptr);
+  }
+
+  inline CommandBuffer *getCommandBuffer() {
+    return currCmdBuffer_;
   }
 
  private:
@@ -261,6 +270,8 @@ class ShaderProgramVulkan : public ShaderProgram {
 
   std::string glslHeader_;
   std::string glslDefines_;
+
+  CommandBuffer *currCmdBuffer_ = VK_NULL_HANDLE;
 };
 
 }

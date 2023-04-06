@@ -44,29 +44,29 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
     vertexInputInfo_.pVertexAttributeDescriptions = attributeDescriptions_.data();
 
     // create buffers
-    vkCtx_.createBuffer(vertexArr.vertexesBufferLength,
+    vkCtx_.createBuffer(vertexBuffer_, vertexArr.vertexesBufferLength,
                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                        vertexBuffer_,
-                        vertexBufferMemory_);
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    vkCtx_.createBuffer(vertexArr.indexBufferLength,
+    vkCtx_.createBuffer(indexBuffer_, vertexArr.indexBufferLength,
                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                        indexBuffer_,
-                        indexBufferMemory_);
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    vkCtx_.createStagingBuffer(vertexStagingBuffer_, vertexArr.vertexesBufferLength);
+    vkCtx_.createStagingBuffer(indexStagingBuffer_, vertexArr.indexBufferLength);
 
     // upload data
-    vkCtx_.uploadBufferData(vertexBuffer_, vertexArr.vertexesBuffer, vertexArr.vertexesBufferLength);
-    vkCtx_.uploadBufferData(indexBuffer_, vertexArr.indexBuffer, vertexArr.indexBufferLength);
+    uploadBufferData(vertexBuffer_, vertexStagingBuffer_, vertexArr.vertexesBuffer, vertexArr.vertexesBufferLength,
+                     VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+    uploadBufferData(indexBuffer_, indexStagingBuffer_, vertexArr.indexBuffer, vertexArr.indexBufferLength,
+                     VK_ACCESS_INDEX_READ_BIT);
   }
 
   ~VertexArrayObjectVulkan() {
-    vkDestroyBuffer(device_, vertexBuffer_, nullptr);
-    vkFreeMemory(device_, vertexBufferMemory_, nullptr);
-
-    vkDestroyBuffer(device_, indexBuffer_, nullptr);
-    vkFreeMemory(device_, indexBufferMemory_, nullptr);
+    vertexBuffer_.destroy(device_);
+    vertexStagingBuffer_.destroy(device_);
+    indexBuffer_.destroy(device_);
+    indexStagingBuffer_.destroy(device_);
   }
 
   int getId() const override {
@@ -74,7 +74,7 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
   }
 
   void updateVertexData(void *data, size_t length) override {
-    vkCtx_.uploadBufferData(vertexBuffer_, data, length);
+    uploadBufferData(vertexBuffer_, vertexStagingBuffer_, data, length, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
   }
 
   // only Float element
@@ -99,28 +99,59 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
   }
 
   inline VkBuffer &getVertexBuffer() {
-    return vertexBuffer_;
+    return vertexBuffer_.buffer;
   }
 
   inline VkBuffer &getIndexBuffer() {
-    return indexBuffer_;
+    return indexBuffer_.buffer;
+  }
+
+ private:
+  void uploadBufferData(AllocatedBuffer &buffer, AllocatedBuffer &stagingBuffer, void *bufferData, VkDeviceSize bufferSize,
+                        VkAccessFlags dstAccessMask) {
+    void *dataPtr = nullptr;
+    VK_CHECK(vkMapMemory(device_, stagingBuffer.memory, 0, bufferSize, 0, &dataPtr));
+    memcpy(dataPtr, bufferData, (size_t) bufferSize);
+    vkUnmapMemory(device_, stagingBuffer.memory);
+
+    auto *commandBuffer = vkCtx_.beginCommands();
+
+    VkBufferCopy copyRegion{};
+    copyRegion.size = bufferSize;
+    vkCmdCopyBuffer(commandBuffer->cmdBuffer, stagingBuffer.buffer, buffer.buffer, 1, &copyRegion);
+
+    // use barrier to ensure that data is uploaded to the GPU before it is accessed
+    VkBufferMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | dstAccessMask;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer = buffer.buffer;
+    barrier.offset = 0;
+    barrier.size = VK_WHOLE_SIZE;
+    vkCmdPipelineBarrier(commandBuffer->cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+
+    vkCtx_.endCommands(commandBuffer);
   }
 
  private:
   UUID<VertexArrayObjectVulkan> uuid_;
-  uint32_t indicesCnt_ = 0;
-
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
+
+  uint32_t indicesCnt_ = 0;
 
   VkPipelineVertexInputStateCreateInfo vertexInputInfo_{};
   VkVertexInputBindingDescription bindingDescription_{};
   std::vector<VkVertexInputAttributeDescription> attributeDescriptions_;
 
-  VkBuffer vertexBuffer_ = VK_NULL_HANDLE;
-  VkDeviceMemory vertexBufferMemory_ = VK_NULL_HANDLE;
-  VkBuffer indexBuffer_ = VK_NULL_HANDLE;
-  VkDeviceMemory indexBufferMemory_ = VK_NULL_HANDLE;
+  AllocatedBuffer vertexBuffer_{};
+  AllocatedBuffer indexBuffer_{};
+
+  AllocatedBuffer vertexStagingBuffer_{};
+  AllocatedBuffer indexStagingBuffer_{};
 };
 
 }

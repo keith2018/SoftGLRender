@@ -22,7 +22,7 @@ class RendererVulkan : public Renderer {
   void destroy() override;
 
   // framebuffer
-  std::shared_ptr<FrameBuffer> createFrameBuffer() override;
+  std::shared_ptr<FrameBuffer> createFrameBuffer(bool offscreen) override;
 
   // texture
   std::shared_ptr<Texture> createTexture(const TextureDesc &desc) override;
@@ -50,15 +50,6 @@ class RendererVulkan : public Renderer {
   void draw() override;
   void endRenderPass() override;
 
- public:
-  inline const VKContext &getVkContext() const {
-    return vkCtx_;
-  }
-
- private:
-  void prepare();
-  void recordDraw();
-
  private:
   FrameBufferVulkan *fbo_ = nullptr;
   VertexArrayObjectVulkan *vao_ = nullptr;
@@ -71,7 +62,9 @@ class RendererVulkan : public Renderer {
   VKContext vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
 
+  CommandBuffer *commandBuffer_ = nullptr;
   VkCommandBuffer drawCmd_ = VK_NULL_HANDLE;
+  VkSemaphore lastPassSemaphore_ = VK_NULL_HANDLE;
 };
 
 }

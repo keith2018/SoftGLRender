@@ -84,76 +84,43 @@ void FrameBufferVulkan::createVkRenderPass() {
   subpass.pDepthStencilAttachment = &depthAttachmentRef;
   subpass.pResolveAttachments = &resolveAttachmentRef;
 
-  std::vector<VkSubpassDependency> dependencies;
-
-  if (!colorReady_) {
-    // shadow depth pass
-    dependencies.resize(2);
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-    dependencies[1].srcSubpass = 0;
-    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-  } else {
-    // normal render pass
-    dependencies.resize(1);
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[0].srcAccessMask = 0;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-    if (depthReady_) {
-      dependencies[0].srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-      dependencies[0].dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-      dependencies[0].dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    }
-  }
-
   VkRenderPassCreateInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   renderPassInfo.attachmentCount = attachments.size();
   renderPassInfo.pAttachments = attachments.data();
   renderPassInfo.subpassCount = 1;
   renderPassInfo.pSubpasses = &subpass;
-  renderPassInfo.dependencyCount = dependencies.size();
-  renderPassInfo.pDependencies = dependencies.data();
+  renderPassInfo.dependencyCount = 0;
 
   VK_CHECK(vkCreateRenderPass(device_, &renderPassInfo, nullptr, &renderPass_));
 }
 
 bool FrameBufferVulkan::createVkFramebuffer() {
-  std::vector<VkImageView> attachments;
+  // reset attachments_
+  for (auto &view : attachments_) {
+    vkDestroyImageView(device_, view, nullptr);
+  }
+  attachments_.clear();
+
   if (colorReady_) {
     auto *texColor = getAttachmentColor();
-    attachments.push_back(texColor->createAttachmentView(colorAttachment_.layer, colorAttachment_.level));
+    attachments_.push_back(texColor->createAttachmentView(colorAttachment_.layer, colorAttachment_.level));
   }
   if (depthReady_) {
     auto *texDepth = getAttachmentDepth();
-    attachments.push_back(texDepth->createAttachmentView(depthAttachment_.layer, depthAttachment_.level));
+    attachments_.push_back(texDepth->createAttachmentView(depthAttachment_.layer, depthAttachment_.level));
   }
   // color resolve
   if (colorReady_ && isMultiSample()) {
     auto *texColor = getAttachmentColor();
-    attachments.push_back(texColor->getImageViewResolve());
+    attachments_.push_back(texColor->createResolveView());
   }
 
   VkFramebufferCreateInfo framebufferCreateInfo{};
   framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   framebufferCreateInfo.renderPass = renderPass_;
-  framebufferCreateInfo.attachmentCount = attachments.size();
-  framebufferCreateInfo.pAttachments = attachments.data();
+  framebufferCreateInfo.attachmentCount = attachments_.size();
+  framebufferCreateInfo.pAttachments = attachments_.data();
   framebufferCreateInfo.width = width_;
   framebufferCreateInfo.height = height_;
   framebufferCreateInfo.layers = 1;

@@ -15,7 +15,7 @@ namespace SoftGL {
 class RendererOpenGL : public Renderer {
  public:
   // framebuffer
-  std::shared_ptr<FrameBuffer> createFrameBuffer() override;
+  std::shared_ptr<FrameBuffer> createFrameBuffer(bool offscreen) override;
 
   // texture
   std::shared_ptr<Texture> createTexture(const TextureDesc &desc) override;

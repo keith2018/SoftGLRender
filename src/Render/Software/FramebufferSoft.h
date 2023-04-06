@@ -14,6 +14,8 @@ namespace SoftGL {
 
 class FrameBufferSoft : public FrameBuffer {
  public:
+  explicit FrameBufferSoft(bool offscreen) : FrameBuffer(offscreen) {}
+
   int getId() const override {
     return uuid_.get();
   }

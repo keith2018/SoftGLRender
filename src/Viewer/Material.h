@@ -69,7 +69,6 @@ struct UniformsScene {
 
 struct UniformsModel {
   glm::uint32_t u_reverseZ;
-  glm::float32_t u_pointSize;
   glm::mat4 u_modelMatrix;
   glm::mat4 u_modelViewProjectionMatrix;
   glm::mat3 u_inverseTransposeModelMatrix;
@@ -81,6 +80,7 @@ struct UniformsMaterial {
   glm::uint32_t u_enableIBL;
   glm::uint32_t u_enableShadow;
 
+  glm::float32_t u_pointSize;
   glm::float32_t u_kSpecular;
   glm::vec4 u_baseColor;
 };

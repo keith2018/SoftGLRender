@@ -21,19 +21,17 @@ bool RendererVulkan::create() {
   success = vkCtx_.create(false);
   if (success) {
     device_ = vkCtx_.device();
-    prepare();
   }
   return success;
 }
 
 void RendererVulkan::destroy() {
-  vkFreeCommandBuffers(device_, vkCtx_.getCommandPool(), 1, &drawCmd_);
   vkCtx_.destroy();
 }
 
 // framebuffer
-std::shared_ptr<FrameBuffer> RendererVulkan::createFrameBuffer() {
-  return std::make_shared<FrameBufferVulkan>(vkCtx_);
+std::shared_ptr<FrameBuffer> RendererVulkan::createFrameBuffer(bool offscreen) {
+  return std::make_shared<FrameBufferVulkan>(vkCtx_, offscreen);
 }
 
 // texture
@@ -94,11 +92,8 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
     clearValues_.push_back(depthClear);
   }
 
-  vkResetCommandBuffer(drawCmd_, 0);
-
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  VK_CHECK(vkBeginCommandBuffer(drawCmd_, &beginInfo));
+  commandBuffer_ = vkCtx_.beginCommands();
+  drawCmd_ = commandBuffer_->cmdBuffer;
 
   // render pass
   VkRenderPassBeginInfo renderPassInfo{};
@@ -140,7 +135,7 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
   }
 
   if (shaderProgram_) {
-    shaderProgram_->beginBindUniforms();
+    shaderProgram_->beginBindUniforms(commandBuffer_);
     shaderProgram_->bindResources(*resources);
     shaderProgram_->endBindUniforms();
   }
@@ -152,34 +147,6 @@ void RendererVulkan::setPipelineStates(std::shared_ptr<PipelineStates> &states) 
 }
 
 void RendererVulkan::draw() {
-  recordDraw();
-}
-
-void RendererVulkan::endRenderPass() {
-  vkCmdEndRenderPass(drawCmd_);
-  VK_CHECK(vkEndCommandBuffer(drawCmd_));
-
-  VkFence fence;
-  VkFenceCreateInfo fenceInfo{};
-  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &fence));
-
-  vkCtx_.submitWork(drawCmd_, fence);
-
-  VK_CHECK(vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX));
-  vkDestroyFence(device_, fence, nullptr);
-}
-
-void RendererVulkan::prepare() {
-  VkCommandBufferAllocateInfo allocInfo{};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.commandPool = vkCtx_.getCommandPool();
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandBufferCount = 1;
-  VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &drawCmd_));
-}
-
-void RendererVulkan::recordDraw() {
   // pipeline
   vkCmdBindPipeline(drawCmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineStates_->getGraphicsPipeline());
 
@@ -201,6 +168,14 @@ void RendererVulkan::recordDraw() {
 
   // draw
   vkCmdDrawIndexed(drawCmd_, vao_->getIndicesCnt(), 1, 0, 0, 0);
+}
+
+void RendererVulkan::endRenderPass() {
+  vkCmdEndRenderPass(drawCmd_);
+
+  VkSemaphore currSemaphore = commandBuffer_->semaphore;
+  vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_);
+  lastPassSemaphore_ = currSemaphore;
 }
 
 }

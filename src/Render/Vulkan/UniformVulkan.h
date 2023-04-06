@@ -13,22 +13,8 @@ class UniformBlockVulkan : public UniformBlock {
       : vkCtx_(ctx), UniformBlock(name, size) {
     device_ = ctx.device();
 
-    VkDeviceSize bufferSize = size;
-    vkCtx_.createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                        buffer_, memory_);
-
-    descriptorBufferInfo_.buffer = buffer_;
     descriptorBufferInfo_.offset = 0;
-    descriptorBufferInfo_.range = bufferSize;
-
-    VK_CHECK(vkMapMemory(device_, memory_, 0, bufferSize, 0, &buffersMapped_));
-  }
-
-  ~UniformBlockVulkan() {
-    vkDestroyBuffer(device_, buffer_, nullptr);
-    vkUnmapMemory(device_, memory_);
-    vkFreeMemory(device_, memory_, nullptr);
+    descriptorBufferInfo_.range = size;
   }
 
   int getLocation(ShaderProgram &program) override {
@@ -38,24 +24,41 @@ class UniformBlockVulkan : public UniformBlock {
 
   void bindProgram(ShaderProgram &program, int location) override {
     auto programVulkan = dynamic_cast<ShaderProgramVulkan *>(&program);
+
+    if (ubo_ == nullptr) {
+      LOGE("uniform bind program error: data not set");
+      return;
+    }
+
+    auto *cmd = programVulkan->getCommandBuffer();
+    if (cmd == nullptr) {
+      LOGE("uniform bind program error: not in render pass scope");
+      return;
+    }
+    cmd->uniformBuffers.push_back(ubo_);
     programVulkan->bindUniformBuffer(descriptorBufferInfo_, location);
+    bindToCmd_ = true;
   }
 
   void setSubData(void *data, int len, int offset) override {
-    memcpy((uint8_t *) buffersMapped_ + offset, data, len);
+    if (bindToCmd_) {
+      ubo_ = vkCtx_.getNewUniformBuffer(blockSize);
+      descriptorBufferInfo_.buffer = ubo_->buffer.buffer;
+    }
+    memcpy((uint8_t *) ubo_->mapPtr + offset, data, len);
+    bindToCmd_ = false;
   }
 
   void setData(void *data, int len) override {
-    memcpy(buffersMapped_, data, len);
+    setSubData(data, len, 0);
   }
 
  private:
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
 
-  VkBuffer buffer_ = VK_NULL_HANDLE;
-  VkDeviceMemory memory_ = VK_NULL_HANDLE;
-  void *buffersMapped_ = nullptr;
+  bool bindToCmd_ = true;
+  UniformBuffer *ubo_ = nullptr;
   VkDescriptorBufferInfo descriptorBufferInfo_{};
 };
 
@@ -64,6 +67,7 @@ class UniformSamplerVulkan : public UniformSampler {
   UniformSamplerVulkan(VKContext &ctx, const std::string &name, TextureType type, TextureFormat format)
       : vkCtx_(ctx), UniformSampler(name, type, format) {
     device_ = ctx.device();
+    descriptorImageInfo_.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   }
 
   int getLocation(ShaderProgram &program) override {
@@ -78,7 +82,6 @@ class UniformSamplerVulkan : public UniformSampler {
 
   void setTexture(const std::shared_ptr<Texture> &tex) override {
     auto *texVulkan = dynamic_cast<TextureVulkan *>(tex.get());
-    descriptorImageInfo_.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     descriptorImageInfo_.imageView = texVulkan->getSampleImageView();
     descriptorImageInfo_.sampler = texVulkan->getSampler();
   }

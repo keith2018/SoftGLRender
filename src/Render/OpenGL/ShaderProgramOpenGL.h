@@ -7,6 +7,7 @@
 #pragma once
 
 #include <unordered_map>
+#include "Base/FileUtils.h"
 #include "Render/ShaderProgram.h"
 #include "GLSLUtils.h"
 
@@ -20,6 +21,10 @@ class ShaderProgramOpenGL : public ShaderProgram {
 
   void addDefine(const std::string &def) override {
     programGLSL_.addDefine(def);
+  }
+
+  bool compileAndLinkFile(const std::string &vsPath, const std::string &fsPath) {
+    return compileAndLink(FileUtils::readText(vsPath), FileUtils::readText(fsPath));
   }
 
   bool compileAndLink(const std::string &vsSource, const std::string &fsSource) {

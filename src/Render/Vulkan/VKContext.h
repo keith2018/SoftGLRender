@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include "VulkanInc.h"
 
 namespace SoftGL {
@@ -20,11 +21,46 @@ struct QueueFamilyIndices {
   }
 };
 
-struct VkImageInfo {
-  VkImage image;
-  uint32_t aspect;
-  uint32_t layerCount;
-  uint32_t levelCount;
+struct AllocatedImage {
+  VkImage image = VK_NULL_HANDLE;
+  VkDeviceMemory memory = VK_NULL_HANDLE;
+
+  void destroy(VkDevice device) {
+    vkDestroyImage(device, image, nullptr);
+    vkFreeMemory(device, memory, nullptr);
+
+    image = VK_NULL_HANDLE;
+    memory = VK_NULL_HANDLE;
+  }
+};
+
+struct AllocatedBuffer {
+  VkBuffer buffer = VK_NULL_HANDLE;
+  VkDeviceMemory memory = VK_NULL_HANDLE;
+  VkDeviceSize size = 0;
+
+  void destroy(VkDevice device) {
+    vkDestroyBuffer(device, buffer, nullptr);
+    vkFreeMemory(device, memory, nullptr);
+
+    buffer = VK_NULL_HANDLE;
+    memory = VK_NULL_HANDLE;
+    size = 0;
+  }
+};
+
+struct UniformBuffer {
+  AllocatedBuffer buffer{};
+  void *mapPtr = nullptr;
+  bool inUse = false;
+};
+
+struct CommandBuffer {
+  VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
+  VkSemaphore semaphore = VK_NULL_HANDLE;
+  VkFence fence = VK_NULL_HANDLE;
+  std::vector<UniformBuffer *> uniformBuffers;
+  bool inUse = false;
 };
 
 class VKContext {
@@ -58,23 +94,16 @@ class VKContext {
 
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
 
-  VkCommandBuffer beginSingleTimeCommands();
-  void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+  UniformBuffer *getNewUniformBuffer(VkDeviceSize size);
 
-  void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-                    VkBuffer &buffer, VkDeviceMemory &bufferMemory);
-  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-  void uploadBufferData(VkBuffer &buffer, void *bufferData, VkDeviceSize bufferSize);
+  CommandBuffer *beginCommands();
+  void endCommands(CommandBuffer *commandBuffer, VkSemaphore semaphore = VK_NULL_HANDLE, bool waitOnHost = false);
 
-  bool createImageMemory(VkDeviceMemory &memory, VkImage &image, uint32_t properties);
+  void createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+  void createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size);
+  bool createImageMemory(AllocatedImage &image, uint32_t properties);
+
   bool linearBlitAvailable(VkFormat imageFormat);
-
-  void submitWork(VkCommandBuffer cmdBuffer, VkFence fence);
-
-  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImageInfo imageInfo,
-                                    VkImageLayout oldLayout, VkImageLayout newLayout,
-                                    VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
-                                    VkAccessFlags srcMask, VkAccessFlags dstMask);
 
  private:
   bool createInstance();
@@ -82,6 +111,10 @@ class VKContext {
   bool pickPhysicalDevice();
   bool createLogicalDevice();
   bool createCommandPool();
+
+  CommandBuffer *getNewCommandBuffer();
+  void purgeCommandBuffers();
+  void allocateCommandBuffer(VkCommandBuffer &cmdBuffer);
 
   static bool checkValidationLayerSupport();
   static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
@@ -98,6 +131,15 @@ class VKContext {
   QueueFamilyIndices queueIndices_;
   VkQueue graphicsQueue_ = VK_NULL_HANDLE;
   VkCommandPool commandPool_ = VK_NULL_HANDLE;
+
+  // command buffer pool
+  std::vector<CommandBuffer> commandBuffers_;
+
+  // uniform buffer pool
+  std::unordered_map<VkDeviceSize, std::vector<UniformBuffer>> uniformBufferPool_;
+
+  size_t maxCommandBufferPoolSize_ = 0;
+  size_t maxUniformBufferPoolSize_ = 0;
 
   VkPhysicalDeviceProperties deviceProperties_{};
   VkPhysicalDeviceMemoryProperties deviceMemoryProperties_{};
