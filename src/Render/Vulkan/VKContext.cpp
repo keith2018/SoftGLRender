@@ -124,8 +124,9 @@ CommandBuffer *VKContext::getNewCommandBuffer() {
   cmd.inUse = true;
   allocateCommandBuffer(cmd.cmdBuffer);
 
-  VkSemaphoreCreateInfo sci{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-  vkCreateSemaphore(device_, &sci, nullptr, &cmd.semaphore);
+  VkSemaphoreCreateInfo semaphoreInfo{};
+  semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  vkCreateSemaphore(device_, &semaphoreInfo, nullptr, &cmd.semaphore);
 
   VkFenceCreateInfo fenceInfo{};
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
