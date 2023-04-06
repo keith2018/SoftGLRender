@@ -9,13 +9,17 @@
 #include "Viewer.h"
 #include "Render/Vulkan/RendererVulkan.h"
 #include "Render/Vulkan/TextureVulkan.h"
-#include "Shader/GLSL/ShaderGLSL.h"
 
 namespace SoftGL {
 namespace View {
 
+#define TO_STR(S) #S
+#define SHADER_PATH(source, suffix) shaders/GLSL/source.suffix
+#define SHADER_PATH_STR(S) TO_STR(S)
+
 #define CASE_CREATE_SHADER_VK(shading, source) case shading: \
-  return programVK->compileAndLinkGLSL(source##_VS, source##_FS)
+  return programVK->compileAndLinkGLSLFile(SHADER_PATH_STR(SHADER_PATH(source, vert)), \
+                                           SHADER_PATH_STR(SHADER_PATH(source, frag)))
 
 class ViewerVulkan : public Viewer {
  public:
@@ -56,13 +60,13 @@ class ViewerVulkan : public Viewer {
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
     auto *programVK = dynamic_cast<ShaderProgramVulkan *>(&program);
     switch (shading) {
-      CASE_CREATE_SHADER_VK(Shading_BaseColor, BASIC);
-      CASE_CREATE_SHADER_VK(Shading_BlinnPhong, BLINN_PHONG);
-      CASE_CREATE_SHADER_VK(Shading_PBR, PBR_IBL);
-      CASE_CREATE_SHADER_VK(Shading_Skybox, SKYBOX);
-      CASE_CREATE_SHADER_VK(Shading_IBL_Irradiance, IBL_IRRADIANCE);
-      CASE_CREATE_SHADER_VK(Shading_IBL_Prefilter, IBL_PREFILTER);
-      CASE_CREATE_SHADER_VK(Shading_FXAA, FXAA);
+      CASE_CREATE_SHADER_VK(Shading_BaseColor, BasicGLSL);
+      CASE_CREATE_SHADER_VK(Shading_BlinnPhong, BlinnPhongGLSL);
+      CASE_CREATE_SHADER_VK(Shading_PBR, PbrGLSL);
+      CASE_CREATE_SHADER_VK(Shading_Skybox, SkyboxGLSL);
+      CASE_CREATE_SHADER_VK(Shading_IBL_Irradiance, IBLIrradianceGLSL);
+      CASE_CREATE_SHADER_VK(Shading_IBL_Prefilter, IBLPrefilterGLSL);
+      CASE_CREATE_SHADER_VK(Shading_FXAA, FxaaGLSL);
       default:
         break;
     }

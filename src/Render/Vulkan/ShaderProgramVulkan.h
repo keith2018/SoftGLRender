@@ -48,6 +48,10 @@ class ShaderProgramVulkan : public ShaderProgram {
     glslDefines_ += ("#define " + def + " \n");
   }
 
+  bool compileAndLinkGLSLFile(const std::string &vsPath, const std::string &fsPath) {
+    return compileAndLinkGLSL(FileUtils::readText(vsPath), FileUtils::readText(fsPath));
+  }
+
   bool compileAndLinkGLSL(const std::string &vsSource, const std::string &fsSource) {
     std::string vsStr = glslHeader_ + glslDefines_ + vsSource;
     std::string fsStr = glslHeader_ + glslDefines_ + fsSource;
