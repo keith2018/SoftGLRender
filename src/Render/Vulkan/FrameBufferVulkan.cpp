@@ -96,26 +96,31 @@ void FrameBufferVulkan::createVkRenderPass() {
 }
 
 bool FrameBufferVulkan::createVkFramebuffer() {
-  std::vector<VkImageView> attachments;
+  // reset attachments_
+  for (auto &view : attachments_) {
+    vkDestroyImageView(device_, view, nullptr);
+  }
+  attachments_.clear();
+
   if (colorReady_) {
     auto *texColor = getAttachmentColor();
-    attachments.push_back(texColor->createAttachmentView(colorAttachment_.layer, colorAttachment_.level));
+    attachments_.push_back(texColor->createAttachmentView(colorAttachment_.layer, colorAttachment_.level));
   }
   if (depthReady_) {
     auto *texDepth = getAttachmentDepth();
-    attachments.push_back(texDepth->createAttachmentView(depthAttachment_.layer, depthAttachment_.level));
+    attachments_.push_back(texDepth->createAttachmentView(depthAttachment_.layer, depthAttachment_.level));
   }
   // color resolve
   if (colorReady_ && isMultiSample()) {
     auto *texColor = getAttachmentColor();
-    attachments.push_back(texColor->getImageViewResolve());
+    attachments_.push_back(texColor->createResolveView());
   }
 
   VkFramebufferCreateInfo framebufferCreateInfo{};
   framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   framebufferCreateInfo.renderPass = renderPass_;
-  framebufferCreateInfo.attachmentCount = attachments.size();
-  framebufferCreateInfo.pAttachments = attachments.data();
+  framebufferCreateInfo.attachmentCount = attachments_.size();
+  framebufferCreateInfo.pAttachments = attachments_.data();
   framebufferCreateInfo.width = width_;
   framebufferCreateInfo.height = height_;
   framebufferCreateInfo.layers = 1;

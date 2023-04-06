@@ -22,6 +22,10 @@ class FrameBufferVulkan : public FrameBuffer {
   virtual ~FrameBufferVulkan() {
     vkDestroyFramebuffer(device_, framebuffer_, nullptr);
     vkDestroyRenderPass(device_, renderPass_, nullptr);
+
+    for (auto &view : attachments_) {
+      vkDestroyImageView(device_, view, nullptr);
+    }
   }
 
   int getId() const override {
@@ -139,6 +143,7 @@ class FrameBufferVulkan : public FrameBuffer {
   uint32_t height_ = 0;
   bool dirty_ = true;
 
+  std::vector<VkImageView> attachments_;
   VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
   VkRenderPass renderPass_ = VK_NULL_HANDLE;
 

@@ -33,7 +33,7 @@ class UniformBlockSoft : public UniformBlock {
   }
 
   void setData(void *data, int len) override {
-    memcpy(buffer_.data(), data, len);
+    setSubData(data, len, 0);
   }
 
  private:

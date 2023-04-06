@@ -63,17 +63,10 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
   }
 
   ~VertexArrayObjectVulkan() {
-    vkDestroyBuffer(device_, vertexBuffer_.buffer, nullptr);
-    vkFreeMemory(device_, vertexBuffer_.memory, nullptr);
-
-    vkDestroyBuffer(device_, indexBuffer_.buffer, nullptr);
-    vkFreeMemory(device_, indexBuffer_.memory, nullptr);
-
-    vkDestroyBuffer(device_, vertexStagingBuffer_.buffer, nullptr);
-    vkFreeMemory(device_, vertexStagingBuffer_.memory, nullptr);
-
-    vkDestroyBuffer(device_, indexStagingBuffer_.buffer, nullptr);
-    vkFreeMemory(device_, indexStagingBuffer_.memory, nullptr);
+    vertexBuffer_.destroy(device_);
+    vertexStagingBuffer_.destroy(device_);
+    indexBuffer_.destroy(device_);
+    indexStagingBuffer_.destroy(device_);
   }
 
   int getId() const override {
@@ -121,11 +114,11 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
     memcpy(dataPtr, bufferData, (size_t) bufferSize);
     vkUnmapMemory(device_, stagingBuffer.memory);
 
-    auto &commandBuffer = vkCtx_.beginCommands();
+    auto *commandBuffer = vkCtx_.beginCommands();
 
     VkBufferCopy copyRegion{};
     copyRegion.size = bufferSize;
-    vkCmdCopyBuffer(commandBuffer.cmdBuffer, stagingBuffer.buffer, buffer.buffer, 1, &copyRegion);
+    vkCmdCopyBuffer(commandBuffer->cmdBuffer, stagingBuffer.buffer, buffer.buffer, 1, &copyRegion);
 
     // use barrier to ensure that data is uploaded to the GPU before it is accessed
     VkBufferMemoryBarrier barrier{};
@@ -137,7 +130,7 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
     barrier.buffer = buffer.buffer;
     barrier.offset = 0;
     barrier.size = VK_WHOLE_SIZE;
-    vkCmdPipelineBarrier(commandBuffer.cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+    vkCmdPipelineBarrier(commandBuffer->cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
                          VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 
     vkCtx_.endCommands(commandBuffer);

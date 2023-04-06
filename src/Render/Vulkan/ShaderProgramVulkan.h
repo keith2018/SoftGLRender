@@ -119,7 +119,8 @@ class ShaderProgramVulkan : public ShaderProgram {
     writeDescriptorSets_.push_back(writeDesc);
   }
 
-  void beginBindUniforms() {
+  void beginBindUniforms(CommandBuffer *cmd) {
+    currCmdBuffer_ = cmd;
     writeDescriptorSets_.clear();
   }
 
@@ -128,6 +129,10 @@ class ShaderProgramVulkan : public ShaderProgram {
       return;
     }
     vkUpdateDescriptorSets(device_, writeDescriptorSets_.size(), writeDescriptorSets_.data(), 0, nullptr);
+  }
+
+  inline CommandBuffer *getCommandBuffer() {
+    return currCmdBuffer_;
   }
 
  private:
@@ -261,6 +266,8 @@ class ShaderProgramVulkan : public ShaderProgram {
 
   std::string glslHeader_;
   std::string glslDefines_;
+
+  CommandBuffer *currCmdBuffer_ = VK_NULL_HANDLE;
 };
 
 }

@@ -51,7 +51,7 @@ class Viewer {
 
   void drawScene(bool shadowPass);
   void drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, float specular = 1.f);
-  void drawModelMesh(ModelMesh &mesh, const glm::mat4 &transform, float specular = 1.f);
+  void drawModelMesh(ModelMesh &mesh, float specular = 1.f);
 
   void pipelineSetup(ModelBase &model, ShadingModel shading, const std::set<int> &uniformBlocks,
                      const std::function<void(RenderStates &rs)> &extraStates = nullptr);
@@ -71,7 +71,7 @@ class Viewer {
                      const std::function<void(RenderStates &rs)> &extraStates);
 
   void updateUniformScene();
-  void updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &view);
+  void updateUniformModel(const glm::mat4 &model, const glm::mat4 &view);
   void updateUniformMaterial(Material &material, float specular = 1.f);
 
   inline SkyboxMaterial *getSkyboxMaterial();
@@ -120,8 +120,10 @@ class Viewer {
   // ibl
   std::shared_ptr<Texture> iblPlaceholder_ = nullptr;
 
-  // global uniform
+  // uniforms
   std::shared_ptr<UniformBlock> uniformBlockScene_;
+  std::shared_ptr<UniformBlock> uniformBlockModel_;
+  std::shared_ptr<UniformBlock> uniformBlockMaterial_;
 
   // caches
   std::unordered_map<size_t, std::shared_ptr<ShaderProgram>> programCache_;

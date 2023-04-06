@@ -27,7 +27,6 @@ layout (location = 7) out vec3 v_tangent;
 
 layout (binding = 0, std140) uniform UniformsModel {
     bool u_reverseZ;
-    float u_pointSize;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
@@ -79,7 +78,6 @@ layout (location = 0) out vec4 FragColor;
 
 layout (binding = 0, std140) uniform UniformsModel {
     bool u_reverseZ;
-    float u_pointSize;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
@@ -98,6 +96,7 @@ layout (binding = 2, std140) uniform UniformsMaterial {
     bool u_enableIBL;
     bool u_enableShadow;
 
+    float u_pointSize;
     float u_kSpecular;
     vec4 u_baseColor;
 };

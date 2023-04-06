@@ -15,11 +15,20 @@ layout (location = 3) in vec3 a_tangent;
 
 layout (binding = 0, std140) uniform UniformsModel {
     bool u_reverseZ;
-    float u_pointSize;
     mat4 u_modelMatrix;
     mat4 u_modelViewProjectionMatrix;
     mat3 u_inverseTransposeModelMatrix;
     mat4 u_shadowMVPMatrix;
+};
+
+layout (binding = 1, std140) uniform UniformsMaterial {
+    bool u_enableLight;
+    bool u_enableIBL;
+    bool u_enableShadow;
+
+    float u_pointSize;
+    float u_kSpecular;
+    vec4 u_baseColor;
 };
 
 void main() {
@@ -36,6 +45,7 @@ layout (binding = 1, std140) uniform UniformsMaterial {
     bool u_enableIBL;
     bool u_enableShadow;
 
+    float u_pointSize;
     float u_kSpecular;
     vec4 u_baseColor;
 };

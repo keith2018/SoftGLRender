@@ -92,7 +92,7 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
     clearValues_.push_back(depthClear);
   }
 
-  commandBuffer_ = &vkCtx_.beginCommands();
+  commandBuffer_ = vkCtx_.beginCommands();
   drawCmd_ = commandBuffer_->cmdBuffer;
 
   // render pass
@@ -135,7 +135,7 @@ void RendererVulkan::setShaderResources(std::shared_ptr<ShaderResources> &resour
   }
 
   if (shaderProgram_) {
-    shaderProgram_->beginBindUniforms();
+    shaderProgram_->beginBindUniforms(commandBuffer_);
     shaderProgram_->bindResources(*resources);
     shaderProgram_->endBindUniforms();
   }
@@ -174,7 +174,7 @@ void RendererVulkan::endRenderPass() {
   vkCmdEndRenderPass(drawCmd_);
 
   VkSemaphore currSemaphore = commandBuffer_->semaphore;
-  vkCtx_.endCommands(*commandBuffer_, lastPassSemaphore_);
+  vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_);
   lastPassSemaphore_ = currSemaphore;
 }
 

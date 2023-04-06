@@ -91,9 +91,7 @@ class TextureVulkan : public Texture {
     return sampleView_;
   }
 
-  inline VkImageView &getImageViewResolve() {
-    return viewResolve_;
-  }
+  VkImageView createResolveView();
 
   VkImageView createAttachmentView(uint32_t layer, uint32_t level);
 
@@ -104,6 +102,15 @@ class TextureVulkan : public Texture {
   void createImageView(VkImageView &view, VkImage &image);
   void generateMipmaps();
   void setImageDataInternal(const std::vector<const void *> &buffers, VkDeviceSize imageSize);
+
+  static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
+                                    VkImageSubresourceRange subresourceRange,
+                                    VkAccessFlags srcMask,
+                                    VkAccessFlags dstMask,
+                                    VkImageLayout oldLayout,
+                                    VkImageLayout newLayout,
+                                    VkPipelineStageFlags srcStage,
+                                    VkPipelineStageFlags dstStage);
 
  protected:
   UUID<TextureVulkan> uuid_;
@@ -120,16 +127,13 @@ class TextureVulkan : public Texture {
   VkFormat vkFormat_ = VK_FORMAT_MAX_ENUM;
 
   AllocatedImage image_{};
+  AllocatedImage imageResolve_{};  // msaa resolve (only color)
 
   VkSampler sampler_ = VK_NULL_HANDLE;
   VkImageView sampleView_ = VK_NULL_HANDLE;
 
-  // msaa resolve (only color)
-  AllocatedImage imageResolve_{};
-  VkImageView viewResolve_ = VK_NULL_HANDLE;
-
   // for image data upload
-  AllocatedBuffer stagingBuffer_{};
+  AllocatedBuffer uploadStagingBuffer_{};
 
   // for memory dump
   AllocatedImage hostImage_{};

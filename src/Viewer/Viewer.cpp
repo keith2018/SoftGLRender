@@ -48,6 +48,9 @@ bool Viewer::create(int width, int height, int outTexId) {
 
   // create default resources
   uniformBlockScene_ = CREATE_UNIFORM_BLOCK(UniformsScene);
+  uniformBlockModel_ = CREATE_UNIFORM_BLOCK(UniformsModel);
+  uniformBlockMaterial_ = CREATE_UNIFORM_BLOCK(UniformsMaterial);
+
   shadowPlaceholder_ = createTexture2DDefault(1, 1, TextureFormat_FLOAT32, TextureUsage_Sampler);
   iblPlaceholder_ = createTextureCubeDefault(1, 1, TextureUsage_Sampler);
 
@@ -74,6 +77,8 @@ void Viewer::cleanup() {
   texColorFxaa_ = nullptr;
   iblPlaceholder_ = nullptr;
   uniformBlockScene_ = nullptr;
+  uniformBlockModel_ = nullptr;
+  uniformBlockMaterial_ = nullptr;
   programCache_.clear();
   pipelineCache_.clear();
 }
@@ -228,27 +233,18 @@ void Viewer::setupScene() {
 }
 
 void Viewer::setupPoints(ModelPoints &points) {
-  pipelineSetup(points,
-                points.material->shadingModel,
-                {
-                    UniformBlock_Model, UniformBlock_Material
-                });
+  pipelineSetup(points, points.material->shadingModel,
+                {UniformBlock_Model, UniformBlock_Material});
 }
 
 void Viewer::setupLines(ModelLines &lines) {
-  pipelineSetup(lines,
-                lines.material->shadingModel,
-                {
-                    UniformBlock_Model, UniformBlock_Material
-                });
+  pipelineSetup(lines, lines.material->shadingModel,
+                {UniformBlock_Model, UniformBlock_Material});
 }
 
 void Viewer::setupSkybox(ModelMesh &skybox) {
-  pipelineSetup(skybox,
-                skybox.material->shadingModel,
-                {
-                    UniformBlock_Model
-                },
+  pipelineSetup(skybox, skybox.material->shadingModel,
+                {UniformBlock_Model},
                 [&](RenderStates &rs) -> void {
                   rs.depthFunc = config_.reverseZ ? DepthFunc_GEQUAL : DepthFunc_LEQUAL;
                   rs.depthMask = false;
@@ -256,22 +252,16 @@ void Viewer::setupSkybox(ModelMesh &skybox) {
 }
 
 void Viewer::setupMeshBaseColor(ModelMesh &mesh, bool wireframe) {
-  pipelineSetup(mesh,
-                Shading_BaseColor,
-                {
-                    UniformBlock_Model, UniformBlock_Scene, UniformBlock_Material
-                },
+  pipelineSetup(mesh, Shading_BaseColor,
+                {UniformBlock_Model, UniformBlock_Scene, UniformBlock_Material},
                 [&](RenderStates &rs) -> void {
                   rs.polygonMode = wireframe ? PolygonMode_LINE : PolygonMode_FILL;
                 });
 }
 
 void Viewer::setupMeshTextured(ModelMesh &mesh) {
-  pipelineSetup(mesh,
-                mesh.material->shadingModel,
-                {
-                    UniformBlock_Model, UniformBlock_Scene, UniformBlock_Material
-                });
+  pipelineSetup(mesh, mesh.material->shadingModel,
+                {UniformBlock_Model, UniformBlock_Scene, UniformBlock_Material});
 }
 
 void Viewer::setupModelNodes(ModelNode &node, bool wireframe) {
@@ -293,24 +283,23 @@ void Viewer::setupModelNodes(ModelNode &node, bool wireframe) {
 void Viewer::drawScene(bool shadowPass) {
   // update scene uniform
   updateUniformScene();
+  updateUniformModel(glm::mat4(1.0f), camera_->viewMatrix());
 
   // draw point light
   if (!shadowPass && config_.showLight) {
-    updateUniformModel(scene_->pointLight, glm::mat4(1.0f), camera_->viewMatrix());
     updateUniformMaterial(*scene_->pointLight.material);
     pipelineDraw(scene_->pointLight);
   }
 
   // draw world axis
   if (!shadowPass && config_.worldAxis) {
-    updateUniformModel(scene_->worldAxis, glm::mat4(1.0f), camera_->viewMatrix());
     updateUniformMaterial(*scene_->worldAxis.material);
     pipelineDraw(scene_->worldAxis);
   }
 
   // draw floor
   if (!shadowPass && config_.showFloor) {
-    drawModelMesh(scene_->floor, glm::mat4(1.0f), 0.f);
+    drawModelMesh(scene_->floor, 0.f);
   }
 
   // draw model nodes opaque
@@ -319,7 +308,8 @@ void Viewer::drawScene(bool shadowPass) {
 
   // draw skybox
   if (!shadowPass && config_.showSkybox) {
-    updateUniformModel(scene_->skybox, glm::mat4(1.0f), glm::mat3(camera_->viewMatrix()));
+    // view matrix only rotation
+    updateUniformModel(glm::mat4(1.0f), glm::mat3(camera_->viewMatrix()));
     pipelineDraw(scene_->skybox);
   }
 
@@ -330,13 +320,21 @@ void Viewer::drawScene(bool shadowPass) {
 void Viewer::drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, float specular) {
   glm::mat4 modelMatrix = transform * node.transform;
 
+  // update model uniform
+  updateUniformModel(modelMatrix, camera_->viewMatrix());
+
   // draw nodes
   for (auto &mesh : node.meshes) {
     if (mesh.material->alphaMode != mode) {
       continue;
     }
 
-    drawModelMesh(mesh, modelMatrix, specular);
+    // frustum cull
+    if (!checkMeshFrustumCull(mesh, modelMatrix)) {
+      return;
+    }
+
+    drawModelMesh(mesh, specular);
   }
 
   // draw child
@@ -345,16 +343,7 @@ void Viewer::drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
   }
 }
 
-void Viewer::drawModelMesh(ModelMesh &mesh, const glm::mat4 &transform, float specular) {
-  // frustum cull
-  if (!checkMeshFrustumCull(mesh, transform)) {
-    return;
-  }
-
-  // update model uniform
-  // TODO: share the same uniform object
-  updateUniformModel(mesh, transform, camera_->viewMatrix());
-
+void Viewer::drawModelMesh(ModelMesh &mesh, float specular) {
   // update material
   updateUniformMaterial(*mesh.material, specular);
 
@@ -651,11 +640,11 @@ void Viewer::setupMaterial(ModelBase &model, ShadingModel shading, const std::se
           break;
         }
         case UniformBlock_Model: {
-          uniform = CREATE_UNIFORM_BLOCK(UniformsModel);
+          uniform = uniformBlockModel_;
           break;
         }
         case UniformBlock_Material: {
-          uniform = CREATE_UNIFORM_BLOCK(UniformsMaterial);
+          uniform = uniformBlockMaterial_;
           break;
         }
         default:
@@ -671,31 +660,23 @@ void Viewer::setupMaterial(ModelBase &model, ShadingModel shading, const std::se
 }
 
 void Viewer::updateUniformScene() {
-  UniformsScene uniformsScene{};
+  static UniformsScene uniformsScene{};
+
   uniformsScene.u_ambientColor = config_.ambientColor;
   uniformsScene.u_cameraPosition = camera_->eye();
   uniformsScene.u_pointLightPosition = config_.pointLightPosition;
   uniformsScene.u_pointLightColor = config_.pointLightColor;
+
   uniformBlockScene_->setData(&uniformsScene, sizeof(UniformsScene));
 }
 
-void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm::mat4 &view) {
-  if (!model.material->materialObj) {
-    return;
-  }
+void Viewer::updateUniformModel(const glm::mat4 &model, const glm::mat4 &view) {
+  static UniformsModel uniformsModel{};
 
-  auto &blocks = model.material->materialObj->shaderResources->blocks;
-  auto it = blocks.find(UniformBlock_Model);
-  if (it == blocks.end()) {
-    return;
-  }
-
-  UniformsModel uniformsModel{};
   uniformsModel.u_reverseZ = config_.reverseZ ? 1u : 0u;
-  uniformsModel.u_pointSize = model.material->pointSize;
-  uniformsModel.u_modelMatrix = m;
-  uniformsModel.u_modelViewProjectionMatrix = camera_->projectionMatrix() * view * m;
-  uniformsModel.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(m)));
+  uniformsModel.u_modelMatrix = model;
+  uniformsModel.u_modelViewProjectionMatrix = camera_->projectionMatrix() * view * model;
+  uniformsModel.u_inverseTransposeModelMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
   // shadow mvp
   if (config_.shadowMap && cameraDepth_) {
@@ -703,32 +684,24 @@ void Viewer::updateUniformModel(ModelBase &model, const glm::mat4 &m, const glm:
                                         0.0f, 0.5f, 0.0f, 0.0f,
                                         0.0f, 0.0f, 1.0f, 0.0f,
                                         0.5f, 0.5f, 0.0f, 1.0f);
-    uniformsModel.u_shadowMVPMatrix = biasMat * cameraDepth_->projectionMatrix() * cameraDepth_->viewMatrix() * m;
+    uniformsModel.u_shadowMVPMatrix = biasMat * cameraDepth_->projectionMatrix() * cameraDepth_->viewMatrix() * model;
   }
 
-  it->second->setData(&uniformsModel, sizeof(UniformsModel));
+  uniformBlockModel_->setData(&uniformsModel, sizeof(UniformsModel));
 }
 
 void Viewer::updateUniformMaterial(Material &material, float specular) {
-  if (!material.materialObj) {
-    return;
-  }
+  static UniformsMaterial uniformsMaterial{};
 
-  auto &blocks = material.materialObj->shaderResources->blocks;
-  auto it = blocks.find(UniformBlock_Material);
-  if (it == blocks.end()) {
-    return;
-  }
-
-  UniformsMaterial uniformsMaterial{};
   uniformsMaterial.u_enableLight = config_.showLight ? 1u : 0u;
   uniformsMaterial.u_enableIBL = iBLEnabled() ? 1u : 0u;
   uniformsMaterial.u_enableShadow = config_.shadowMap ? 1u : 0u;
 
+  uniformsMaterial.u_pointSize = material.pointSize;
   uniformsMaterial.u_kSpecular = specular;
   uniformsMaterial.u_baseColor = material.baseColor;
 
-  it->second->setData(&uniformsMaterial, sizeof(UniformsMaterial));
+  uniformBlockMaterial_->setData(&uniformsMaterial, sizeof(UniformsMaterial));
 }
 
 bool Viewer::initSkyboxIBL() {

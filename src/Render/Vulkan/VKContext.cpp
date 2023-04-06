@@ -10,6 +10,9 @@
 
 namespace SoftGL {
 
+#define COMMAND_BUFFER_POOL_RESERVE 32
+#define UNIFORM_BUFFER_POOL_RESERVE 128
+
 const std::vector<const char *> kValidationLayers = {
     "VK_LAYER_KHRONOS_validation",
 };
@@ -69,10 +72,21 @@ bool VKContext::create(bool debugOutput) {
   EXEC_VULKAN_STEP(createLogicalDevice)
   EXEC_VULKAN_STEP(createCommandPool)
 
+  commandBuffers_.reserve(COMMAND_BUFFER_POOL_RESERVE);
+
   return true;
 }
 
 void VKContext::destroy() {
+  for (auto &kv : uniformBufferPool_) {
+    for (auto &buff : kv.second) {
+      vkUnmapMemory(device_, buff.buffer.memory);
+      buff.buffer.destroy(device_);
+      buff.mapPtr = nullptr;
+      buff.inUse = false;
+    }
+  }
+
   for (auto &cmd : commandBuffers_) {
     vkDestroyFence(device_, cmd.fence, nullptr);
     vkDestroySemaphore(device_, cmd.semaphore, nullptr);
@@ -95,21 +109,20 @@ void VKContext::destroy() {
   vkDestroyInstance(instance_, nullptr);
 }
 
-CommandBuffer &VKContext::getCommandBuffer() {
+CommandBuffer *VKContext::getNewCommandBuffer() {
   for (auto &cmd : commandBuffers_) {
     if (!cmd.inUse) {
       if (cmd.cmdBuffer == VK_NULL_HANDLE) {
-        AllocateCommandBuffer(cmd.cmdBuffer);
+        allocateCommandBuffer(cmd.cmdBuffer);
       }
-
       cmd.inUse = true;
-      return cmd;
+      return &cmd;
     }
   }
 
   CommandBuffer cmd{};
   cmd.inUse = true;
-  AllocateCommandBuffer(cmd.cmdBuffer);
+  allocateCommandBuffer(cmd.cmdBuffer);
 
   VkSemaphoreCreateInfo sci{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
   vkCreateSemaphore(device_, &sci, nullptr, &cmd.semaphore);
@@ -119,7 +132,11 @@ CommandBuffer &VKContext::getCommandBuffer() {
   VK_CHECK(vkCreateFence(device_, &fenceInfo, nullptr, &cmd.fence));
 
   commandBuffers_.push_back(cmd);
-  return commandBuffers_.back();
+  maxCommandBufferPoolSize_ = std::max(maxCommandBufferPoolSize_, commandBuffers_.size());
+  if (maxCommandBufferPoolSize_ > COMMAND_BUFFER_POOL_RESERVE) {
+    LOGE("error: command buffer pool size exceed");
+  }
+  return &commandBuffers_.back();
 }
 
 void VKContext::purgeCommandBuffers() {
@@ -132,48 +149,52 @@ void VKContext::purgeCommandBuffers() {
       vkResetFences(device_, 1, &cmd.fence);
       vkFreeCommandBuffers(device_, commandPool_, 1, &cmd.cmdBuffer);
       cmd.cmdBuffer = VK_NULL_HANDLE;
+      for (auto &buff : cmd.uniformBuffers) {
+        buff->inUse = false;
+      }
+      cmd.uniformBuffers.clear();
       cmd.inUse = false;
     }
   }
 }
 
-CommandBuffer &VKContext::beginCommands() {
-  auto &commandBuffer = getCommandBuffer();
+CommandBuffer *VKContext::beginCommands() {
+  auto *commandBuffer = getNewCommandBuffer();
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  VK_CHECK(vkBeginCommandBuffer(commandBuffer.cmdBuffer, &beginInfo));
+  VK_CHECK(vkBeginCommandBuffer(commandBuffer->cmdBuffer, &beginInfo));
 
   return commandBuffer;
 }
 
-void VKContext::endCommands(CommandBuffer &commandBuffer, VkSemaphore semaphore, bool waitOnHost) {
-  VK_CHECK(vkEndCommandBuffer(commandBuffer.cmdBuffer));
+void VKContext::endCommands(CommandBuffer *commandBuffer, VkSemaphore semaphore, bool waitOnHost) {
+  VK_CHECK(vkEndCommandBuffer(commandBuffer->cmdBuffer));
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer.cmdBuffer;
+  submitInfo.pCommandBuffers = &commandBuffer->cmdBuffer;
   submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = &commandBuffer.semaphore;
+  submitInfo.pSignalSemaphores = &commandBuffer->semaphore;
   if (semaphore != VK_NULL_HANDLE) {
     VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = &semaphore;
     submitInfo.pWaitDstStageMask = &waitStageMask;
   }
-  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, commandBuffer.fence));
+  VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, commandBuffer->fence));
 
   if (waitOnHost) {
-    VK_CHECK(vkWaitForFences(device_, 1, &commandBuffer.fence, VK_TRUE, UINT64_MAX));
+    VK_CHECK(vkWaitForFences(device_, 1, &commandBuffer->fence, VK_TRUE, UINT64_MAX));
   }
 
   purgeCommandBuffers();
 }
 
-void VKContext::AllocateCommandBuffer(VkCommandBuffer &cmdBuffer) {
+void VKContext::allocateCommandBuffer(VkCommandBuffer &cmdBuffer) {
   VkCommandBufferAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -181,6 +202,35 @@ void VKContext::AllocateCommandBuffer(VkCommandBuffer &cmdBuffer) {
   allocInfo.commandBufferCount = 1;
 
   VK_CHECK(vkAllocateCommandBuffers(device_, &allocInfo, &cmdBuffer));
+}
+
+UniformBuffer *VKContext::getNewUniformBuffer(VkDeviceSize size) {
+  auto it = uniformBufferPool_.find(size);
+  if (it == uniformBufferPool_.end()) {
+    std::vector<UniformBuffer> uboPool;
+    uboPool.reserve(UNIFORM_BUFFER_POOL_RESERVE);
+    uniformBufferPool_[size] = std::move(uboPool);
+  }
+  auto &pool = uniformBufferPool_[size];
+
+  for (auto &buff : pool) {
+    if (!buff.inUse) {
+      buff.inUse = true;
+      return &buff;
+    }
+  }
+
+  UniformBuffer buff{};
+  buff.inUse = true;
+  createBuffer(buff.buffer, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  VK_CHECK(vkMapMemory(device_, buff.buffer.memory, 0, size, 0, &buff.mapPtr));
+  pool.push_back(buff);
+  maxUniformBufferPoolSize_ = std::max(maxUniformBufferPoolSize_, pool.size());
+  if (maxUniformBufferPoolSize_ > UNIFORM_BUFFER_POOL_RESERVE) {
+    LOGE("error: uniform buffer pool size exceed");
+  }
+  return &pool.back();
 }
 
 uint32_t VKContext::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties) {
@@ -387,28 +437,6 @@ QueueFamilyIndices VKContext::findQueueFamilies(VkPhysicalDevice physicalDevice)
   }
 
   return indices;
-}
-
-void VKContext::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
-                                      VkImageSubresourceRange subresourceRange,
-                                      VkAccessFlags srcMask,
-                                      VkAccessFlags dstMask,
-                                      VkImageLayout oldLayout,
-                                      VkImageLayout newLayout,
-                                      VkPipelineStageFlags srcStage,
-                                      VkPipelineStageFlags dstStage) {
-  VkImageMemoryBarrier barrier{};
-  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  barrier.oldLayout = oldLayout;
-  barrier.newLayout = newLayout;
-  barrier.srcAccessMask = srcMask;
-  barrier.dstAccessMask = dstMask;
-  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.image = image;
-  barrier.subresourceRange = subresourceRange;
-
-  vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
 void VKContext::createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
