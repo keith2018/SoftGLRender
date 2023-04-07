@@ -17,8 +17,9 @@ bool RendererVulkan::create() {
   bool success = false;
 #ifdef DEBUG
   success = vkCtx_.create(true);
-#endif
+#else
   success = vkCtx_.create(false);
+#endif
   if (success) {
     device_ = vkCtx_.device();
   }
@@ -115,6 +116,9 @@ void RendererVulkan::setViewPort(int x, int y, int width, int height) {
   viewport_.height = (float) height;
   viewport_.minDepth = 0.f;
   viewport_.maxDepth = 1.f;
+
+  scissor_.extent.width = width;
+  scissor_.extent.height = height;
 }
 
 void RendererVulkan::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
@@ -150,8 +154,9 @@ void RendererVulkan::draw() {
   // pipeline
   vkCmdBindPipeline(drawCmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineStates_->getGraphicsPipeline());
 
-  // viewport
+  // viewport & scissor
   vkCmdSetViewport(drawCmd_, 0, 1, &viewport_);
+  vkCmdSetScissor(drawCmd_, 0, 1, &scissor_);
 
   // vertex buffer
   VkBuffer vertexBuffers[] = {vao_->getVertexBuffer()};
@@ -173,9 +178,8 @@ void RendererVulkan::draw() {
 void RendererVulkan::endRenderPass() {
   vkCmdEndRenderPass(drawCmd_);
 
-  VkSemaphore currSemaphore = commandBuffer_->semaphore;
-  vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_);
-  lastPassSemaphore_ = currSemaphore;
+  vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_, commandBuffer_->semaphore);
+  lastPassSemaphore_ = commandBuffer_->semaphore;
 }
 
 }

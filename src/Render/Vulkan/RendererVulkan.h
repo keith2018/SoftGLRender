@@ -57,6 +57,7 @@ class RendererVulkan : public Renderer {
   PipelineStatesVulkan *pipelineStates_ = nullptr;
 
   VkViewport viewport_{};
+  VkRect2D scissor_{};
   std::vector<VkClearValue> clearValues_;
 
   VKContext vkCtx_;

@@ -14,6 +14,8 @@
 
 namespace SoftGL {
 
+#define DESCRIPTOR_SET_POOL_MAX_SIZE 128
+
 struct UniformInfoVulkan {
   ShaderUniformType type;
   uint32_t binding;
@@ -74,7 +76,6 @@ class ShaderProgramVulkan : public ShaderProgram {
 
     createDescriptorSetLayouts(vsData.uniformsDesc, fsData.uniformsDesc);
     createDescriptorPool();
-    createDescriptorSets();
 
     return true;
   }
@@ -88,7 +89,7 @@ class ShaderProgramVulkan : public ShaderProgram {
   }
 
   inline std::vector<VkDescriptorSet> &getVkDescriptorSet() {
-    return descriptorSets_;
+    return vkDescriptorSets_;
   }
 
   inline int getUniformLocation(const std::string &name) {
@@ -102,7 +103,7 @@ class ShaderProgramVulkan : public ShaderProgram {
   void bindUniformBuffer(VkDescriptorBufferInfo &info, uint32_t binding) {
     VkWriteDescriptorSet writeDesc{};
     writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDesc.dstSet = descriptorSets_[0];   // all uniform bind to set 0
+    writeDesc.dstSet = descriptorSets_[0]->set;   // all uniforms bind to set 0
     writeDesc.dstBinding = binding;
     writeDesc.dstArrayElement = 0;
     writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -114,7 +115,7 @@ class ShaderProgramVulkan : public ShaderProgram {
   void bindUniformSampler(VkDescriptorImageInfo &info, uint32_t binding) {
     VkWriteDescriptorSet writeDesc{};
     writeDesc.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDesc.dstSet = descriptorSets_[0];   // all uniform bind to set 0
+    writeDesc.dstSet = descriptorSets_[0]->set;   // all uniforms bind to set 0
     writeDesc.dstBinding = binding;
     writeDesc.dstArrayElement = 0;
     writeDesc.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -125,14 +126,29 @@ class ShaderProgramVulkan : public ShaderProgram {
 
   void beginBindUniforms(CommandBuffer *cmd) {
     currCmdBuffer_ = cmd;
+
+    // allocate descriptor sets
+    descriptorSets_.resize(descriptorSetLayouts_.size());
+    for (size_t i = 0; i < descriptorSetLayouts_.size(); i++) {
+      descriptorSets_[i] = getNewDescriptorSet(descriptorSetLayouts_[i]);
+    }
+
     writeDescriptorSets_.clear();
   }
 
   void endBindUniforms() {
-    if (writeDescriptorSets_.empty()) {
-      return;
+    if (!writeDescriptorSets_.empty()) {
+      vkUpdateDescriptorSets(device_, writeDescriptorSets_.size(), writeDescriptorSets_.data(), 0, nullptr);
     }
-    vkUpdateDescriptorSets(device_, writeDescriptorSets_.size(), writeDescriptorSets_.data(), 0, nullptr);
+
+    // descriptorSets_ -> vkDescriptorSets_
+    vkDescriptorSets_.resize(descriptorSets_.size());
+    for (size_t i = 0; i < descriptorSets_.size(); i++) {
+      vkDescriptorSets_[i] = descriptorSets_[i]->set;
+    }
+
+    // add descriptor sets to command buffer
+    currCmdBuffer_->descriptorSets.insert(currCmdBuffer_->descriptorSets.begin(), descriptorSets_.begin(), descriptorSets_.end());
   }
 
   inline CommandBuffer *getCommandBuffer() {
@@ -203,30 +219,53 @@ class ShaderProgramVulkan : public ShaderProgram {
 
     std::vector<VkDescriptorPoolSize> poolSizes;
     if (uniformBlockCnt > 0) {
-      poolSizes.push_back({VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uniformBlockCnt});
+      poolSizes.push_back({VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uniformBlockCnt * DESCRIPTOR_SET_POOL_MAX_SIZE});
     }
     if (uniformSamplerCnt > 0) {
-      poolSizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, uniformSamplerCnt});
+      poolSizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, uniformSamplerCnt * DESCRIPTOR_SET_POOL_MAX_SIZE});
     }
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = poolSizes.size();
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = descriptorSetLayouts_.size();
+    poolInfo.maxSets = DESCRIPTOR_SET_POOL_MAX_SIZE;
 
     VK_CHECK(vkCreateDescriptorPool(device_, &poolInfo, nullptr, &descriptorPool_));
   }
 
-  void createDescriptorSets() {
+  DescriptorSet *getNewDescriptorSet(VkDescriptorSetLayout layout) {
+    auto it = descriptorSetPool_.find(layout);
+    if (it == descriptorSetPool_.end()) {
+      std::vector<DescriptorSet> descSetPool;
+      descSetPool.reserve(DESCRIPTOR_SET_POOL_MAX_SIZE);
+      descriptorSetPool_[layout] = std::move(descSetPool);
+    }
+    auto &pool = descriptorSetPool_[layout];
+
+    for (auto &desc : pool) {
+      if (!desc.inUse) {
+        desc.inUse = true;
+        return &desc;
+      }
+    }
+
+    DescriptorSet descSet{};
+    descSet.inUse = true;
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool_;
-    allocInfo.descriptorSetCount = descriptorSetLayouts_.size();
-    allocInfo.pSetLayouts = descriptorSetLayouts_.data();
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &layout;
 
-    descriptorSets_.resize(descriptorSetLayouts_.size());
-    VK_CHECK(vkAllocateDescriptorSets(device_, &allocInfo, descriptorSets_.data()));
+    VK_CHECK(vkAllocateDescriptorSets(device_, &allocInfo, &descSet.set));
+    pool.push_back(descSet);
+    LOGE("descriptor set pool: %0xx, %d", layout, pool.size());
+    maxDescriptorSetPoolSize_ = std::max(maxDescriptorSetPoolSize_, pool.size());
+    if (maxDescriptorSetPoolSize_ >= DESCRIPTOR_SET_POOL_MAX_SIZE) {
+      LOGE("error: descriptor set pool size exceed");
+    }
+    return &pool.back();
   }
 
   void createShaderStages() {
@@ -245,6 +284,7 @@ class ShaderProgramVulkan : public ShaderProgram {
   }
 
   void createShaderModule(VkShaderModule &shaderModule, const uint32_t *spvCode, size_t codeSize) {
+    FUNCTION_TIMED("ShaderProgramVulkan::createShaderModule");
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.codeSize = codeSize;
@@ -258,20 +298,26 @@ class ShaderProgramVulkan : public ShaderProgram {
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
 
+  std::string glslHeader_;
+  std::string glslDefines_;
+
   VkShaderModule vertexShader_ = VK_NULL_HANDLE;
   VkShaderModule fragmentShader_ = VK_NULL_HANDLE;
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages_;
   std::unordered_map<std::string, UniformInfoVulkan> uniformsInfo_;
 
-  std::vector<VkDescriptorSetLayout> descriptorSetLayouts_;
   VkDescriptorPool descriptorPool_ = VK_NULL_HANDLE;
-  std::vector<VkDescriptorSet> descriptorSets_;
+  std::vector<VkDescriptorSetLayout> descriptorSetLayouts_;
   std::vector<VkWriteDescriptorSet> writeDescriptorSets_;
 
-  std::string glslHeader_;
-  std::string glslDefines_;
+  std::vector<DescriptorSet *> descriptorSets_;
+  std::vector<VkDescriptorSet> vkDescriptorSets_;
 
-  CommandBuffer *currCmdBuffer_ = VK_NULL_HANDLE;
+  // descriptor set pool
+  std::unordered_map<VkDescriptorSetLayout, std::vector<DescriptorSet>> descriptorSetPool_;
+  size_t maxDescriptorSetPoolSize_ = 0;
+
+  CommandBuffer *currCmdBuffer_ = nullptr;
 };
 
 }

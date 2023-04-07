@@ -9,6 +9,7 @@
 #include "glslang/Public/ResourceLimits.h"
 #include "SPIRV/GlslangToSpv.h"
 #include "Base/Logger.h"
+#include "Base/Timer.h"
 
 namespace SoftGL {
 
@@ -126,10 +127,12 @@ static ShaderCompilerResult compileShaderInternal(EShLanguage stage, const char 
 }
 
 ShaderCompilerResult SpvCompiler::compileVertexShader(const char *shaderSource) {
+  FUNCTION_TIMED("SpvCompiler::compileVertexShader");
   return compileShaderInternal(EShLangVertex, shaderSource);
 }
 
 ShaderCompilerResult SpvCompiler::compileFragmentShader(const char *shaderSource) {
+  FUNCTION_TIMED("SpvCompiler::compileFragmentShader");
   return compileShaderInternal(EShLangFragment, shaderSource);
 }
 

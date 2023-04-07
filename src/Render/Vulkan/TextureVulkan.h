@@ -75,11 +75,8 @@ class TextureVulkan : public Texture {
   }
 
   inline uint32_t getImageAspect() {
-    switch (usage) {
-      case TextureUsage_AttachmentColor:
-        return VK_IMAGE_ASPECT_COLOR_BIT;
-      case TextureUsage_AttachmentDepth:
-        return VK_IMAGE_ASPECT_DEPTH_BIT;
+    if (usage & TextureUsage_AttachmentDepth) {
+      return VK_IMAGE_ASPECT_DEPTH_BIT;
     }
     return VK_IMAGE_ASPECT_COLOR_BIT;
   }
@@ -93,7 +90,7 @@ class TextureVulkan : public Texture {
 
   VkImageView createResolveView();
 
-  VkImageView createAttachmentView(uint32_t layer, uint32_t level);
+  VkImageView createAttachmentView(VkImageAspectFlags aspect, uint32_t layer, uint32_t level);
 
  protected:
   void createImage();

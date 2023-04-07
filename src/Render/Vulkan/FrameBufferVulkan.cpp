@@ -104,11 +104,11 @@ bool FrameBufferVulkan::createVkFramebuffer() {
 
   if (colorReady_) {
     auto *texColor = getAttachmentColor();
-    attachments_.push_back(texColor->createAttachmentView(colorAttachment_.layer, colorAttachment_.level));
+    attachments_.push_back(texColor->createAttachmentView(VK_IMAGE_ASPECT_COLOR_BIT, colorAttachment_.layer, colorAttachment_.level));
   }
   if (depthReady_) {
     auto *texDepth = getAttachmentDepth();
-    attachments_.push_back(texDepth->createAttachmentView(depthAttachment_.layer, depthAttachment_.level));
+    attachments_.push_back(texDepth->createAttachmentView(VK_IMAGE_ASPECT_DEPTH_BIT, depthAttachment_.layer, depthAttachment_.level));
   }
   // color resolve
   if (colorReady_ && isMultiSample()) {

@@ -55,11 +55,17 @@ struct UniformBuffer {
   bool inUse = false;
 };
 
+struct DescriptorSet {
+  VkDescriptorSet set = VK_NULL_HANDLE;
+  bool inUse = false;
+};
+
 struct CommandBuffer {
   VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
   VkSemaphore semaphore = VK_NULL_HANDLE;
   VkFence fence = VK_NULL_HANDLE;
   std::vector<UniformBuffer *> uniformBuffers;
+  std::vector<DescriptorSet *> descriptorSets;
   bool inUse = false;
 };
 
@@ -97,7 +103,8 @@ class VKContext {
   UniformBuffer *getNewUniformBuffer(VkDeviceSize size);
 
   CommandBuffer *beginCommands();
-  void endCommands(CommandBuffer *commandBuffer, VkSemaphore semaphore = VK_NULL_HANDLE, bool waitOnHost = false);
+  void endCommands(CommandBuffer *commandBuffer, VkSemaphore waitSemaphore = VK_NULL_HANDLE, VkSemaphore signalSemaphore = VK_NULL_HANDLE);
+  void waitCommands(CommandBuffer *commandBuffer);
 
   void createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
   void createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size);

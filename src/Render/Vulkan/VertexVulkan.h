@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Base/UUID.h"
+#include "Base/Timer.h"
 #include "Render/Vertex.h"
 #include "VulkanUtils.h"
 
@@ -16,6 +17,7 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
  public:
   VertexArrayObjectVulkan(VKContext &ctx, const VertexArray &vertexArr)
       : vkCtx_(ctx) {
+    FUNCTION_TIMED("VertexArrayObjectVulkan()");
     device_ = ctx.device();
     if (!vertexArr.vertexesBuffer || !vertexArr.indexBuffer) {
       return;
