@@ -14,8 +14,6 @@
 namespace SoftGL {
 namespace View {
 
-const std::string ASSETS_DIR = "./assets/";
-
 class ConfigPanel {
  public:
   explicit ConfigPanel(Config &config) : config_(config) {}
@@ -54,7 +52,6 @@ class ConfigPanel {
 
   bool reloadModel(const std::string &name);
   bool reloadSkybox(const std::string &name);
-  void resetCamera();
 
   void drawSettings();
   void destroy();

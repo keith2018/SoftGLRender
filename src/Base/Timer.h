@@ -26,13 +26,13 @@ class Timer {
 
 class ScopedTimer {
  public:
-  explicit ScopedTimer(const char *str) : tag_(str) {
+  ScopedTimer(const char *str) : tag_(str) {
     timer_.start();
   }
 
   ~ScopedTimer() {
     timer_.stop();
-    LOGD("%s: %lld ms\n", tag_.c_str(), timer_.elapseMillis());
+    LOGD("TIMER %s: cost: %lld ms", tag_.c_str(), timer_.elapseMillis());
   }
 
   explicit operator bool() {
@@ -45,9 +45,11 @@ class ScopedTimer {
 };
 
 #ifndef NDEBUG
-#   define TIMED(X) if(SoftGL::ScopedTimer _ScopedTimer = (X))
+#   define FUNCTION_TIMED(X) SoftGL::ScopedTimer _functionTimer = (X)
+#   define SCOPE_TIMED(X) if (SoftGL::ScopedTimer _scopeTimer = (X))
 #else
-#   define TIMED(X)
+#   define FUNCTION_TIMED(X)
+#   define SCOPE_TIMED(X)
 #endif
 
 }

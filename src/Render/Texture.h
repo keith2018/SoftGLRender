@@ -83,6 +83,8 @@ struct TextureDesc {
 
 class Texture : public TextureDesc {
  public:
+  virtual ~Texture() = default;
+
   inline uint32_t getLevelWidth(uint32_t level) {
     return std::max(1, width >> level);
   }

@@ -45,6 +45,7 @@ class RendererSoft : public Renderer {
   void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
   void draw() override;
   void endRenderPass() override;
+  void waitIdle() override;
 
  public:
   inline void setEnableEarlyZ(bool enable) { earlyZ_ = enable; };

@@ -20,7 +20,7 @@ namespace View {
 
 class ModelLoader {
  public:
-  explicit ModelLoader(Config &config, ConfigPanel &panel);
+  explicit ModelLoader(Config &config);
 
   bool loadModel(const std::string &filepath);
   bool loadSkybox(const std::string &filepath);
@@ -64,7 +64,6 @@ class ModelLoader {
 
  private:
   Config &config_;
-  ConfigPanel &configPanel_;
 
   DemoScene scene_;
   std::unordered_map<std::string, std::shared_ptr<Model>> modelCache_;

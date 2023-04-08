@@ -13,6 +13,11 @@
 
 namespace SoftGL {
 
+struct FrameBufferContainerVK {
+  std::vector<VkImageView> attachments;
+  VkFramebuffer framebuffer = VK_NULL_HANDLE;
+};
+
 class FrameBufferVulkan : public FrameBuffer {
  public:
   FrameBufferVulkan(VKContext &ctx, bool offscreen) : FrameBuffer(offscreen), vkCtx_(ctx) {
@@ -20,11 +25,16 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   virtual ~FrameBufferVulkan() {
-    vkDestroyFramebuffer(device_, framebuffer_, nullptr);
-    vkDestroyRenderPass(device_, renderPass_, nullptr);
+    for (auto &pass : renderPassCache_) {
+      vkDestroyRenderPass(device_, pass, nullptr);
+    }
 
-    for (auto &view : attachments_) {
-      vkDestroyImageView(device_, view, nullptr);
+    for (auto &fbo : fboCache_) {
+      vkDestroyFramebuffer(device_, fbo.framebuffer, nullptr);
+
+      for (auto &view : fbo.attachments) {
+        vkDestroyImageView(device_, view, nullptr);
+      }
     }
   }
 
@@ -41,10 +51,14 @@ class FrameBufferVulkan : public FrameBuffer {
       return;
     }
 
+    fboDirty_ = true;
+    if (color != colorAttachment_.tex) {
+      renderPassDirty_ = true;
+    }
+
     FrameBuffer::setColorAttachment(color, level);
     width_ = color->getLevelWidth(level);
     height_ = color->getLevelHeight(level);
-    dirty_ = true;
   }
 
   void setColorAttachment(std::shared_ptr<Texture> &color, CubeMapFace face, int level) override {
@@ -52,10 +66,14 @@ class FrameBufferVulkan : public FrameBuffer {
       return;
     }
 
+    fboDirty_ = true;
+    if (color != colorAttachment_.tex) {
+      renderPassDirty_ = true;
+    }
+
     FrameBuffer::setColorAttachment(color, face, level);
     width_ = color->getLevelWidth(level);
     height_ = color->getLevelHeight(level);
-    dirty_ = true;
   }
 
   void setDepthAttachment(std::shared_ptr<Texture> &depth) override {
@@ -63,25 +81,36 @@ class FrameBufferVulkan : public FrameBuffer {
       return;
     }
 
+    fboDirty_ = true;
+    renderPassDirty_ = true;
+
     FrameBuffer::setDepthAttachment(depth);
     width_ = depth->width;
     height_ = depth->height;
-    dirty_ = true;
   }
 
   bool create(const ClearStates &states) {
     if (!isValid()) {
       return false;
     }
-
     clearStates_ = states;
-    if (dirty_) {
-      dirty_ = false;
-      createVkRenderPass();
-      return createVkFramebuffer();
+
+    bool success = true;
+
+    if (renderPassDirty_) {
+      renderPassDirty_ = false;
+      renderPassCache_.emplace_back();
+      currRenderPass_ = &renderPassCache_.back();
+      success = createVkRenderPass();
+    }
+    if (success && fboDirty_) {
+      fboDirty_ = false;
+      fboCache_.emplace_back();
+      currFbo_ = &fboCache_.back();
+      success = createVkFramebuffer();
     }
 
-    return true;
+    return success;
   }
 
   inline ClearStates &getClearStates() {
@@ -89,11 +118,11 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   inline VkRenderPass &getRenderPass() {
-    return renderPass_;
+    return *currRenderPass_;
   }
 
   inline VkFramebuffer &getVkFramebuffer() {
-    return framebuffer_;
+    return currFbo_->framebuffer;
   }
 
   inline VkSampleCountFlagBits getSampleCount() {
@@ -130,8 +159,12 @@ class FrameBufferVulkan : public FrameBuffer {
     return nullptr;
   }
 
+  void transitionLayoutBeginPass(VkCommandBuffer cmdBuffer);
+
+  void transitionLayoutEndPass(VkCommandBuffer cmdBuffer);
+
  private:
-  void createVkRenderPass();
+  bool createVkRenderPass();
   bool createVkFramebuffer();
 
  private:
@@ -141,13 +174,18 @@ class FrameBufferVulkan : public FrameBuffer {
 
   uint32_t width_ = 0;
   uint32_t height_ = 0;
-  bool dirty_ = true;
 
-  std::vector<VkImageView> attachments_;
-  VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
-  VkRenderPass renderPass_ = VK_NULL_HANDLE;
+  bool renderPassDirty_ = true;
+  bool fboDirty_ = true;
 
   ClearStates clearStates_{};
+
+  VkRenderPass *currRenderPass_ = nullptr;
+  FrameBufferContainerVK *currFbo_ = nullptr;
+
+  // TODO purge outdated elements
+  std::vector<VkRenderPass> renderPassCache_;
+  std::vector<FrameBufferContainerVK> fboCache_;
 };
 
 }

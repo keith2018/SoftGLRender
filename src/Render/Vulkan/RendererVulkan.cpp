@@ -17,8 +17,9 @@ bool RendererVulkan::create() {
   bool success = false;
 #ifdef DEBUG
   success = vkCtx_.create(true);
-#endif
+#else
   success = vkCtx_.create(false);
+#endif
   if (success) {
     device_ = vkCtx_.device();
   }
@@ -95,6 +96,9 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
   commandBuffer_ = vkCtx_.beginCommands();
   drawCmd_ = commandBuffer_->cmdBuffer;
 
+  // transition attachments layout
+  fbo_->transitionLayoutBeginPass(drawCmd_);
+
   // render pass
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -115,6 +119,9 @@ void RendererVulkan::setViewPort(int x, int y, int width, int height) {
   viewport_.height = (float) height;
   viewport_.minDepth = 0.f;
   viewport_.maxDepth = 1.f;
+
+  scissor_.extent.width = width;
+  scissor_.extent.height = height;
 }
 
 void RendererVulkan::setVertexArrayObject(std::shared_ptr<VertexArrayObject> &vao) {
@@ -150,8 +157,9 @@ void RendererVulkan::draw() {
   // pipeline
   vkCmdBindPipeline(drawCmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineStates_->getGraphicsPipeline());
 
-  // viewport
+  // viewport & scissor
   vkCmdSetViewport(drawCmd_, 0, 1, &viewport_);
+  vkCmdSetScissor(drawCmd_, 0, 1, &scissor_);
 
   // vertex buffer
   VkBuffer vertexBuffers[] = {vao_->getVertexBuffer()};
@@ -173,9 +181,15 @@ void RendererVulkan::draw() {
 void RendererVulkan::endRenderPass() {
   vkCmdEndRenderPass(drawCmd_);
 
-  VkSemaphore currSemaphore = commandBuffer_->semaphore;
-  vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_);
-  lastPassSemaphore_ = currSemaphore;
+  // transition attachments layout
+  fbo_->transitionLayoutEndPass(drawCmd_);
+
+  vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_, commandBuffer_->semaphore);
+  lastPassSemaphore_ = commandBuffer_->semaphore;
+}
+
+void RendererVulkan::waitIdle() {
+  VK_CHECK(vkQueueWaitIdle(vkCtx_.getGraphicsQueue()));
 }
 
 }

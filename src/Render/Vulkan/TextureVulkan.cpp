@@ -5,6 +5,7 @@
  */
 
 #include "TextureVulkan.h"
+#include "Base/Timer.h"
 
 namespace SoftGL {
 
@@ -59,6 +60,29 @@ TextureVulkan::~TextureVulkan() {
   hostImage_.destroy(device_);
 
   uploadStagingBuffer_.destroy(device_);
+}
+
+void TextureVulkan::initImageData() {
+  if (usage & TextureUsage_Sampler) {
+    auto *cmd = vkCtx_.beginCommands();
+
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = imageAspect_;
+    subRange.baseMipLevel = 0;
+    subRange.baseArrayLayer = 0;
+    subRange.levelCount = levelCount_;
+    subRange.layerCount = layerCount_;
+
+    transitionImageLayout(cmd->cmdBuffer, image_.image, subRange,
+                          0,
+                          VK_ACCESS_SHADER_READ_BIT,
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    vkCtx_.endCommands(cmd);
+  }
 }
 
 void TextureVulkan::dumpImage(const char *path, uint32_t layer, uint32_t level) {
@@ -130,6 +154,16 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   subRange.levelCount = 1;
   subRange.layerCount = 1;
 
+  if (!needResolve_) {
+    transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
+                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                          VK_ACCESS_TRANSFER_READ_BIT,
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT);
+  }
+
   transitionImageLayout(copyCmd->cmdBuffer, hostImage_.image, subRange,
                         0,
                         VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -166,7 +200,18 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
                         VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-  vkCtx_.endCommands(copyCmd, VK_NULL_HANDLE, true);
+  if (!needResolve_) {
+    transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
+                          VK_ACCESS_TRANSFER_READ_BIT,
+                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT,
+                          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  }
+
+  vkCtx_.endCommands(copyCmd);
+  vkCtx_.waitCommands(copyCmd);
 
   // map to host memory
   VkImageSubresource subResource{};
@@ -193,6 +238,7 @@ void TextureVulkan::createImage() {
 
   VkImageCreateInfo imageInfo{};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageInfo.flags = 0;
   imageInfo.imageType = VK::cvtImageType(type);
   imageInfo.format = vkFormat_;
   imageInfo.extent.width = width;
@@ -204,7 +250,11 @@ void TextureVulkan::createImage() {
   imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imageInfo.usage = needResolve_ ? VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT : 0;
+  imageInfo.usage = 0;
+
+  if (type == TextureType_CUBE) {
+    imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+  }
 
   if (usage & TextureUsage_Sampler) {
     imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -214,14 +264,13 @@ void TextureVulkan::createImage() {
   }
   if (usage & TextureUsage_AttachmentColor) {
     imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    if (!needResolve_) {
-      imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    }
   }
   if (usage & TextureUsage_AttachmentDepth) {
     imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
   }
-  if (needMipmaps_) {
+  if (needResolve_) {
+    imageInfo.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+  } else {
     imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   }
 
@@ -306,14 +355,14 @@ VkImageView TextureVulkan::createResolveView() {
   return view;
 }
 
-VkImageView TextureVulkan::createAttachmentView(uint32_t layer, uint32_t level) {
+VkImageView TextureVulkan::createAttachmentView(VkImageAspectFlags aspect, uint32_t layer, uint32_t level) {
   VkImageView view{};
   VkImageViewCreateInfo imageViewCreateInfo{};
   imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;  // force view type 2D
   imageViewCreateInfo.format = vkFormat_;
   imageViewCreateInfo.subresourceRange = {};
-  imageViewCreateInfo.subresourceRange.aspectMask = imageAspect_;
+  imageViewCreateInfo.subresourceRange.aspectMask = aspect;
   imageViewCreateInfo.subresourceRange.baseMipLevel = level;
   imageViewCreateInfo.subresourceRange.levelCount = 1;
   imageViewCreateInfo.subresourceRange.baseArrayLayer = layer;
@@ -465,7 +514,7 @@ void TextureVulkan::setImageDataInternal(const std::vector<const void *> &buffer
   subRange.aspectMask = imageAspect_;
   subRange.baseMipLevel = 0;
   subRange.baseArrayLayer = 0;
-  subRange.levelCount = 1;
+  subRange.levelCount = levelCount_;
   subRange.layerCount = layerCount_;
 
   transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,

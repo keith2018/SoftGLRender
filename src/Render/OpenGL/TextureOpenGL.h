@@ -99,7 +99,7 @@ class Texture2DOpenGL : public TextureOpenGL {
     GL_CHECK(glGenTextures(1, &texId_));
   }
 
-  ~Texture2DOpenGL() {
+  ~Texture2DOpenGL() override {
     GL_CHECK(glDeleteTextures(1, &texId_));
   }
 
@@ -181,7 +181,7 @@ class TextureCubeOpenGL : public TextureOpenGL {
     GL_CHECK(glGenTextures(1, &texId_));
   }
 
-  ~TextureCubeOpenGL() {
+  ~TextureCubeOpenGL() override {
     GL_CHECK(glDeleteTextures(1, &texId_));
   }
 

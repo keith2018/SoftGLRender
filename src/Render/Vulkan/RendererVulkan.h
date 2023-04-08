@@ -49,6 +49,7 @@ class RendererVulkan : public Renderer {
   void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
   void draw() override;
   void endRenderPass() override;
+  void waitIdle() override;
 
  private:
   FrameBufferVulkan *fbo_ = nullptr;
@@ -57,6 +58,7 @@ class RendererVulkan : public Renderer {
   PipelineStatesVulkan *pipelineStates_ = nullptr;
 
   VkViewport viewport_{};
+  VkRect2D scissor_{};
   std::vector<VkClearValue> clearValues_;
 
   VKContext vkCtx_;

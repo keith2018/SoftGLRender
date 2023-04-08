@@ -13,6 +13,11 @@ namespace SoftGL {
 
 class FileUtils {
  public:
+  static bool exists(const std::string &path) {
+    std::ifstream file(path);
+    return file.good();
+  }
+
   static std::vector<uint8_t> readBytes(const std::string &path) {
     std::vector<uint8_t> ret;
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
@@ -44,6 +49,29 @@ class FileUtils {
     return {(char *) data.data(), data.size()};
   }
 
+  static bool writeBytes(const std::string &path, const char *data, size_t length) {
+    std::ofstream file(path, std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+      LOGE("failed to open file: %s", path.c_str());
+      return false;
+    }
+
+    file.write(data, length);
+    return true;
+  }
+
+  static bool writeText(const std::string &path, const std::string &str) {
+    std::ofstream file(path, std::ios::out);
+    if (!file.is_open()) {
+      LOGE("failed to open file: %s", path.c_str());
+      return false;
+    }
+
+    file.write(str.c_str(), str.length());
+    file.close();
+
+    return true;
+  }
 };
 
 }

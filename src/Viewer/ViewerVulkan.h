@@ -7,19 +7,16 @@
 #pragma once
 
 #include "Viewer.h"
+#include "Config.h"
 #include "Render/Vulkan/RendererVulkan.h"
 #include "Render/Vulkan/TextureVulkan.h"
 
 namespace SoftGL {
 namespace View {
 
-#define TO_STR(S) #S
-#define SHADER_PATH(source, suffix) shaders/GLSL/source.suffix
-#define SHADER_PATH_STR(S) TO_STR(S)
-
 #define CASE_CREATE_SHADER_VK(shading, source) case shading: \
-  return programVK->compileAndLinkGLSLFile(SHADER_PATH_STR(SHADER_PATH(source, vert)), \
-                                           SHADER_PATH_STR(SHADER_PATH(source, frag)))
+  return programVK->compileAndLinkGLSLFile(SHADER_GLSL_DIR + #source + ".vert", \
+                                           SHADER_GLSL_DIR + #source + ".frag")
 
 class ViewerVulkan : public Viewer {
  public:

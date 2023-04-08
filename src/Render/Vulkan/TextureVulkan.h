@@ -19,7 +19,7 @@ class TextureVulkan : public Texture {
  public:
   TextureVulkan(VKContext &ctx, const TextureDesc &desc);
 
-  virtual ~TextureVulkan();
+  ~TextureVulkan() override;
 
   inline int getId() const override {
     return uuid_.get();
@@ -29,7 +29,7 @@ class TextureVulkan : public Texture {
     samplerDesc_ = sampler;
   };
 
-  void initImageData() override {};
+  void initImageData() override;
 
   void dumpImage(const char *path, uint32_t w, uint32_t h) override;
 
@@ -75,11 +75,8 @@ class TextureVulkan : public Texture {
   }
 
   inline uint32_t getImageAspect() {
-    switch (usage) {
-      case TextureUsage_AttachmentColor:
-        return VK_IMAGE_ASPECT_COLOR_BIT;
-      case TextureUsage_AttachmentDepth:
-        return VK_IMAGE_ASPECT_DEPTH_BIT;
+    if (usage & TextureUsage_AttachmentDepth) {
+      return VK_IMAGE_ASPECT_DEPTH_BIT;
     }
     return VK_IMAGE_ASPECT_COLOR_BIT;
   }
@@ -93,15 +90,7 @@ class TextureVulkan : public Texture {
 
   VkImageView createResolveView();
 
-  VkImageView createAttachmentView(uint32_t layer, uint32_t level);
-
- protected:
-  void createImage();
-  void createImageResolve();
-  bool createImageHost(uint32_t level);
-  void createImageView(VkImageView &view, VkImage &image);
-  void generateMipmaps();
-  void setImageDataInternal(const std::vector<const void *> &buffers, VkDeviceSize imageSize);
+  VkImageView createAttachmentView(VkImageAspectFlags aspect, uint32_t layer, uint32_t level);
 
   static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
                                     VkImageSubresourceRange subresourceRange,
@@ -111,6 +100,14 @@ class TextureVulkan : public Texture {
                                     VkImageLayout newLayout,
                                     VkPipelineStageFlags srcStage,
                                     VkPipelineStageFlags dstStage);
+
+ protected:
+  void createImage();
+  void createImageResolve();
+  bool createImageHost(uint32_t level);
+  void createImageView(VkImageView &view, VkImage &image);
+  void generateMipmaps();
+  void setImageDataInternal(const std::vector<const void *> &buffers, VkDeviceSize imageSize);
 
  protected:
   UUID<TextureVulkan> uuid_;

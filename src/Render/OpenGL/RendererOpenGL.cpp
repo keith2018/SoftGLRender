@@ -141,4 +141,8 @@ void RendererOpenGL::endRenderPass() {
   GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 }
 
+void RendererOpenGL::waitIdle() {
+  GL_CHECK(glFinish());
+}
+
 }

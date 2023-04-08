@@ -9,6 +9,8 @@
 #include "glslang/Public/ResourceLimits.h"
 #include "SPIRV/GlslangToSpv.h"
 #include "Base/Logger.h"
+#include "Base/Timer.h"
+#include "SpvCache.h"
 
 namespace SoftGL {
 
@@ -58,6 +60,7 @@ class ReflectionTraverser : public glslang::TIntermTraverser {
 };
 
 static ShaderCompilerResult compileShaderInternal(EShLanguage stage, const char *shaderSource) {
+  FUNCTION_TIMED("SpvCompiler::compileShaderInternal");
 #ifdef DEBUG
   bool debug = true;
 #else
@@ -126,11 +129,38 @@ static ShaderCompilerResult compileShaderInternal(EShLanguage stage, const char 
 }
 
 ShaderCompilerResult SpvCompiler::compileVertexShader(const char *shaderSource) {
-  return compileShaderInternal(EShLangVertex, shaderSource);
+  return compileShader(shaderSource, ShaderStage_Vertex);
 }
 
 ShaderCompilerResult SpvCompiler::compileFragmentShader(const char *shaderSource) {
-  return compileShaderInternal(EShLangFragment, shaderSource);
+  return compileShader(shaderSource, ShaderStage_Fragment);
+}
+
+ShaderCompilerResult SpvCompiler::compileShader(const char *shaderSource, ShaderStage stage) {
+  EShLanguage lang;
+  switch (stage) {
+    case ShaderStage_Vertex:
+      lang = EShLangVertex;
+      break;
+    case ShaderStage_Fragment:
+      lang = EShLangFragment;
+      break;
+    default:
+      return {};
+  }
+#ifndef NO_SPV_CACHE
+  auto hashKey = SpvCache::getShaderHashKey(shaderSource);
+  auto compileRet = SpvCache::readFromFile(hashKey);
+  if (compileRet.spvCodes.empty()) {
+    compileRet = compileShaderInternal(lang, shaderSource);
+    if (!compileRet.spvCodes.empty()) {
+      SpvCache::writeToFile(hashKey, compileRet);
+    }
+  }
+#else
+  auto compileRet = compileShaderInternal(lang, shaderSource);
+#endif
+  return compileRet;
 }
 
 }

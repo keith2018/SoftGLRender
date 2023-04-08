@@ -1,9 +1,3 @@
-/*
- * SoftGLRender
- * @author 	: keith@robot9.me
- *
- */
-
 layout (location = 0) in vec2 v_texCoord;
 layout (location = 1) in vec3 v_normalVector;
 layout (location = 2) in vec3 v_worldPos;

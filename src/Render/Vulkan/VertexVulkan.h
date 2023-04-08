@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Base/UUID.h"
+#include "Base/Timer.h"
 #include "Render/Vertex.h"
 #include "VulkanUtils.h"
 

@@ -6,12 +6,13 @@
 
 #include "VKContext.h"
 #include "Base/Logger.h"
+#include "Base/Timer.h"
 #include "VulkanUtils.h"
 
 namespace SoftGL {
 
-#define COMMAND_BUFFER_POOL_RESERVE 32
-#define UNIFORM_BUFFER_POOL_RESERVE 128
+#define COMMAND_BUFFER_POOL_MAX_SIZE 128
+#define UNIFORM_BUFFER_POOL_MAX_SIZE 128
 
 const std::vector<const char *> kValidationLayers = {
     "VK_LAYER_KHRONOS_validation",
@@ -58,6 +59,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(VkDebugUtilsMessageSeverit
 }
 
 bool VKContext::create(bool debugOutput) {
+  FUNCTION_TIMED("VKContext::create");
 #define EXEC_VULKAN_STEP(step)                    \
   if (!step()) {                                  \
     LOGE("initVulkan error: %s failed", #step);   \
@@ -72,12 +74,14 @@ bool VKContext::create(bool debugOutput) {
   EXEC_VULKAN_STEP(createLogicalDevice)
   EXEC_VULKAN_STEP(createCommandPool)
 
-  commandBuffers_.reserve(COMMAND_BUFFER_POOL_RESERVE);
+  commandBuffers_.reserve(COMMAND_BUFFER_POOL_MAX_SIZE);
 
   return true;
 }
 
 void VKContext::destroy() {
+  FUNCTION_TIMED("VKContext::destroy");
+
   for (auto &kv : uniformBufferPool_) {
     for (auto &buff : kv.second) {
       vkUnmapMemory(device_, buff.buffer.memory);
@@ -134,7 +138,7 @@ CommandBuffer *VKContext::getNewCommandBuffer() {
 
   commandBuffers_.push_back(cmd);
   maxCommandBufferPoolSize_ = std::max(maxCommandBufferPoolSize_, commandBuffers_.size());
-  if (maxCommandBufferPoolSize_ > COMMAND_BUFFER_POOL_RESERVE) {
+  if (maxCommandBufferPoolSize_ >= COMMAND_BUFFER_POOL_MAX_SIZE) {
     LOGE("error: command buffer pool size exceed");
   }
   return &commandBuffers_.back();
@@ -147,13 +151,26 @@ void VKContext::purgeCommandBuffers() {
     }
     VkResult waitRet = vkGetFenceStatus(device_, cmd.fence);
     if (waitRet == VK_SUCCESS) {
-      vkResetFences(device_, 1, &cmd.fence);
+      // reset command buffer
       vkFreeCommandBuffers(device_, commandPool_, 1, &cmd.cmdBuffer);
       cmd.cmdBuffer = VK_NULL_HANDLE;
-      for (auto &buff : cmd.uniformBuffers) {
+
+      // reset fence
+      vkResetFences(device_, 1, &cmd.fence);
+
+      // reset uniform buffers
+      for (auto *buff : cmd.uniformBuffers) {
         buff->inUse = false;
       }
       cmd.uniformBuffers.clear();
+
+      // reset descriptor sets
+      for (auto *set : cmd.descriptorSets) {
+        set->inUse = false;
+      }
+      cmd.descriptorSets.clear();
+
+      // reset flag
       cmd.inUse = false;
     }
   }
@@ -171,28 +188,36 @@ CommandBuffer *VKContext::beginCommands() {
   return commandBuffer;
 }
 
-void VKContext::endCommands(CommandBuffer *commandBuffer, VkSemaphore semaphore, bool waitOnHost) {
+void VKContext::endCommands(CommandBuffer *commandBuffer, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore) {
   VK_CHECK(vkEndCommandBuffer(commandBuffer->cmdBuffer));
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffer->cmdBuffer;
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = &commandBuffer->semaphore;
-  if (semaphore != VK_NULL_HANDLE) {
-    VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+  if (waitSemaphore != VK_NULL_HANDLE) {
+    static VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &semaphore;
+    submitInfo.pWaitSemaphores = &waitSemaphore;
     submitInfo.pWaitDstStageMask = &waitStageMask;
+  } else {
+    submitInfo.waitSemaphoreCount = 0;
   }
+
+  if (signalSemaphore != VK_NULL_HANDLE) {
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &signalSemaphore;
+  } else {
+    submitInfo.signalSemaphoreCount = 0;
+  }
+
   VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, commandBuffer->fence));
-
-  if (waitOnHost) {
-    VK_CHECK(vkWaitForFences(device_, 1, &commandBuffer->fence, VK_TRUE, UINT64_MAX));
-  }
-
   purgeCommandBuffers();
+}
+
+void VKContext::waitCommands(CommandBuffer *commandBuffer) {
+  VK_CHECK(vkWaitForFences(device_, 1, &commandBuffer->fence, VK_TRUE, UINT64_MAX));
 }
 
 void VKContext::allocateCommandBuffer(VkCommandBuffer &cmdBuffer) {
@@ -209,7 +234,7 @@ UniformBuffer *VKContext::getNewUniformBuffer(VkDeviceSize size) {
   auto it = uniformBufferPool_.find(size);
   if (it == uniformBufferPool_.end()) {
     std::vector<UniformBuffer> uboPool;
-    uboPool.reserve(UNIFORM_BUFFER_POOL_RESERVE);
+    uboPool.reserve(UNIFORM_BUFFER_POOL_MAX_SIZE);
     uniformBufferPool_[size] = std::move(uboPool);
   }
   auto &pool = uniformBufferPool_[size];
@@ -228,7 +253,7 @@ UniformBuffer *VKContext::getNewUniformBuffer(VkDeviceSize size) {
   VK_CHECK(vkMapMemory(device_, buff.buffer.memory, 0, size, 0, &buff.mapPtr));
   pool.push_back(buff);
   maxUniformBufferPoolSize_ = std::max(maxUniformBufferPoolSize_, pool.size());
-  if (maxUniformBufferPoolSize_ > UNIFORM_BUFFER_POOL_RESERVE) {
+  if (maxUniformBufferPoolSize_ >= UNIFORM_BUFFER_POOL_MAX_SIZE) {
     LOGE("error: uniform buffer pool size exceed");
   }
   return &pool.back();
