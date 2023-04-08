@@ -5,10 +5,6 @@
  */
 
 #include "SpvCache.h"
-
-#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
-#include <experimental/filesystem>
-
 #include "SpvCompiler.h"
 #include "json11.hpp"
 #include "Base/HashUtils.h"
@@ -16,7 +12,6 @@
 
 namespace SoftGL {
 
-namespace fs = std::experimental::filesystem;
 const std::string SHADER_SPV_CACHE_DIR = "./cache/SPV/";
 
 std::string SpvCache::getShaderHashKey(const std::string &source) {
@@ -24,9 +19,7 @@ std::string SpvCache::getShaderHashKey(const std::string &source) {
 }
 
 std::string SpvCache::getCacheFilePath(const std::string &hashKey) {
-  if (!fs::exists(SHADER_SPV_CACHE_DIR)) {
-    fs::create_directories(SHADER_SPV_CACHE_DIR);
-  }
+  // TODO make directories if not exist
   return SHADER_SPV_CACHE_DIR + hashKey;
 }
 
@@ -62,7 +55,7 @@ ShaderCompilerResult SpvCache::readFromFile(const std::string &hashKey) {
   auto cachePathBase = getCacheFilePath(hashKey);
   std::string jsonFilePath = cachePathBase + ".json";
 
-  if (!fs::exists(jsonFilePath)) {
+  if (!FileUtils::exists(jsonFilePath)) {
     return result;
   }
 

@@ -3,7 +3,6 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 project(SoftGLRender)
 
 set(CMAKE_CXX_STANDARD 11)
-link_libraries(stdc++fs)
 
 set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 

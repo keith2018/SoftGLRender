@@ -13,6 +13,11 @@ namespace SoftGL {
 
 class FileUtils {
  public:
+  static bool exists(const std::string &path) {
+    std::ifstream file(path);
+    return file.good();
+  }
+
   static std::vector<uint8_t> readBytes(const std::string &path) {
     std::vector<uint8_t> ret;
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
