@@ -5,8 +5,11 @@
  */
 
 #include "SpvCache.h"
-#include "SpvCompiler.h"
+
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 #include <experimental/filesystem>
+
+#include "SpvCompiler.h"
 #include "json11.hpp"
 #include "Base/HashUtils.h"
 #include "Base/FileUtils.h"
