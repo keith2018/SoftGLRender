@@ -21,23 +21,10 @@
 namespace SoftGL {
 namespace View {
 
-ModelLoader::ModelLoader(Config &config, ConfigPanel &panel)
-    : config_(config), configPanel_(panel) {
+ModelLoader::ModelLoader(Config &config) : config_(config) {
   loadWorldAxis();
   loadLights();
   loadFloor();
-
-  configPanel_.setReloadModelFunc([&](const std::string &path) -> bool {
-    return loadModel(path);
-  });
-  configPanel_.setReloadSkyboxFunc([&](const std::string &path) -> bool {
-    return loadSkybox(path);
-  });
-  configPanel_.setUpdateLightFunc([&](glm::vec3 &position, glm::vec3 &color) -> void {
-    scene_.pointLight.vertexes[0].a_position = position;
-    scene_.pointLight.UpdateVertexes();
-    scene_.pointLight.material->baseColor = glm::vec4(color, 1.f);
-  });
 }
 
 void ModelLoader::loadCubeMesh(ModelVertexes &mesh) {

@@ -28,8 +28,11 @@ class PipelineStatesVulkan : public PipelineStates {
   }
 
   ~PipelineStatesVulkan() override {
-    vkDestroyPipeline(device_, pipeline_.graphicsPipeline_, nullptr);
-    vkDestroyPipelineLayout(device_, pipeline_.pipelineLayout_, nullptr);
+    for (auto &kv : pipelineCache_) {
+      vkDestroyPipeline(device_, kv.second.graphicsPipeline_, nullptr);
+      vkDestroyPipelineLayout(device_, kv.second.pipelineLayout_, nullptr);
+    }
+    pipelineCache_.clear();
   }
 
   void create(VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
@@ -39,19 +42,19 @@ class PipelineStatesVulkan : public PipelineStates {
     size_t cacheKey = getPipelineCacheKey(program, renderPass, sampleCount);
     auto it = pipelineCache_.find(cacheKey);
     if (it != pipelineCache_.end()) {
-      pipeline_ = it->second;
+      currPipeline_ = it->second;
     } else {
-      pipeline_ = createGraphicsPipeline(vertexInputInfo, program, renderPass, sampleCount);
-      pipelineCache_[cacheKey] = pipeline_;
+      currPipeline_ = createGraphicsPipeline(vertexInputInfo, program, renderPass, sampleCount);
+      pipelineCache_[cacheKey] = currPipeline_;
     }
   }
 
   inline VkPipeline getGraphicsPipeline() const {
-    return pipeline_.graphicsPipeline_;
+    return currPipeline_.graphicsPipeline_;
   }
 
   inline VkPipelineLayout getGraphicsPipelineLayout() const {
-    return pipeline_.pipelineLayout_;
+    return currPipeline_.pipelineLayout_;
   }
 
  private:
@@ -75,7 +78,7 @@ class PipelineStatesVulkan : public PipelineStates {
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK::cvtPolygonMode(renderStates.polygonMode);
+    rasterizer.polygonMode = VK::cvtPolygonMode(renderStates.polygonMode);  // ignore VkPhysicalDeviceFeatures->fillModeNonSolid
     rasterizer.lineWidth = renderStates.lineWidth;
     rasterizer.cullMode = renderStates.cullFace ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
     rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
@@ -177,7 +180,7 @@ class PipelineStatesVulkan : public PipelineStates {
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
 
-  PipelineContainerVK pipeline_{};
+  PipelineContainerVK currPipeline_{};
   std::unordered_map<size_t, PipelineContainerVK> pipelineCache_;
 };
 

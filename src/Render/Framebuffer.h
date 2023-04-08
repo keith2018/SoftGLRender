@@ -45,12 +45,12 @@ class FrameBuffer {
     depthReady_ = true;
   };
 
-  virtual const TextureDesc *getColorAttachmentDesc() const {
-    return colorAttachment_.tex.get();
+  inline const FrameBufferAttachment &getColorAttachment() const {
+    return colorAttachment_;
   }
 
-  virtual const TextureDesc *getDepthAttachmentDesc() const {
-    return depthAttachment_.tex.get();
+  inline const FrameBufferAttachment &getDepthAttachment() const {
+    return depthAttachment_;
   }
 
   inline bool isColorReady() const {
@@ -63,10 +63,10 @@ class FrameBuffer {
 
   inline bool isMultiSample() const {
     if (colorReady_) {
-      return getColorAttachmentDesc()->multiSample;
+      return getColorAttachment().tex->multiSample;
     }
     if (depthReady_) {
-      return getDepthAttachmentDesc()->multiSample;
+      return getDepthAttachment().tex->multiSample;
     }
 
     return false;

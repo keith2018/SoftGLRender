@@ -67,6 +67,9 @@ void Viewer::destroy() {
 }
 
 void Viewer::cleanup() {
+  if (renderer_) {
+    renderer_->waitIdle();
+  }
   fboMain_ = nullptr;
   texColorMain_ = nullptr;
   texDepthMain_ = nullptr;
@@ -76,6 +79,7 @@ void Viewer::cleanup() {
   fxaaFilter_ = nullptr;
   texColorFxaa_ = nullptr;
   iblPlaceholder_ = nullptr;
+  iblGenerator_ = nullptr;
   uniformBlockScene_ = nullptr;
   uniformBlockModel_ = nullptr;
   uniformBlockMaterial_ = nullptr;
@@ -83,8 +87,14 @@ void Viewer::cleanup() {
   pipelineCache_.clear();
 }
 
-void Viewer::onResetReverseZ() {
+void Viewer::resetReverseZ() {
   texDepthShadow_ = nullptr;
+}
+
+void Viewer::waitRenderIdle() {
+  if (renderer_) {
+    renderer_->waitIdle();
+  }
 }
 
 void Viewer::drawFrame(DemoScene &scene) {
@@ -299,12 +309,12 @@ void Viewer::drawScene(bool shadowPass) {
 
   // draw floor
   if (!shadowPass && config_.showFloor) {
-    drawModelMesh(scene_->floor, 0.f);
+    drawModelMesh(scene_->floor, shadowPass, 0.f);
   }
 
   // draw model nodes opaque
   ModelNode &modelNode = scene_->model->rootNode;
-  drawModelNodes(modelNode, scene_->model->centeredTransform, Alpha_Opaque);
+  drawModelNodes(modelNode, shadowPass, scene_->model->centeredTransform, Alpha_Opaque);
 
   // draw skybox
   if (!shadowPass && config_.showSkybox) {
@@ -314,10 +324,10 @@ void Viewer::drawScene(bool shadowPass) {
   }
 
   // draw model nodes blend
-  drawModelNodes(modelNode, scene_->model->centeredTransform, Alpha_Blend);
+  drawModelNodes(modelNode, shadowPass, scene_->model->centeredTransform, Alpha_Blend);
 }
 
-void Viewer::drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, float specular) {
+void Viewer::drawModelNodes(ModelNode &node, bool shadowPass, glm::mat4 &transform, AlphaMode mode, float specular) {
   glm::mat4 modelMatrix = transform * node.transform;
 
   // update model uniform
@@ -334,16 +344,16 @@ void Viewer::drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mod
       return;
     }
 
-    drawModelMesh(mesh, specular);
+    drawModelMesh(mesh, shadowPass, specular);
   }
 
   // draw child
   for (auto &childNode : node.children) {
-    drawModelNodes(childNode, modelMatrix, mode, specular);
+    drawModelNodes(childNode, shadowPass, modelMatrix, mode, specular);
   }
 }
 
-void Viewer::drawModelMesh(ModelMesh &mesh, float specular) {
+void Viewer::drawModelMesh(ModelMesh &mesh, bool shadowPass, float specular) {
   // update material
   updateUniformMaterial(*mesh.material, specular);
 
@@ -354,7 +364,7 @@ void Viewer::drawModelMesh(ModelMesh &mesh, float specular) {
 
   // update shadow textures
   if (config_.shadowMap) {
-    updateShadowTextures(mesh.material->materialObj.get());
+    updateShadowTextures(mesh.material->materialObj.get(), shadowPass);
   }
 
   // draw mesh
@@ -709,6 +719,10 @@ bool Viewer::initSkyboxIBL() {
     return false;
   }
 
+  if (!iblGenerator_) {
+    iblGenerator_ = std::make_shared<IBLGenerator>(renderer_);
+  }
+
   if (getSkyboxMaterial()->iblReady) {
     return true;
   }
@@ -728,12 +742,11 @@ bool Viewer::initSkyboxIBL() {
       auto tex2d = std::dynamic_pointer_cast<Texture>(texEqIt->second);
       auto cubeSize = std::min(tex2d->width, tex2d->height);
       auto texCvt = createTextureCubeDefault(cubeSize, cubeSize, TextureUsage_AttachmentColor | TextureUsage_Sampler);
-      auto success = Environment::convertEquirectangular(renderer_,
-                                                         [&](ShaderProgram &program) -> bool {
-                                                           return loadShaders(program, Shading_Skybox);
-                                                         },
-                                                         tex2d,
-                                                         texCvt);
+      auto success = iblGenerator_->convertEquirectangular([&](ShaderProgram &program) -> bool {
+                                                             return loadShaders(program, Shading_Skybox);
+                                                           },
+                                                           tex2d,
+                                                           texCvt);
 
       LOGD("convert equirectangular to cube map: %s.", success ? "success" : "failed");
       if (success) {
@@ -741,6 +754,7 @@ bool Viewer::initSkyboxIBL() {
         skybox.material->textures[MaterialTexType_CUBE] = texCvt;
 
         // update skybox material
+        renderer_->waitIdle();
         skybox.material->textures.erase(MaterialTexType_EQUIRECTANGULAR);
         skybox.material->shaderDefines = generateShaderDefines(*skybox.material);
         skybox.material->materialObj = nullptr;
@@ -758,12 +772,11 @@ bool Viewer::initSkyboxIBL() {
   // generate irradiance map
   LOGD("generate ibl irradiance map ...");
   auto texIrradiance = createTextureCubeDefault(kIrradianceMapSize, kIrradianceMapSize, TextureUsage_AttachmentColor | TextureUsage_Sampler);
-  if (Environment::generateIrradianceMap(renderer_,
-                                         [&](ShaderProgram &program) -> bool {
-                                           return loadShaders(program, Shading_IBL_Irradiance);
-                                         },
-                                         textureCube,
-                                         texIrradiance)) {
+  if (iblGenerator_->generateIrradianceMap([&](ShaderProgram &program) -> bool {
+                                             return loadShaders(program, Shading_IBL_Irradiance);
+                                           },
+                                           textureCube,
+                                           texIrradiance)) {
     skybox.material->textures[MaterialTexType_IBL_IRRADIANCE] = std::move(texIrradiance);
   } else {
     LOGE("initSkyboxIBL failed: generate irradiance map failed");
@@ -774,12 +787,11 @@ bool Viewer::initSkyboxIBL() {
   // generate prefilter map
   LOGD("generate ibl prefilter map ...");
   auto texPrefilter = createTextureCubeDefault(kPrefilterMapSize, kPrefilterMapSize, TextureUsage_AttachmentColor | TextureUsage_Sampler, true);
-  if (Environment::generatePrefilterMap(renderer_,
-                                        [&](ShaderProgram &program) -> bool {
-                                          return loadShaders(program, Shading_IBL_Prefilter);
-                                        },
-                                        textureCube,
-                                        texPrefilter)) {
+  if (iblGenerator_->generatePrefilterMap([&](ShaderProgram &program) -> bool {
+                                            return loadShaders(program, Shading_IBL_Prefilter);
+                                          },
+                                          textureCube,
+                                          texPrefilter)) {
     skybox.material->textures[MaterialTexType_IBL_PREFILTER] = std::move(texPrefilter);
   } else {
     LOGE("initSkyboxIBL failed: generate prefilter map failed");
@@ -787,6 +799,10 @@ bool Viewer::initSkyboxIBL() {
   }
   LOGD("generate ibl prefilter map done.");
 
+  // cleanup gpu resources until render finished
+  // TODO auto release
+  renderer_->waitIdle();
+  iblGenerator_->clearCaches();
   getSkyboxMaterial()->iblReady = true;
   return true;
 }
@@ -815,16 +831,16 @@ void Viewer::updateIBLTextures(MaterialObject *materialObj) {
   }
 }
 
-void Viewer::updateShadowTextures(MaterialObject *materialObj) {
+void Viewer::updateShadowTextures(MaterialObject *materialObj, bool shadowPass) {
   if (!materialObj->shaderResources) {
     return;
   }
 
   auto &samplers = materialObj->shaderResources->samplers;
-  if (config_.shadowMap) {
-    samplers[MaterialTexType_SHADOWMAP]->setTexture(texDepthShadow_);
-  } else {
+  if (shadowPass) {
     samplers[MaterialTexType_SHADOWMAP]->setTexture(shadowPlaceholder_);
+  } else {
+    samplers[MaterialTexType_SHADOWMAP]->setTexture(texDepthShadow_);
   }
 }
 

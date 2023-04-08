@@ -17,17 +17,13 @@ struct LookAtParam {
   glm::vec3 up;
 };
 
-bool Environment::convertEquirectangular(const std::shared_ptr<Renderer> &renderer,
-                                         const std::function<bool(ShaderProgram &program)> &shaderFunc,
-                                         const std::shared_ptr<Texture> &texIn,
-                                         std::shared_ptr<Texture> &texOut) {
-  if (!renderer) {
-    LOGE("convertEquirectangular error: renderer nullptr");
-    return false;
-  }
+// TODO enable cache
 
-  CubeRenderContext ctx;
-  ctx.renderer = renderer;
+bool IBLGenerator::convertEquirectangular(const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                          const std::shared_ptr<Texture> &texIn,
+                                          std::shared_ptr<Texture> &texOut) {
+  contextCache_.push_back(std::make_shared<CubeRenderContext>());
+  CubeRenderContext &ctx = *contextCache_.back();
   bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
@@ -41,17 +37,11 @@ bool Environment::convertEquirectangular(const std::shared_ptr<Renderer> &render
   return true;
 }
 
-bool Environment::generateIrradianceMap(const std::shared_ptr<Renderer> &renderer,
-                                        const std::function<bool(ShaderProgram &program)> &shaderFunc,
-                                        const std::shared_ptr<Texture> &texIn,
-                                        std::shared_ptr<Texture> &texOut) {
-  if (!renderer) {
-    LOGE("generateIrradianceMap error: renderer nullptr");
-    return false;
-  }
-
-  CubeRenderContext ctx;
-  ctx.renderer = renderer;
+bool IBLGenerator::generateIrradianceMap(const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                         const std::shared_ptr<Texture> &texIn,
+                                         std::shared_ptr<Texture> &texOut) {
+  contextCache_.push_back(std::make_shared<CubeRenderContext>());
+  CubeRenderContext &ctx = *contextCache_.back();
   bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
@@ -65,17 +55,11 @@ bool Environment::generateIrradianceMap(const std::shared_ptr<Renderer> &rendere
   return true;
 }
 
-bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer,
-                                       const std::function<bool(ShaderProgram &program)> &shaderFunc,
-                                       const std::shared_ptr<Texture> &texIn,
-                                       std::shared_ptr<Texture> &texOut) {
-  if (!renderer) {
-    LOGE("generatePrefilterMap error: renderer nullptr");
-    return false;
-  }
-
-  CubeRenderContext ctx;
-  ctx.renderer = renderer;
+bool IBLGenerator::generatePrefilterMap(const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                        const std::shared_ptr<Texture> &texIn,
+                                        std::shared_ptr<Texture> &texOut) {
+  contextCache_.push_back(std::make_shared<CubeRenderContext>());
+  CubeRenderContext &ctx = *contextCache_.back();
   bool success = createCubeRenderContext(ctx,
                                          shaderFunc,
                                          std::dynamic_pointer_cast<Texture>(texIn),
@@ -85,7 +69,7 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
     return false;
   }
 
-  auto uniformsBlockPrefilter = ctx.renderer->createUniformBlock("UniformsPrefilter", sizeof(UniformsIBLPrefilter));
+  auto uniformsBlockPrefilter = renderer_->createUniformBlock("UniformsPrefilter", sizeof(UniformsIBLPrefilter));
   ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_IBLPrefilter] = uniformsBlockPrefilter;
 
   UniformsIBLPrefilter uniformsPrefilter{};
@@ -100,10 +84,10 @@ bool Environment::generatePrefilterMap(const std::shared_ptr<Renderer> &renderer
   return true;
 }
 
-bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
-                                          const std::function<bool(ShaderProgram &program)> &shaderFunc,
-                                          const std::shared_ptr<Texture> &texIn,
-                                          MaterialTexType texType) {
+bool IBLGenerator::createCubeRenderContext(CubeRenderContext &ctx,
+                                           const std::function<bool(ShaderProgram &program)> &shaderFunc,
+                                           const std::shared_ptr<Texture> &texIn,
+                                           MaterialTexType texType) {
   // camera
   ctx.camera.setPerspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
 
@@ -115,14 +99,14 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
   ctx.modelSkybox.material->materialObj = std::make_shared<MaterialObject>();
 
   // fbo
-  ctx.fbo = ctx.renderer->createFrameBuffer(true);
+  ctx.fbo = renderer_->createFrameBuffer(true);
 
   // vao
-  ctx.modelSkybox.vao = ctx.renderer->createVertexArrayObject(ctx.modelSkybox);
+  ctx.modelSkybox.vao = renderer_->createVertexArrayObject(ctx.modelSkybox);
 
   // shader program
   std::set<std::string> shaderDefines = {Material::samplerDefine(texType)};
-  auto program = ctx.renderer->createShaderProgram();
+  auto program = renderer_->createShaderProgram();
   program->addDefines(shaderDefines);
   bool success = shaderFunc(*program);
   if (!success) {
@@ -134,21 +118,21 @@ bool Environment::createCubeRenderContext(CubeRenderContext &ctx,
 
   // uniforms
   const char *samplerName = Material::samplerName(texType);
-  auto uniform = ctx.renderer->createUniformSampler(samplerName, *texIn);
+  auto uniform = renderer_->createUniformSampler(samplerName, *texIn);
   uniform->setTexture(texIn);
   ctx.modelSkybox.material->materialObj->shaderResources->samplers[texType] = uniform;
 
-  ctx.uniformsBlockModel = ctx.renderer->createUniformBlock("UniformsModel", sizeof(UniformsModel));
+  ctx.uniformsBlockModel = renderer_->createUniformBlock("UniformsModel", sizeof(UniformsModel));
   ctx.modelSkybox.material->materialObj->shaderResources->blocks[UniformBlock_Model] = ctx.uniformsBlockModel;
 
   // pipeline
-  ctx.modelSkybox.material->materialObj->pipelineStates = ctx.renderer->createPipelineStates({});
+  ctx.modelSkybox.material->materialObj->pipelineStates = renderer_->createPipelineStates({});
 
   return true;
 }
 
-void Environment::drawCubeFaces(CubeRenderContext &ctx, uint32_t width, uint32_t height, std::shared_ptr<Texture> &texOut,
-                                uint32_t texOutLevel, const std::function<void()> &beforeDraw) {
+void IBLGenerator::drawCubeFaces(CubeRenderContext &ctx, uint32_t width, uint32_t height, std::shared_ptr<Texture> &texOut,
+                                 uint32_t texOutLevel, const std::function<void()> &beforeDraw) {
   static LookAtParam captureViews[] = {
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
       {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)},
@@ -181,14 +165,14 @@ void Environment::drawCubeFaces(CubeRenderContext &ctx, uint32_t width, uint32_t
     clearStates.colorFlag = true;
 
     // draw
-    ctx.renderer->beginRenderPass(ctx.fbo, clearStates);
-    ctx.renderer->setViewPort(0, 0, width, height);
-    ctx.renderer->setVertexArrayObject(ctx.modelSkybox.vao);
-    ctx.renderer->setShaderProgram(materialObj->shaderProgram);
-    ctx.renderer->setShaderResources(materialObj->shaderResources);
-    ctx.renderer->setPipelineStates(materialObj->pipelineStates);
-    ctx.renderer->draw();
-    ctx.renderer->endRenderPass();
+    renderer_->beginRenderPass(ctx.fbo, clearStates);
+    renderer_->setViewPort(0, 0, width, height);
+    renderer_->setVertexArrayObject(ctx.modelSkybox.vao);
+    renderer_->setShaderProgram(materialObj->shaderProgram);
+    renderer_->setShaderResources(materialObj->shaderResources);
+    renderer_->setPipelineStates(materialObj->pipelineStates);
+    renderer_->draw();
+    renderer_->endRenderPass();
   }
 }
 

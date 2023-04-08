@@ -173,6 +173,8 @@ void RendererSoft::draw() {
 
 void RendererSoft::endRenderPass() {}
 
+void RendererSoft::waitIdle() {}
+
 void RendererSoft::processVertexShader() {
   // init shader varyings
   varyingsCnt_ = shaderProgram_->getShaderVaryingsSize() / sizeof(float);

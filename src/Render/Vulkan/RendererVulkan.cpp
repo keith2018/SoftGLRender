@@ -96,6 +96,9 @@ void RendererVulkan::beginRenderPass(std::shared_ptr<FrameBuffer> &frameBuffer, 
   commandBuffer_ = vkCtx_.beginCommands();
   drawCmd_ = commandBuffer_->cmdBuffer;
 
+  // transition attachments layout
+  fbo_->transitionLayoutBeginPass(drawCmd_);
+
   // render pass
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -178,8 +181,15 @@ void RendererVulkan::draw() {
 void RendererVulkan::endRenderPass() {
   vkCmdEndRenderPass(drawCmd_);
 
+  // transition attachments layout
+  fbo_->transitionLayoutEndPass(drawCmd_);
+
   vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_, commandBuffer_->semaphore);
   lastPassSemaphore_ = commandBuffer_->semaphore;
+}
+
+void RendererVulkan::waitIdle() {
+  VK_CHECK(vkQueueWaitIdle(vkCtx_.getGraphicsQueue()));
 }
 
 }

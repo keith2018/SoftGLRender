@@ -44,6 +44,29 @@ class FileUtils {
     return {(char *) data.data(), data.size()};
   }
 
+  static bool writeBytes(const std::string &path, const char *data, size_t length) {
+    std::ofstream file(path, std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+      LOGE("failed to open file: %s", path.c_str());
+      return false;
+    }
+
+    file.write(data, length);
+    return true;
+  }
+
+  static bool writeText(const std::string &path, const std::string &str) {
+    std::ofstream file(path, std::ios::out);
+    if (!file.is_open()) {
+      LOGE("failed to open file: %s", path.c_str());
+      return false;
+    }
+
+    file.write(str.c_str(), str.length());
+    file.close();
+
+    return true;
+  }
 };
 
 }

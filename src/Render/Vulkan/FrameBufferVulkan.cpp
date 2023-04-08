@@ -9,7 +9,7 @@
 
 namespace SoftGL {
 
-void FrameBufferVulkan::createVkRenderPass() {
+bool FrameBufferVulkan::createVkRenderPass() {
   VkAttachmentReference colorAttachmentRef{};
   colorAttachmentRef.attachment = VK_ATTACHMENT_UNUSED;
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -79,7 +79,7 @@ void FrameBufferVulkan::createVkRenderPass() {
 
   VkSubpassDescription subpass{};
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpass.colorAttachmentCount = colorReady_ ? 1 : 0;
+  subpass.colorAttachmentCount = 1;
   subpass.pColorAttachments = &colorAttachmentRef;
   subpass.pDepthStencilAttachment = &depthAttachmentRef;
   subpass.pResolveAttachments = &resolveAttachmentRef;
@@ -92,41 +92,132 @@ void FrameBufferVulkan::createVkRenderPass() {
   renderPassInfo.pSubpasses = &subpass;
   renderPassInfo.dependencyCount = 0;
 
-  VK_CHECK(vkCreateRenderPass(device_, &renderPassInfo, nullptr, &renderPass_));
+  VK_CHECK(vkCreateRenderPass(device_, &renderPassInfo, nullptr, currRenderPass_));
+  return true;
 }
 
 bool FrameBufferVulkan::createVkFramebuffer() {
-  // reset attachments_
-  for (auto &view : attachments_) {
-    vkDestroyImageView(device_, view, nullptr);
-  }
-  attachments_.clear();
+  currFbo_->attachments.clear();
 
   if (colorReady_) {
     auto *texColor = getAttachmentColor();
-    attachments_.push_back(texColor->createAttachmentView(VK_IMAGE_ASPECT_COLOR_BIT, colorAttachment_.layer, colorAttachment_.level));
+    currFbo_->attachments.push_back(texColor->createAttachmentView(VK_IMAGE_ASPECT_COLOR_BIT, colorAttachment_.layer, colorAttachment_.level));
   }
   if (depthReady_) {
     auto *texDepth = getAttachmentDepth();
-    attachments_.push_back(texDepth->createAttachmentView(VK_IMAGE_ASPECT_DEPTH_BIT, depthAttachment_.layer, depthAttachment_.level));
+    currFbo_->attachments.push_back(texDepth->createAttachmentView(VK_IMAGE_ASPECT_DEPTH_BIT, depthAttachment_.layer, depthAttachment_.level));
   }
   // color resolve
   if (colorReady_ && isMultiSample()) {
     auto *texColor = getAttachmentColor();
-    attachments_.push_back(texColor->createResolveView());
+    currFbo_->attachments.push_back(texColor->createResolveView());
   }
 
   VkFramebufferCreateInfo framebufferCreateInfo{};
   framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  framebufferCreateInfo.renderPass = renderPass_;
-  framebufferCreateInfo.attachmentCount = attachments_.size();
-  framebufferCreateInfo.pAttachments = attachments_.data();
+  framebufferCreateInfo.renderPass = *currRenderPass_;
+  framebufferCreateInfo.attachmentCount = currFbo_->attachments.size();
+  framebufferCreateInfo.pAttachments = currFbo_->attachments.data();
   framebufferCreateInfo.width = width_;
   framebufferCreateInfo.height = height_;
   framebufferCreateInfo.layers = 1;
-  VK_CHECK(vkCreateFramebuffer(device_, &framebufferCreateInfo, nullptr, &framebuffer_));
+  VK_CHECK(vkCreateFramebuffer(device_, &framebufferCreateInfo, nullptr, &currFbo_->framebuffer));
 
   return true;
+}
+
+void FrameBufferVulkan::transitionLayoutBeginPass(VkCommandBuffer cmdBuffer) {
+  if (!isOffscreen()) {
+    return;
+  }
+  if (isColorReady()) {
+    auto *colorTex = getAttachmentColor();
+
+    if (colorTex->usage & TextureUsage_Sampler) {
+      VkImageSubresourceRange subRange{};
+      subRange.aspectMask = colorTex->getImageAspect();
+      subRange.baseMipLevel = getColorAttachment().level;
+      subRange.baseArrayLayer = getColorAttachment().layer;
+      subRange.levelCount = 1;
+      subRange.layerCount = 1;
+
+      TextureVulkan::transitionImageLayout(cmdBuffer, colorTex->getVkImage(), subRange,
+                                           0,
+                                           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                           VK_IMAGE_LAYOUT_UNDEFINED,
+                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
+  }
+
+  if (isDepthReady()) {
+    auto *depthTex = getAttachmentDepth();
+
+    if (depthTex->usage & TextureUsage_Sampler) {
+      VkImageSubresourceRange subRange{};
+      subRange.aspectMask = depthTex->getImageAspect();
+      subRange.baseMipLevel = getDepthAttachment().level;
+      subRange.baseArrayLayer = getDepthAttachment().layer;
+      subRange.levelCount = 1;
+      subRange.layerCount = 1;
+
+      TextureVulkan::transitionImageLayout(cmdBuffer, depthTex->getVkImage(), subRange,
+                                           0,
+                                           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                           VK_IMAGE_LAYOUT_UNDEFINED,
+                                           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    }
+  }
+
+}
+
+void FrameBufferVulkan::transitionLayoutEndPass(VkCommandBuffer cmdBuffer) {
+  if (!isOffscreen()) {
+    return;
+  }
+  if (isColorReady()) {
+    auto *colorTex = getAttachmentColor();
+    if (colorTex->usage & TextureUsage_Sampler) {
+      VkImageSubresourceRange subRange{};
+      subRange.aspectMask = colorTex->getImageAspect();
+      subRange.baseMipLevel = getColorAttachment().level;
+      subRange.baseArrayLayer = getColorAttachment().layer;
+      subRange.levelCount = 1;
+      subRange.layerCount = 1;
+
+      TextureVulkan::transitionImageLayout(cmdBuffer, colorTex->getVkImage(), subRange,
+                                           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                           VK_ACCESS_SHADER_READ_BIT,
+                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
+  }
+
+  if (isDepthReady()) {
+    auto *depthTex = getAttachmentDepth();
+
+    if (depthTex->usage & TextureUsage_Sampler) {
+      VkImageSubresourceRange subRange{};
+      subRange.aspectMask = depthTex->getImageAspect();
+      subRange.baseMipLevel = getDepthAttachment().level;
+      subRange.baseArrayLayer = getDepthAttachment().layer;
+      subRange.levelCount = 1;
+      subRange.layerCount = 1;
+
+      TextureVulkan::transitionImageLayout(cmdBuffer, depthTex->getVkImage(), subRange,
+                                           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                           VK_ACCESS_SHADER_READ_BIT,
+                                           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                           VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
+  }
 }
 
 }

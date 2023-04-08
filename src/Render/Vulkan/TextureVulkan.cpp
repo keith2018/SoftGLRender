@@ -62,6 +62,29 @@ TextureVulkan::~TextureVulkan() {
   uploadStagingBuffer_.destroy(device_);
 }
 
+void TextureVulkan::initImageData() {
+  if (usage & TextureUsage_Sampler) {
+    auto *cmd = vkCtx_.beginCommands();
+
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = imageAspect_;
+    subRange.baseMipLevel = 0;
+    subRange.baseArrayLayer = 0;
+    subRange.levelCount = levelCount_;
+    subRange.layerCount = layerCount_;
+
+    transitionImageLayout(cmd->cmdBuffer, image_.image, subRange,
+                          0,
+                          VK_ACCESS_SHADER_READ_BIT,
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    vkCtx_.endCommands(cmd);
+  }
+}
+
 void TextureVulkan::dumpImage(const char *path, uint32_t layer, uint32_t level) {
   if (multiSample) {
     return;
@@ -131,13 +154,15 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   subRange.levelCount = 1;
   subRange.layerCount = 1;
 
-  transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
-                        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                        VK_ACCESS_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT);
+  if (!needResolve_) {
+    transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
+                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                          VK_ACCESS_TRANSFER_READ_BIT,
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT);
+  }
 
   transitionImageLayout(copyCmd->cmdBuffer, hostImage_.image, subRange,
                         0,
@@ -175,13 +200,15 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
                         VK_PIPELINE_STAGE_TRANSFER_BIT,
                         VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-  transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
-                        VK_ACCESS_TRANSFER_READ_BIT,
-                        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  if (!needResolve_) {
+    transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,
+                          VK_ACCESS_TRANSFER_READ_BIT,
+                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT,
+                          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  }
 
   vkCtx_.endCommands(copyCmd);
   vkCtx_.waitCommands(copyCmd);
@@ -223,7 +250,7 @@ void TextureVulkan::createImage() {
   imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  imageInfo.usage = 0;
 
   if (type == TextureType_CUBE) {
     imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
@@ -243,6 +270,8 @@ void TextureVulkan::createImage() {
   }
   if (needResolve_) {
     imageInfo.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+  } else {
+    imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   }
 
   VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_.image));
@@ -467,7 +496,6 @@ void TextureVulkan::setImageData(const std::vector<std::shared_ptr<Buffer<float>
 }
 
 void TextureVulkan::setImageDataInternal(const std::vector<const void *> &buffers, VkDeviceSize imageSize) {
-  FUNCTION_TIMED("TextureVulkan::setImageDataInternal");
   VkDeviceSize bufferSize = imageSize * layerCount_;
   if (uploadStagingBuffer_.buffer == VK_NULL_HANDLE) {
     vkCtx_.createStagingBuffer(uploadStagingBuffer_, bufferSize);
@@ -487,7 +515,7 @@ void TextureVulkan::setImageDataInternal(const std::vector<const void *> &buffer
   subRange.aspectMask = imageAspect_;
   subRange.baseMipLevel = 0;
   subRange.baseArrayLayer = 0;
-  subRange.levelCount = 1;
+  subRange.levelCount = levelCount_;
   subRange.layerCount = layerCount_;
 
   transitionImageLayout(copyCmd->cmdBuffer, image_.image, subRange,

@@ -48,6 +48,7 @@ class Renderer {
   virtual void setPipelineStates(std::shared_ptr<PipelineStates> &states) = 0;
   virtual void draw() = 0;
   virtual void endRenderPass() = 0;
+  virtual void waitIdle() = 0;
 };
 
 }

@@ -12,6 +12,7 @@
 #include "Config.h"
 #include "Camera.h"
 #include "QuadFilter.h"
+#include "Environment.h"
 
 namespace SoftGL {
 namespace View {
@@ -27,7 +28,8 @@ class Viewer {
   virtual void drawFrame(DemoScene &scene);
   virtual void swapBuffer() = 0;
 
-  void onResetReverseZ();
+  void waitRenderIdle();
+  void resetReverseZ();
 
  protected:
   virtual std::shared_ptr<Renderer> createRenderer() = 0;
@@ -50,8 +52,8 @@ class Viewer {
   void setupSkybox(ModelMesh &skybox);
 
   void drawScene(bool shadowPass);
-  void drawModelNodes(ModelNode &node, glm::mat4 &transform, AlphaMode mode, float specular = 1.f);
-  void drawModelMesh(ModelMesh &mesh, float specular = 1.f);
+  void drawModelNodes(ModelNode &node, bool shadowPass, glm::mat4 &transform, AlphaMode mode, float specular = 1.f);
+  void drawModelMesh(ModelMesh &mesh, bool shadowPass, float specular);
 
   void pipelineSetup(ModelBase &model, ShadingModel shading, const std::set<int> &uniformBlocks,
                      const std::function<void(RenderStates &rs)> &extraStates = nullptr);
@@ -78,7 +80,7 @@ class Viewer {
   bool initSkyboxIBL();
   bool iBLEnabled();
   void updateIBLTextures(MaterialObject *materialObj);
-  void updateShadowTextures(MaterialObject *materialObj);
+  void updateShadowTextures(MaterialObject *materialObj, bool shadowPass);
 
   static std::set<std::string> generateShaderDefines(Material &material);
   static size_t getShaderProgramCacheKey(ShadingModel shading, const std::set<std::string> &defines);
@@ -119,6 +121,7 @@ class Viewer {
 
   // ibl
   std::shared_ptr<Texture> iblPlaceholder_ = nullptr;
+  std::shared_ptr<IBLGenerator> iblGenerator_ = nullptr;
 
   // uniforms
   std::shared_ptr<UniformBlock> uniformBlockScene_;

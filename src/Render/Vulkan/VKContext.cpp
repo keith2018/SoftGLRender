@@ -11,7 +11,7 @@
 
 namespace SoftGL {
 
-#define COMMAND_BUFFER_POOL_MAX_SIZE 32
+#define COMMAND_BUFFER_POOL_MAX_SIZE 128
 #define UNIFORM_BUFFER_POOL_MAX_SIZE 128
 
 const std::vector<const char *> kValidationLayers = {
@@ -154,18 +154,22 @@ void VKContext::purgeCommandBuffers() {
       // reset command buffer
       vkFreeCommandBuffers(device_, commandPool_, 1, &cmd.cmdBuffer);
       cmd.cmdBuffer = VK_NULL_HANDLE;
+
       // reset fence
       vkResetFences(device_, 1, &cmd.fence);
+
       // reset uniform buffers
       for (auto *buff : cmd.uniformBuffers) {
         buff->inUse = false;
       }
       cmd.uniformBuffers.clear();
+
       // reset descriptor sets
       for (auto *set : cmd.descriptorSets) {
         set->inUse = false;
       }
       cmd.descriptorSets.clear();
+
       // reset flag
       cmd.inUse = false;
     }
@@ -193,15 +197,19 @@ void VKContext::endCommands(CommandBuffer *commandBuffer, VkSemaphore waitSemaph
   submitInfo.pCommandBuffers = &commandBuffer->cmdBuffer;
 
   if (waitSemaphore != VK_NULL_HANDLE) {
-    VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    static VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = &waitSemaphore;
     submitInfo.pWaitDstStageMask = &waitStageMask;
+  } else {
+    submitInfo.waitSemaphoreCount = 0;
   }
 
   if (signalSemaphore != VK_NULL_HANDLE) {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &signalSemaphore;
+  } else {
+    submitInfo.signalSemaphoreCount = 0;
   }
 
   VK_CHECK(vkQueueSubmit(graphicsQueue_, 1, &submitInfo, commandBuffer->fence));

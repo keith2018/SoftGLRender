@@ -49,6 +49,7 @@ class RendererVulkan : public Renderer {
   void setPipelineStates(std::shared_ptr<PipelineStates> &states) override;
   void draw() override;
   void endRenderPass() override;
+  void waitIdle() override;
 
  private:
   FrameBufferVulkan *fbo_ = nullptr;

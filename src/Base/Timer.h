@@ -32,7 +32,7 @@ class ScopedTimer {
 
   ~ScopedTimer() {
     timer_.stop();
-    LOGD("TIMER tag: %s: cost: %lld ms", tag_.c_str(), timer_.elapseMillis());
+    LOGD("TIMER %s: cost: %lld ms", tag_.c_str(), timer_.elapseMillis());
   }
 
   explicit operator bool() {

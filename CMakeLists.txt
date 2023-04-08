@@ -3,6 +3,8 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 project(SoftGLRender)
 
 set(CMAKE_CXX_STANDARD 11)
+link_libraries(stdc++fs)
+
 set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 # SIMD
@@ -17,6 +19,7 @@ include_directories(
         "${CMAKE_CURRENT_BINARY_DIR}/third_party/assimp/include"
         "${THIRD_PARTY_DIR}/imgui"
         "${THIRD_PARTY_DIR}/json11"
+        "${THIRD_PARTY_DIR}/md5"
         "${THIRD_PARTY_DIR}/stb/include"
         "${THIRD_PARTY_DIR}/vulkan/include"
         "${THIRD_PARTY_DIR}/glslang"
@@ -71,6 +74,7 @@ add_executable(SoftGLRender
         "${IMGUI_SRC}"
         "${THIRD_PARTY_DIR}/glad/src/glad.c"
         "${THIRD_PARTY_DIR}/json11/json11.cpp"
+        "${THIRD_PARTY_DIR}/md5/md5.cpp"
         )
 
 if (WIN32)
@@ -134,6 +138,12 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 # copy assets
 add_custom_command(TARGET SoftGLRender POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:SoftGLRender>/assets
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/Shader $<TARGET_FILE_DIR:SoftGLRender>/shaders
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:SoftGLRender>/assets
+
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/Viewer/Shader/GLSL $<TARGET_FILE_DIR:SoftGLRender>/shaders/GLSL
+
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/cache $<TARGET_FILE_DIR:SoftGLRender>/cache
         )

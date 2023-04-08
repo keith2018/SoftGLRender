@@ -8,6 +8,7 @@
 
 #include <glad/glad.h>
 #include "Viewer.h"
+#include "Config.h"
 #include "Render/OpenGL/RendererOpenGL.h"
 #include "Render/OpenGL/ShaderProgramOpenGL.h"
 #include "Render/OpenGL/OpenGLUtils.h"
@@ -15,13 +16,9 @@
 namespace SoftGL {
 namespace View {
 
-#define TO_STR(S) #S
-#define SHADER_PATH(source, suffix) shaders/GLSL/source.suffix
-#define SHADER_PATH_STR(S) TO_STR(S)
-
 #define CASE_CREATE_SHADER_GL(shading, source) case shading: \
-  return programGL->compileAndLinkFile(SHADER_PATH_STR(SHADER_PATH(source, vert)), \
-                                       SHADER_PATH_STR(SHADER_PATH(source, frag)))
+  return programGL->compileAndLinkFile(SHADER_GLSL_DIR + #source + ".vert", \
+                                       SHADER_GLSL_DIR + #source + ".frag")
 
 class ViewerOpenGL : public Viewer {
  public:

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <string>
+#include "md5.h"
 
 namespace SoftGL {
 
@@ -43,6 +44,16 @@ class HashUtils {
     static_assert(0 == (sizeof(key) & 3u), "Hashing requires a size that is a multiple of 4.");
     uint32_t keyHash = HashUtils::murmur3((const uint32_t *) &key, sizeof(key) / 4, 0);
     seed ^= keyHash + 0x9e3779b9u + (seed << 6u) + (seed >> 2u);
+  }
+
+  inline static std::string getHashMD5(const void *data, size_t length) {
+    MD5 md5;
+    return md5(data, length);
+  }
+
+  inline static std::string getHashMD5(const std::string &text) {
+    MD5 md5;
+    return md5(text);
   }
 };
 

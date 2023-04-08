@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include "Base/UUID.h"
 #include "Base/FileUtils.h"
 #include "Render/ShaderProgram.h"
@@ -14,7 +15,7 @@
 
 namespace SoftGL {
 
-#define DESCRIPTOR_SET_POOL_MAX_SIZE 128
+#define DESCRIPTOR_SET_POOL_MAX_SIZE 64
 
 struct UniformInfoVulkan {
   ShaderUniformType type;
@@ -47,7 +48,7 @@ class ShaderProgramVulkan : public ShaderProgram {
     if (def.empty()) {
       return;
     }
-    glslDefines_ += ("#define " + def + " \n");
+    glslDefines_.emplace_back("#define " + def + " \n");
   }
 
   bool compileAndLinkGLSLFile(const std::string &vsPath, const std::string &fsPath) {
@@ -55,8 +56,15 @@ class ShaderProgramVulkan : public ShaderProgram {
   }
 
   bool compileAndLinkGLSL(const std::string &vsSource, const std::string &fsSource) {
-    std::string vsStr = glslHeader_ + glslDefines_ + vsSource;
-    std::string fsStr = glslHeader_ + glslDefines_ + fsSource;
+    // sort defines to make hash stable (for cache)
+    std::sort(glslDefines_.begin(), glslDefines_.end());
+    std::string definesStr;
+    for (const auto &str : glslDefines_) {
+      definesStr += str;
+    }
+
+    std::string vsStr = glslHeader_ + definesStr + vsSource;
+    std::string fsStr = glslHeader_ + definesStr + fsSource;
 
     auto vsData = SpvCompiler::compileVertexShader(vsStr.c_str());
     if (vsData.spvCodes.empty()) {
@@ -260,7 +268,7 @@ class ShaderProgramVulkan : public ShaderProgram {
 
     VK_CHECK(vkAllocateDescriptorSets(device_, &allocInfo, &descSet.set));
     pool.push_back(descSet);
-    LOGE("descriptor set pool: %0xx, %d", layout, pool.size());
+
     maxDescriptorSetPoolSize_ = std::max(maxDescriptorSetPoolSize_, pool.size());
     if (maxDescriptorSetPoolSize_ >= DESCRIPTOR_SET_POOL_MAX_SIZE) {
       LOGE("error: descriptor set pool size exceed");
@@ -284,7 +292,6 @@ class ShaderProgramVulkan : public ShaderProgram {
   }
 
   void createShaderModule(VkShaderModule &shaderModule, const uint32_t *spvCode, size_t codeSize) {
-    FUNCTION_TIMED("ShaderProgramVulkan::createShaderModule");
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.codeSize = codeSize;
@@ -299,7 +306,7 @@ class ShaderProgramVulkan : public ShaderProgram {
   VkDevice device_ = VK_NULL_HANDLE;
 
   std::string glslHeader_;
-  std::string glslDefines_;
+  std::vector<std::string> glslDefines_;
 
   VkShaderModule vertexShader_ = VK_NULL_HANDLE;
   VkShaderModule fragmentShader_ = VK_NULL_HANDLE;

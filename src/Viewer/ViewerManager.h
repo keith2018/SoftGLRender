@@ -17,6 +17,8 @@
 namespace SoftGL {
 namespace View {
 
+#define RENDER_TYPE_NONE (-1)
+
 class ViewerManager {
  public:
   bool create(void *window, int width, int height, int outTexId) {
@@ -35,16 +37,6 @@ class ViewerManager {
     // config
     config_ = std::make_shared<Config>();
     configPanel_ = std::make_shared<ConfigPanel>(*config_);
-    configPanel_->setResetCameraFunc([&]() -> void {
-      orbitController_->reset();
-    });
-    configPanel_->setResetMipmapsFunc([&]() -> void {
-      modelLoader_->getScene().model->resetStates();
-    });
-    configPanel_->setResetReverseZFunc([&]() -> void {
-      auto &viewer = viewers_[config_->rendererType];
-      viewer->onResetReverseZ();
-    });
 
     // viewer software
     auto viewer_soft = std::make_shared<ViewerSoftware>(*config_, *camera_);
@@ -59,10 +51,42 @@ class ViewerManager {
     viewers_[Renderer_Vulkan] = std::move(viewer_vulkan);
 
     // model loader
-    modelLoader_ = std::make_shared<ModelLoader>(*config_, *configPanel_);
+    modelLoader_ = std::make_shared<ModelLoader>(*config_);
+
+    // setup config panel actions callback
+    setupConfigPanelActions();
 
     // init config
     return configPanel_->init(window, width, height);
+  }
+
+  void setupConfigPanelActions() {
+    configPanel_->setResetCameraFunc([&]() -> void {
+      orbitController_->reset();
+    });
+    configPanel_->setResetMipmapsFunc([&]() -> void {
+      waitRenderIdle();
+      modelLoader_->getScene().model->resetStates();
+    });
+    configPanel_->setResetReverseZFunc([&]() -> void {
+      waitRenderIdle();
+      auto &viewer = viewers_[config_->rendererType];
+      viewer->resetReverseZ();
+    });
+    configPanel_->setReloadModelFunc([&](const std::string &path) -> bool {
+      waitRenderIdle();
+      return modelLoader_->loadModel(path);
+    });
+    configPanel_->setReloadSkyboxFunc([&](const std::string &path) -> bool {
+      waitRenderIdle();
+      return modelLoader_->loadSkybox(path);
+    });
+    configPanel_->setUpdateLightFunc([&](glm::vec3 &position, glm::vec3 &color) -> void {
+      auto &scene = modelLoader_->getScene();
+      scene.pointLight.vertexes[0].a_position = position;
+      scene.pointLight.UpdateVertexes();
+      scene.pointLight.material->baseColor = glm::vec4(color, 1.f);
+    });
   }
 
   void drawFrame() {
@@ -75,9 +99,9 @@ class ViewerManager {
 
     auto &viewer = viewers_[config_->rendererType];
     if (rendererType_ != config_->rendererType) {
+      // change render type need to reset all model states
+      resetStates();
       rendererType_ = config_->rendererType;
-      modelLoader_->resetAllModelStates();
-      modelLoader_->getScene().resetStates();
       viewer->create(width_, height_, outTexId_);
     }
     viewer->configRenderer();
@@ -86,11 +110,22 @@ class ViewerManager {
   }
 
   inline void destroy() {
-    modelLoader_->resetAllModelStates();
-    modelLoader_->getScene().resetStates();
+    resetStates();
     for (auto &it : viewers_) {
       it.second->destroy();
     }
+  }
+
+  inline void waitRenderIdle() {
+    if (rendererType_ != RENDER_TYPE_NONE) {
+      viewers_[rendererType_]->waitRenderIdle();
+    }
+  }
+
+  inline void resetStates() {
+    waitRenderIdle();
+    modelLoader_->resetAllModelStates();
+    modelLoader_->getScene().resetStates();
   }
 
   inline void drawPanel() {
@@ -146,7 +181,7 @@ class ViewerManager {
 
   std::unordered_map<int, std::shared_ptr<Viewer>> viewers_;
 
-  int rendererType_ = -1;
+  int rendererType_ = RENDER_TYPE_NONE;
   bool showConfigPanel_ = true;
 };
 

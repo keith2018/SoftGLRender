@@ -79,7 +79,9 @@ void ConfigPanel::drawSettings() {
   ImGui::Text("camera:");
   ImGui::SameLine();
   if (ImGui::Button("reset")) {
-    resetCamera();
+    if (resetCameraFunc_) {
+      resetCameraFunc_();
+    }
   }
 
   // fps
@@ -285,12 +287,6 @@ bool ConfigPanel::reloadSkybox(const std::string &name) {
   }
 
   return true;
-}
-
-void ConfigPanel::resetCamera() {
-  if (resetCameraFunc_) {
-    resetCameraFunc_();
-  }
 }
 
 }
