@@ -1,9 +1,3 @@
-/*
- * SoftGLRender
- * @author 	: keith@robot9.me
- *
- */
-
 layout (location = 0) in vec3 v_worldPos;
 
 layout (location = 0) out vec4 FragColor;

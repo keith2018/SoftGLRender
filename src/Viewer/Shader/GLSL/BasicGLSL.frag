@@ -1,9 +1,3 @@
-/*
- * SoftGLRender
- * @author 	: keith@robot9.me
- *
- */
-
 layout (location = 0) out vec4 FragColor;
 
 layout (binding = 1, std140) uniform UniformsMaterial {
