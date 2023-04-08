@@ -60,6 +60,7 @@ class ReflectionTraverser : public glslang::TIntermTraverser {
 };
 
 static ShaderCompilerResult compileShaderInternal(EShLanguage stage, const char *shaderSource) {
+  FUNCTION_TIMED("SpvCompiler::compileShaderInternal");
 #ifdef DEBUG
   bool debug = true;
 #else
@@ -136,7 +137,6 @@ ShaderCompilerResult SpvCompiler::compileFragmentShader(const char *shaderSource
 }
 
 ShaderCompilerResult SpvCompiler::compileShader(const char *shaderSource, ShaderStage stage) {
-  FUNCTION_TIMED("SpvCompiler::compileShader");
   EShLanguage lang;
   switch (stage) {
     case ShaderStage_Vertex:

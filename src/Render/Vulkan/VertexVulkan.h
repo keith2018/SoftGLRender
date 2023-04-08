@@ -17,7 +17,6 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
  public:
   VertexArrayObjectVulkan(VKContext &ctx, const VertexArray &vertexArr)
       : vkCtx_(ctx) {
-    FUNCTION_TIMED("VertexArrayObjectVulkan::()");
     device_ = ctx.device();
     if (!vertexArr.vertexesBuffer || !vertexArr.indexBuffer) {
       return;

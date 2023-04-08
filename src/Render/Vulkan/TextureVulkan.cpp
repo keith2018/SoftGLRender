@@ -373,7 +373,6 @@ VkImageView TextureVulkan::createAttachmentView(VkImageAspectFlags aspect, uint3
 }
 
 void TextureVulkan::generateMipmaps() {
-  FUNCTION_TIMED("TextureVulkan::generateMipmaps");
   auto *cmd = vkCtx_.beginCommands();
 
   VkImageSubresourceRange subRange{};
