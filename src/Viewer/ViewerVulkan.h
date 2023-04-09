@@ -41,7 +41,7 @@ class ViewerVulkan : public Viewer {
       glInterop_ = &vkTex->getGLInterop();
       if (glInterop_->isAvailable()) {
         // create new GL texture
-        if (interopOutTex_ >= 0) {
+        if (interopOutTex_ > 0) {
           GL_CHECK(glDeleteTextures(1, &interopOutTex_));
         }
         interopOutTex_ = createGLTexture2D(vkTex->width, vkTex->height);
@@ -81,7 +81,7 @@ class ViewerVulkan : public Viewer {
 
   void destroy() override {
     Viewer::destroy();
-    if (interopOutTex_ >= 0) {
+    if (interopOutTex_ > 0) {
       GL_CHECK(glDeleteTextures(1, &interopOutTex_));
     }
     glInterop_ = nullptr;
@@ -125,7 +125,7 @@ class ViewerVulkan : public Viewer {
   }
 
  private:
-  GLuint interopOutTex_ = -1;
+  GLuint interopOutTex_ = 0;
   VKGLInterop *glInterop_ = nullptr;
 };
 
