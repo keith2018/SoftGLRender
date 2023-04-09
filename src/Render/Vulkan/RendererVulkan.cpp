@@ -184,7 +184,19 @@ void RendererVulkan::endRenderPass() {
   // transition attachments layout
   fbo_->transitionLayoutEndPass(drawCmd_);
 
-  vkCtx_.endCommands(commandBuffer_, lastPassSemaphore_, commandBuffer_->semaphore);
+  // semaphores from attachments
+  semaphoresWait_ = fbo_->getAttachmentsSemaphoresWait();
+  semaphoresSignal_ = fbo_->getAttachmentsSemaphoresSignal();
+
+  // semaphores from last pass
+  if (lastPassSemaphore_ != VK_NULL_HANDLE) {
+    semaphoresWait_.push_back(lastPassSemaphore_);
+  }
+  if (commandBuffer_->semaphore != VK_NULL_HANDLE) {
+    semaphoresSignal_.push_back(commandBuffer_->semaphore);
+  }
+
+  vkCtx_.endCommands(commandBuffer_, semaphoresWait_, semaphoresSignal_);
   lastPassSemaphore_ = commandBuffer_->semaphore;
 }
 

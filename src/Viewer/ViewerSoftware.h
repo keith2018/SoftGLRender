@@ -27,19 +27,20 @@ class ViewerSoftware : public Viewer {
     cameraDepth_->setReverseZ(config_.reverseZ);
   }
 
-  void swapBuffer() override {
+  int swapBuffer() override {
     auto *texOut = dynamic_cast<Texture2DSoft<RGBA> *>(texColorMain_.get());
     auto buffer = texOut->getImage().getBuffer()->buffer;
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
-    GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
-                          0,
-                          GL_RGBA,
-                          (int) buffer->getWidth(),
-                          (int) buffer->getHeight(),
-                          0,
-                          GL_RGBA,
-                          GL_UNSIGNED_BYTE,
-                          buffer->getRawDataPtr()));
+    GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D,
+                             0,
+                             0,
+                             0,
+                             (int) buffer->getWidth(),
+                             (int) buffer->getHeight(),
+                             GL_RGBA,
+                             GL_UNSIGNED_BYTE,
+                             buffer->getRawDataPtr()));
+    return outTexId_;
   }
 
   std::shared_ptr<Renderer> createRenderer() override {

@@ -460,7 +460,7 @@ void Viewer::setupMainColorBuffer(bool multiSample) {
     texDesc.height = height_;
     texDesc.type = TextureType_2D;
     texDesc.format = TextureFormat_RGBA8;
-    texDesc.usage = TextureUsage_AttachmentColor;
+    texDesc.usage = TextureUsage_AttachmentColor | TextureUsage_RendererOutput;
     texDesc.useMipmaps = false;
     texDesc.multiSample = multiSample;
     texColorMain_ = renderer_->createTexture(texDesc);

@@ -51,6 +51,11 @@ class RendererVulkan : public Renderer {
   void endRenderPass() override;
   void waitIdle() override;
 
+ public:
+  inline VKContext &getVkCtx() {
+    return vkCtx_;
+  }
+
  private:
   FrameBufferVulkan *fbo_ = nullptr;
   VertexArrayObjectVulkan *vao_ = nullptr;
@@ -67,6 +72,9 @@ class RendererVulkan : public Renderer {
   CommandBuffer *commandBuffer_ = nullptr;
   VkCommandBuffer drawCmd_ = VK_NULL_HANDLE;
   VkSemaphore lastPassSemaphore_ = VK_NULL_HANDLE;
+
+  std::vector<VkSemaphore> semaphoresWait_;
+  std::vector<VkSemaphore> semaphoresSignal_;
 };
 
 }

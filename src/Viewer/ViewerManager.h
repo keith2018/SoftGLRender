@@ -89,7 +89,7 @@ class ViewerManager {
     });
   }
 
-  void drawFrame() {
+  int drawFrame() {
     orbitController_->update();
     camera_->update();
     configPanel_->update();
@@ -106,7 +106,7 @@ class ViewerManager {
     }
     viewer->configRenderer();
     viewer->drawFrame(modelLoader_->getScene());
-    viewer->swapBuffer();
+    return viewer->swapBuffer();
   }
 
   inline void destroy() {

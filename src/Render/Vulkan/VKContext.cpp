@@ -14,6 +14,16 @@ namespace SoftGL {
 #define COMMAND_BUFFER_POOL_MAX_SIZE 128
 #define UNIFORM_BUFFER_POOL_MAX_SIZE 128
 
+#define SEMAPHORE_MAX_SIZE 8
+
+#ifdef PLATFORM_WINDOWS
+constexpr const char *HOST_MEMORY_EXTENSION_NAME = VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME;
+constexpr const char *HOST_SEMAPHORE_EXTENSION_NAME = VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME;
+#else
+constexpr const char *HOST_MEMORY_EXTENSION_NAME    = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
+constexpr const char *HOST_SEMAPHORE_EXTENSION_NAME = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
+#endif
+
 const std::vector<const char *> kValidationLayers = {
     "VK_LAYER_KHRONOS_validation",
 };
@@ -21,14 +31,20 @@ const std::vector<const char *> kValidationLayers = {
 const std::vector<const char *> kRequiredInstanceExtensions = {
 #ifdef PLATFORM_OSX
     VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 #endif
+    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
 };
 
 const std::vector<const char *> kRequiredDeviceExtensions = {
 #ifdef PLATFORM_OSX
     VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 #endif
+    VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+    HOST_SEMAPHORE_EXTENSION_NAME,
+    HOST_MEMORY_EXTENSION_NAME,
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -103,10 +119,8 @@ void VKContext::destroy() {
   vkDestroyDevice(device_, nullptr);
 
   if (debugOutput_) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance_,
-                                                                            "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-      func(instance_, debugMessenger_, nullptr);
+    if (VKLoader::vkDestroyDebugUtilsMessengerEXT != nullptr) {
+      VKLoader::vkDestroyDebugUtilsMessengerEXT(instance_, debugMessenger_, nullptr);
     }
   }
 
@@ -188,7 +202,9 @@ CommandBuffer *VKContext::beginCommands() {
   return commandBuffer;
 }
 
-void VKContext::endCommands(CommandBuffer *commandBuffer, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore) {
+void VKContext::endCommands(CommandBuffer *commandBuffer,
+                            const std::vector<VkSemaphore> &waitSemaphores,
+                            const std::vector<VkSemaphore> &signalSemaphores) {
   VK_CHECK(vkEndCommandBuffer(commandBuffer->cmdBuffer));
 
   VkSubmitInfo submitInfo{};
@@ -196,18 +212,21 @@ void VKContext::endCommands(CommandBuffer *commandBuffer, VkSemaphore waitSemaph
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffer->cmdBuffer;
 
-  if (waitSemaphore != VK_NULL_HANDLE) {
-    static VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &waitSemaphore;
-    submitInfo.pWaitDstStageMask = &waitStageMask;
+  if (!waitSemaphores.empty()) {
+    if (waitSemaphores.size() > SEMAPHORE_MAX_SIZE) {
+      LOGE("endCommands error: wait semaphores max size exceeded");
+    }
+    static std::vector<VkPipelineStageFlags> waitStageMasks(SEMAPHORE_MAX_SIZE, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    submitInfo.waitSemaphoreCount = waitSemaphores.size();
+    submitInfo.pWaitSemaphores = waitSemaphores.data();
+    submitInfo.pWaitDstStageMask = waitStageMasks.data();
   } else {
     submitInfo.waitSemaphoreCount = 0;
   }
 
-  if (signalSemaphore != VK_NULL_HANDLE) {
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &signalSemaphore;
+  if (!signalSemaphores.empty()) {
+    submitInfo.signalSemaphoreCount = signalSemaphores.size();
+    submitInfo.pSignalSemaphores = signalSemaphores.data();
   } else {
     submitInfo.signalSemaphoreCount = 0;
   }
@@ -312,6 +331,8 @@ bool VKContext::createInstance() {
   }
 
   VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance_));
+
+  VKLoader::init(instance_);
   return true;
 }
 
@@ -324,10 +345,8 @@ bool VKContext::setupDebugMessenger() {
   populateDebugMessengerCreateInfo(createInfo);
 
   VkResult ret;
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance_,
-                                                                         "vkCreateDebugUtilsMessengerEXT");
-  if (func != nullptr) {
-    ret = func(instance_, &createInfo, nullptr, &debugMessenger_);
+  if (VKLoader::vkCreateDebugUtilsMessengerEXT != nullptr) {
+    ret = VKLoader::vkCreateDebugUtilsMessengerEXT(instance_, &createInfo, nullptr, &debugMessenger_);
   } else {
     ret = VK_ERROR_EXTENSION_NOT_PRESENT;
   }
@@ -473,15 +492,15 @@ void VKContext::createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBuffe
   bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
   VK_CHECK(vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer.buffer));
-  buffer.size = size;
 
-  VkMemoryRequirements memRequirements;
-  vkGetBufferMemoryRequirements(device_, buffer.buffer, &memRequirements);
+  VkMemoryRequirements memReqs;
+  vkGetBufferMemoryRequirements(device_, buffer.buffer, &memReqs);
+  buffer.allocationSize = memReqs.size;
 
   VkMemoryAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  allocInfo.allocationSize = memRequirements.size;
-  allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits, properties);
+  allocInfo.allocationSize = memReqs.size;
+  allocInfo.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, properties);
 
   VK_CHECK(vkAllocateMemory(device_, &allocInfo, nullptr, &buffer.memory));
   VK_CHECK(vkBindBufferMemory(device_, buffer.buffer, buffer.memory, 0));
@@ -492,16 +511,18 @@ void VKContext::createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size) 
                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
-bool VKContext::createImageMemory(AllocatedImage &image, uint32_t properties) {
+bool VKContext::createImageMemory(AllocatedImage &image, uint32_t properties, void *pNext) {
   if (image.memory != VK_NULL_HANDLE) {
     return true;
   }
 
   VkMemoryRequirements memReqs;
   vkGetImageMemoryRequirements(device_, image.image, &memReqs);
+  image.allocationSize = memReqs.size;
 
   VkMemoryAllocateInfo memAllocInfo{};
   memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  memAllocInfo.pNext = pNext;
   memAllocInfo.allocationSize = memReqs.size;
   memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, properties);
   if (memAllocInfo.memoryTypeIndex == VK_MAX_MEMORY_TYPES) {

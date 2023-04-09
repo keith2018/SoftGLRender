@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "VulkanInc.h"
+#include "VulkanLoader.h"
 
 namespace SoftGL {
 
@@ -24,6 +24,7 @@ struct QueueFamilyIndices {
 struct AllocatedImage {
   VkImage image = VK_NULL_HANDLE;
   VkDeviceMemory memory = VK_NULL_HANDLE;
+  VkDeviceSize allocationSize = 0;
 
   void destroy(VkDevice device) {
     vkDestroyImage(device, image, nullptr);
@@ -37,7 +38,7 @@ struct AllocatedImage {
 struct AllocatedBuffer {
   VkBuffer buffer = VK_NULL_HANDLE;
   VkDeviceMemory memory = VK_NULL_HANDLE;
-  VkDeviceSize size = 0;
+  VkDeviceSize allocationSize = 0;
 
   void destroy(VkDevice device) {
     vkDestroyBuffer(device, buffer, nullptr);
@@ -45,7 +46,7 @@ struct AllocatedBuffer {
 
     buffer = VK_NULL_HANDLE;
     memory = VK_NULL_HANDLE;
-    size = 0;
+    allocationSize = 0;
   }
 };
 
@@ -103,12 +104,14 @@ class VKContext {
   UniformBuffer *getNewUniformBuffer(VkDeviceSize size);
 
   CommandBuffer *beginCommands();
-  void endCommands(CommandBuffer *commandBuffer, VkSemaphore waitSemaphore = VK_NULL_HANDLE, VkSemaphore signalSemaphore = VK_NULL_HANDLE);
+  void endCommands(CommandBuffer *commandBuffer,
+                   const std::vector<VkSemaphore> &waitSemaphores = {},
+                   const std::vector<VkSemaphore> &signalSemaphores = {});
   void waitCommands(CommandBuffer *commandBuffer);
 
   void createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
   void createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size);
-  bool createImageMemory(AllocatedImage &image, uint32_t properties);
+  bool createImageMemory(AllocatedImage &image, uint32_t properties, void *pNext = nullptr);
 
   bool linearBlitAvailable(VkFormat imageFormat);
 

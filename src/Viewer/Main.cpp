@@ -140,12 +140,11 @@ int main() {
   glGenTextures(1, &texture);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, texture);
-  // set the texture wrapping parameters
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  // set texture filtering parameters
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
   program.use();
   glUniform1i(glGetUniformLocation(program.getId(), "uTexture"), 0);
@@ -166,7 +165,7 @@ int main() {
       processInput(window);
 
       // draw frame
-      viewer->drawFrame();
+      int outTex = viewer->drawFrame();
 
       glDisable(GL_BLEND);
       glDisable(GL_DEPTH_TEST);
@@ -181,7 +180,7 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT);
 
       glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, texture);
+      glBindTexture(GL_TEXTURE_2D, outTex);
 
       program.use();
       glBindVertexArray(VAO);
