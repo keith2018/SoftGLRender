@@ -9,7 +9,7 @@
 
 namespace SoftGL {
 
-TextureVulkan::TextureVulkan(VKContext &ctx, const TextureDesc &desc) : vkCtx_(ctx) {
+TextureVulkan::TextureVulkan(VKContext &ctx, const TextureDesc &desc) : vkCtx_(ctx), glInterop_({ctx}) {
   device_ = ctx.device();
 
   width = desc.width;
@@ -34,20 +34,40 @@ TextureVulkan::TextureVulkan(VKContext &ctx, const TextureDesc &desc) : vkCtx_(c
   }
   imageAspect_ = getImageAspect();
 
-  createImage();
-  bool memoryReady = false;
-  if (needResolve_) {
-    // check if lazy allocate available
-    memoryReady = vkCtx_.createImageMemory(image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
-  }
-  if (!memoryReady) {
-    vkCtx_.createImageMemory(image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  // OpenGL interop
+  void *imageCreatePNext = nullptr;
+  void *memoryCreatePNext = nullptr;
+  if (usage & TextureUsage_RendererOutput) {
+    needGLInterop_ = glInterop_.checkAvailable();
+    if (needGLInterop_) {
+      glInterop_.createSharedSemaphores();
+      imageCreatePNext = glInterop_.getExtImageCreateInfo();
+      memoryCreatePNext = glInterop_.getExtMemoryAllocateInfo();
+    }
   }
 
-  // resolve
   if (needResolve_) {
-    createImageResolve();
-    vkCtx_.createImageMemory(imageResolve_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    createImage();
+    // try lazy allocation
+    bool memoryReady = vkCtx_.createImageMemory(image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+    if (!memoryReady) {
+      vkCtx_.createImageMemory(image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    }
+
+    // resolve
+    createImageResolve(imageCreatePNext);
+    vkCtx_.createImageMemory(imageResolve_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryCreatePNext);
+
+    if (needGLInterop_) {
+      glInterop_.createSharedMemory(imageResolve_.memory, imageResolve_.allocationSize);
+    }
+  } else {
+    createImage(imageCreatePNext);
+    vkCtx_.createImageMemory(image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryCreatePNext);
+
+    if (needGLInterop_) {
+      glInterop_.createSharedMemory(image_.memory, image_.allocationSize);
+    }
   }
 }
 
@@ -57,6 +77,10 @@ TextureVulkan::~TextureVulkan() {
 
   image_.destroy(device_);
   imageResolve_.destroy(device_);
+
+  if (hostImage_.memory != VK_NULL_HANDLE) {
+    vkUnmapMemory(device_, hostImage_.memory);
+  }
   hostImage_.destroy(device_);
 
   uploadStagingBuffer_.destroy(device_);
@@ -138,10 +162,19 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   bool needResetMemory = createImageHost(level);
   if (needResetMemory) {
     if (hostImage_.memory != VK_NULL_HANDLE) {
+      vkUnmapMemory(device_, hostImage_.memory);
       vkFreeMemory(device_, hostImage_.memory, nullptr);
       hostImage_.memory = VK_NULL_HANDLE;
     }
     vkCtx_.createImageMemory(hostImage_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    // map to host memory
+    VkImageSubresource subResource{};
+    subResource.aspectMask = imageAspect_;
+    vkGetImageSubresourceLayout(device_, hostImage_.image, &subResource, &hostSubResLayout_);
+
+    vkMapMemory(device_, hostImage_.memory, 0, VK_WHOLE_SIZE, 0, (void **) &hostImageMappedPtr_);
+    hostImageMappedPtr_ += hostSubResLayout_.offset;
   }
 
   // copy
@@ -213,31 +246,19 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   vkCtx_.endCommands(copyCmd);
   vkCtx_.waitCommands(copyCmd);
 
-  // map to host memory
-  VkImageSubresource subResource{};
-  subResource.aspectMask = imageAspect_;
-  VkSubresourceLayout subResourceLayout;
-
-  vkGetImageSubresourceLayout(device_, hostImage_.image, &subResource, &subResourceLayout);
-
-  uint8_t *pixelPtr = nullptr;
-  vkMapMemory(device_, hostImage_.memory, 0, VK_WHOLE_SIZE, 0, (void **) &pixelPtr);
-  pixelPtr += subResourceLayout.offset;
-
   if (func) {
-    func(pixelPtr, getLevelWidth(level), getLevelHeight(level), subResourceLayout.rowPitch);
+    func(hostImageMappedPtr_, getLevelWidth(level), getLevelHeight(level), hostSubResLayout_.rowPitch);
   }
-
-  vkUnmapMemory(device_, hostImage_.memory);
 }
 
-void TextureVulkan::createImage() {
+void TextureVulkan::createImage(void *pNext) {
   if (image_.image != VK_NULL_HANDLE) {
     return;
   }
 
   VkImageCreateInfo imageInfo{};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageInfo.pNext = pNext;
   imageInfo.flags = 0;
   imageInfo.imageType = VK::cvtImageType(type);
   imageInfo.format = vkFormat_;
@@ -277,13 +298,14 @@ void TextureVulkan::createImage() {
   VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_.image));
 }
 
-void TextureVulkan::createImageResolve() {
+void TextureVulkan::createImageResolve(void *pNext) {
   if (imageResolve_.image != VK_NULL_HANDLE) {
     return;
   }
 
   VkImageCreateInfo imageInfo{};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageInfo.pNext = pNext;
   imageInfo.imageType = VK::cvtImageType(type);
   imageInfo.format = vkFormat_;
   imageInfo.extent.width = width;

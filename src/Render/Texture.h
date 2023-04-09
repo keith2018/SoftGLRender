@@ -69,6 +69,7 @@ enum TextureUsage {
   TextureUsage_UploadData = 1 << 1,
   TextureUsage_AttachmentColor = 1 << 2,
   TextureUsage_AttachmentDepth = 1 << 3,
+  TextureUsage_RendererOutput = 1 << 4,
 };
 
 struct TextureDesc {

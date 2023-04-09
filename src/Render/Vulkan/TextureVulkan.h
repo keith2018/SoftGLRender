@@ -12,6 +12,7 @@
 #include "Render/Texture.h"
 #include "VKContext.h"
 #include "EnumsVulkan.h"
+#include "VKGLInterop.h"
 
 namespace SoftGL {
 
@@ -88,6 +89,24 @@ class TextureVulkan : public Texture {
     return sampleView_;
   }
 
+  inline VKGLInterop &getGLInterop() {
+    return glInterop_;
+  }
+
+  VkSemaphore getSemaphoreWait() {
+    if (needGLInterop_) {
+      return glInterop_.getSemaphoreGLComplete();
+    }
+    return VK_NULL_HANDLE;
+  }
+
+  VkSemaphore getSemaphoreSignal() {
+    if (needGLInterop_) {
+      return glInterop_.getSemaphoreGLReady();
+    }
+    return VK_NULL_HANDLE;
+  }
+
   VkImageView createResolveView();
 
   VkImageView createAttachmentView(VkImageAspectFlags aspect, uint32_t layer, uint32_t level);
@@ -102,8 +121,8 @@ class TextureVulkan : public Texture {
                                     VkPipelineStageFlags dstStage);
 
  protected:
-  void createImage();
-  void createImageResolve();
+  void createImage(void *pNext = nullptr);
+  void createImageResolve(void *pNext = nullptr);
   bool createImageHost(uint32_t level);
   void createImageView(VkImageView &view, VkImage &image);
   void generateMipmaps();
@@ -132,8 +151,14 @@ class TextureVulkan : public Texture {
   // for image data upload
   AllocatedBuffer uploadStagingBuffer_{};
 
+  // for output interop with OpenGL
+  bool needGLInterop_ = false;
+  VKGLInterop glInterop_;
+
   // for memory dump
   AllocatedImage hostImage_{};
+  VkSubresourceLayout hostSubResLayout_{};
+  uint8_t *hostImageMappedPtr_ = nullptr;
   uint32_t hostImageLevel_ = 0;
 };
 

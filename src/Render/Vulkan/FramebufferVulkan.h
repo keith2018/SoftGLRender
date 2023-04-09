@@ -160,8 +160,10 @@ class FrameBufferVulkan : public FrameBuffer {
   }
 
   void transitionLayoutBeginPass(VkCommandBuffer cmdBuffer);
-
   void transitionLayoutEndPass(VkCommandBuffer cmdBuffer);
+
+  std::vector<VkSemaphore> &getAttachmentsSemaphoresWait();
+  std::vector<VkSemaphore> &getAttachmentsSemaphoresSignal();
 
  private:
   bool createVkRenderPass();
@@ -182,6 +184,9 @@ class FrameBufferVulkan : public FrameBuffer {
 
   VkRenderPass *currRenderPass_ = nullptr;
   FrameBufferContainerVK *currFbo_ = nullptr;
+
+  std::vector<VkSemaphore> attachmentsSemaphoresWait_;
+  std::vector<VkSemaphore> attachmentsSemaphoresSignal_;
 
   // TODO purge outdated elements
   std::vector<VkRenderPass> renderPassCache_;

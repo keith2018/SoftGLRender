@@ -35,29 +35,33 @@ class ViewerOpenGL : public Viewer {
     cameraDepth_->setReverseZ(config_.reverseZ);
   }
 
-  void swapBuffer() override {
+  int swapBuffer() override {
     int width = texColorMain_->width;
     int height = texColorMain_->height;
 
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_in_));
-    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
-                                    GL_COLOR_ATTACHMENT0,
-                                    texColorMain_->multiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D,
-                                    texColorMain_->getId(),
-                                    0));
+    if (texColorMain_->multiSample) {
+      GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_in_));
+      GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER,
+                                      GL_COLOR_ATTACHMENT0,
+                                      GL_TEXTURE_2D_MULTISAMPLE,
+                                      texColorMain_->getId(),
+                                      0));
 
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
-    GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_out_));
-    GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, outTexId_, 0));
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D, outTexId_));
+      GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_out_));
+      GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, outTexId_, 0));
 
-    GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_in_));
-    GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_out_));
+      GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_in_));
+      GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_out_));
 
-    GL_CHECK(glBlitFramebuffer(0, 0, width, height,
-                               0, 0, width, height,
-                               GL_COLOR_BUFFER_BIT,
-                               GL_NEAREST));
+      GL_CHECK(glBlitFramebuffer(0, 0, width, height,
+                                 0, 0, width, height,
+                                 GL_COLOR_BUFFER_BIT,
+                                 GL_NEAREST));
+      return outTexId_;
+    }
+
+    return texColorMain_->getId();
   }
 
   void destroy() override {

@@ -26,7 +26,7 @@ class Viewer {
 
   virtual void configRenderer() {};
   virtual void drawFrame(DemoScene &scene);
-  virtual void swapBuffer() = 0;
+  virtual int swapBuffer() = 0;
 
   void waitRenderIdle();
   void resetReverseZ();

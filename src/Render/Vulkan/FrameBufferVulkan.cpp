@@ -220,4 +220,42 @@ void FrameBufferVulkan::transitionLayoutEndPass(VkCommandBuffer cmdBuffer) {
   }
 }
 
+std::vector<VkSemaphore> &FrameBufferVulkan::getAttachmentsSemaphoresWait() {
+  attachmentsSemaphoresWait_.clear();
+  if (colorReady_) {
+    auto waitSem = getAttachmentColor()->getSemaphoreWait();
+    if (waitSem != VK_NULL_HANDLE) {
+      attachmentsSemaphoresWait_.push_back(waitSem);
+    }
+  }
+
+  if (depthReady_) {
+    auto waitSem = getAttachmentDepth()->getSemaphoreWait();
+    if (waitSem != VK_NULL_HANDLE) {
+      attachmentsSemaphoresWait_.push_back(waitSem);
+    }
+  }
+
+  return attachmentsSemaphoresWait_;
+}
+
+std::vector<VkSemaphore> &FrameBufferVulkan::getAttachmentsSemaphoresSignal() {
+  attachmentsSemaphoresSignal_.clear();
+  if (colorReady_) {
+    auto signalSem = getAttachmentColor()->getSemaphoreSignal();
+    if (signalSem != VK_NULL_HANDLE) {
+      attachmentsSemaphoresSignal_.push_back(signalSem);
+    }
+  }
+
+  if (depthReady_) {
+    auto signalSem = getAttachmentDepth()->getSemaphoreSignal();
+    if (signalSem != VK_NULL_HANDLE) {
+      attachmentsSemaphoresSignal_.push_back(signalSem);
+    }
+  }
+
+  return attachmentsSemaphoresSignal_;
+}
+
 }
