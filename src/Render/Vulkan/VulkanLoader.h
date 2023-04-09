@@ -9,6 +9,7 @@
 #include "Base/Platform.h"
 
 #ifdef PLATFORM_WINDOWS
+#define NOMINMAX
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
@@ -30,20 +31,26 @@ class VKLoader {
     LOAD_VK_FUNC(vkCreateDebugUtilsMessengerEXT);
     LOAD_VK_FUNC(vkDestroyDebugUtilsMessengerEXT);
 
+#ifdef PLATFORM_WINDOWS
     LOAD_VK_FUNC(vkGetSemaphoreWin32HandleKHR);
-    LOAD_VK_FUNC(vkGetSemaphoreFdKHR);
     LOAD_VK_FUNC(vkGetMemoryWin32HandleKHR);
+#else
+    LOAD_VK_FUNC(vkGetSemaphoreFdKHR);
     LOAD_VK_FUNC(vkGetMemoryFdKHR);
+#endif
   }
 
  public:
   REG_VK_FUNC(vkCreateDebugUtilsMessengerEXT);
   REG_VK_FUNC(vkDestroyDebugUtilsMessengerEXT);
 
+#ifdef PLATFORM_WINDOWS
   REG_VK_FUNC(vkGetSemaphoreWin32HandleKHR);
-  REG_VK_FUNC(vkGetSemaphoreFdKHR);
   REG_VK_FUNC(vkGetMemoryWin32HandleKHR);
+#else
+  REG_VK_FUNC(vkGetSemaphoreFdKHR);
   REG_VK_FUNC(vkGetMemoryFdKHR);
+#endif
 };
 
 }
