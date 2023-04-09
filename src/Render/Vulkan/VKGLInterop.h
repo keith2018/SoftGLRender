@@ -12,31 +12,31 @@
 namespace SoftGL {
 
 #ifdef PLATFORM_WINDOWS
-#	define glImportSemaphore glImportSemaphoreWin32HandleEXT
-#	define glImportMemory glImportMemoryWin32HandleEXT
-#	define GL_HANDLE_TYPE GL_HANDLE_TYPE_OPAQUE_WIN32_EXT
+#  define glImportSemaphore glImportSemaphoreWin32HandleEXT
+#  define glImportMemory glImportMemoryWin32HandleEXT
+#  define GL_HANDLE_TYPE GL_HANDLE_TYPE_OPAQUE_WIN32_EXT
 
-#	define VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT
-#	define VK_EXTERNAL_MEMORY_HANDLE_TYPE VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT
-#   define VK_STRUCTURE_TYPE_SEMAPHORE_GET_HANDLE_INFO VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR
-#   define VK_STRUCTURE_TYPE_MEMORY_GET_HANDLE_INFO VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR
-#   define VkSemaphoreGetHandleInfo VkSemaphoreGetWin32HandleInfoKHR
-#   define VkMemoryGetHandleInfo VkMemoryGetWin32HandleInfoKHR
-#   define vkGetSemaphoreHandle VKLoader::vkGetSemaphoreWin32HandleKHR
-#	define vkGetMemoryHandle VKLoader::vkGetMemoryWin32HandleKHR
+#  define VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT
+#  define VK_EXTERNAL_MEMORY_HANDLE_TYPE VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT
+#  define VK_STRUCTURE_TYPE_SEMAPHORE_GET_HANDLE_INFO VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR
+#  define VK_STRUCTURE_TYPE_MEMORY_GET_HANDLE_INFO VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR
+#  define VkSemaphoreGetHandleInfo VkSemaphoreGetWin32HandleInfoKHR
+#  define VkMemoryGetHandleInfo VkMemoryGetWin32HandleInfoKHR
+#  define vkGetSemaphoreHandle VKLoader::vkGetSemaphoreWin32HandleKHR
+#  define vkGetMemoryHandle VKLoader::vkGetMemoryWin32HandleKHR
 #else
-#	define glImportSemaphore glImportSemaphoreFdEXT
-#	define glImportMemory glImportMemoryFdEXT
-#	define GL_HANDLE_TYPE GL_HANDLE_TYPE_OPAQUE_FD_EXT
+#  define glImportSemaphore glImportSemaphoreFdEXT
+#  define glImportMemory glImportMemoryFdEXT
+#  define GL_HANDLE_TYPE GL_HANDLE_TYPE_OPAQUE_FD_EXT
 
-#	define VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT
-#	define VK_EXTERNAL_MEMORY_HANDLE_TYPE VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT
-#   define VK_STRUCTURE_TYPE_SEMAPHORE_GET_HANDLE_INFO VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR
-#   define VK_STRUCTURE_TYPE_MEMORY_GET_HANDLE_INFO VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR
-#   define VkSemaphoreGetHandleInfo VkSemaphoreGetFdInfoKHR
-#   define VkMemoryGetHandleInfo VkMemoryGetFdInfoKHR
-#   define vkGetSemaphoreHandle VKLoader::vkGetSemaphoreFdKHR
-#	define vkGetMemoryHandle VKLoader::vkGetMemoryFdKHR
+#  define VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT
+#  define VK_EXTERNAL_MEMORY_HANDLE_TYPE VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT
+#  define VK_STRUCTURE_TYPE_SEMAPHORE_GET_HANDLE_INFO VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR
+#  define VK_STRUCTURE_TYPE_MEMORY_GET_HANDLE_INFO VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR
+#  define VkSemaphoreGetHandleInfo VkSemaphoreGetFdInfoKHR
+#  define VkMemoryGetHandleInfo VkMemoryGetFdInfoKHR
+#  define vkGetSemaphoreHandle VKLoader::vkGetSemaphoreFdKHR
+#  define vkGetMemoryHandle VKLoader::vkGetMemoryFdKHR
 #endif
 
 #ifdef PLATFORM_WINDOWS
