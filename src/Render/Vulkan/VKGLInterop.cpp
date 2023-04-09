@@ -7,7 +7,7 @@
 #include "VKGLInterop.h"
 #include "Base/Logger.h"
 #include "Render/OpenGL/OpenGLUtils.h"
-#include "Render/vulkan/VulkanUtils.h"
+#include "Render/Vulkan/VulkanUtils.h"
 
 namespace SoftGL {
 

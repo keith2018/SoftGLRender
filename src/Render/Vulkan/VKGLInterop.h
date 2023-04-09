@@ -7,7 +7,7 @@
 #pragma once
 
 #include <glad/glad.h>
-#include "Render/vulkan/VKContext.h"
+#include "Render/Vulkan/VKContext.h"
 
 namespace SoftGL {
 
