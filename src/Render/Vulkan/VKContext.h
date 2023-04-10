@@ -111,7 +111,7 @@ class VKContext {
 
   void createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
   void createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size);
-  bool createImageMemory(AllocatedImage &image, uint32_t properties, void *pNext = nullptr);
+  bool createImageMemory(AllocatedImage &image, uint32_t properties, const void *pNext = nullptr);
 
   bool linearBlitAvailable(VkFormat imageFormat);
 
@@ -129,6 +129,9 @@ class VKContext {
   static bool checkValidationLayerSupport();
   static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
   static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice);
+
+  bool extensionsExits(const std::vector<const char *> &requiredExtensions,
+                       const std::unordered_map<std::string, VkExtensionProperties> &availableExtensions);
 
  private:
   bool debugOutput_ = false;
@@ -150,6 +153,9 @@ class VKContext {
 
   size_t maxCommandBufferPoolSize_ = 0;
   size_t maxUniformBufferPoolSize_ = 0;
+
+  std::unordered_map<std::string, VkExtensionProperties> instanceExtensions_;
+  std::unordered_map<std::string, VkExtensionProperties> deviceExtensions_;
 
   VkPhysicalDeviceProperties deviceProperties_{};
   VkPhysicalDeviceMemoryProperties deviceMemoryProperties_{};

@@ -121,8 +121,8 @@ class TextureVulkan : public Texture {
                                     VkPipelineStageFlags dstStage);
 
  protected:
-  void createImage(void *pNext = nullptr);
-  void createImageResolve(void *pNext = nullptr);
+  void createImage(const void *pNext = nullptr);
+  void createImageResolve(const void *pNext = nullptr);
   bool createImageHost(uint32_t level);
   void createImageView(VkImageView &view, VkImage &image);
   void generateMipmaps();

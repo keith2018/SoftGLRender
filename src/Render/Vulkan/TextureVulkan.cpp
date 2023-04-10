@@ -35,14 +35,14 @@ TextureVulkan::TextureVulkan(VKContext &ctx, const TextureDesc &desc) : vkCtx_(c
   imageAspect_ = getImageAspect();
 
   // OpenGL interop
-  void *imageCreatePNext = nullptr;
-  void *memoryCreatePNext = nullptr;
+  const void *imageCreatePNext = nullptr;
+  const void *memoryCreatePNext = nullptr;
   if (usage & TextureUsage_RendererOutput) {
-    needGLInterop_ = glInterop_.checkAvailable();
+    needGLInterop_ = VKGLInterop::isAvailable();
     if (needGLInterop_) {
       glInterop_.createSharedSemaphores();
-      imageCreatePNext = glInterop_.getExtImageCreateInfo();
-      memoryCreatePNext = glInterop_.getExtMemoryAllocateInfo();
+      imageCreatePNext = VKGLInterop::getExtImageCreateInfo();
+      memoryCreatePNext = VKGLInterop::getExtMemoryAllocateInfo();
     }
   }
 
@@ -251,7 +251,7 @@ void TextureVulkan::readPixels(uint32_t layer, uint32_t level,
   }
 }
 
-void TextureVulkan::createImage(void *pNext) {
+void TextureVulkan::createImage(const void *pNext) {
   if (image_.image != VK_NULL_HANDLE) {
     return;
   }
@@ -298,7 +298,7 @@ void TextureVulkan::createImage(void *pNext) {
   VK_CHECK(vkCreateImage(device_, &imageInfo, nullptr, &image_.image));
 }
 
-void TextureVulkan::createImageResolve(void *pNext) {
+void TextureVulkan::createImageResolve(const void *pNext) {
   if (imageResolve_.image != VK_NULL_HANDLE) {
     return;
   }

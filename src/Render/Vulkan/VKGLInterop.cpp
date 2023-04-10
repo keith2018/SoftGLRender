@@ -11,8 +11,33 @@
 
 namespace SoftGL {
 
+#ifdef PLATFORM_WINDOWS
+constexpr const char *HOST_MEMORY_EXTENSION_NAME = VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME;
+constexpr const char *HOST_SEMAPHORE_EXTENSION_NAME = VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME;
+#else
+constexpr const char *HOST_MEMORY_EXTENSION_NAME = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
+constexpr const char *HOST_SEMAPHORE_EXTENSION_NAME = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
+#endif
+
+bool VKGLInterop::vkExtensionsAvailable_ = true;
+bool VKGLInterop::functionsAvailable_ = false;
+VkExternalMemoryImageCreateInfo VKGLInterop::extMemoryImageCreateInfo_{};
+VkExportMemoryAllocateInfo VKGLInterop::exportMemoryAllocateInfo_{};
+
+const std::vector<const char *> VKGLInterop::requiredInstanceExtensions = {
+    VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+};
+
+const std::vector<const char *> VKGLInterop::requiredDeviceExtensions = {
+    VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+    HOST_SEMAPHORE_EXTENSION_NAME,
+    HOST_MEMORY_EXTENSION_NAME,
+};
+
 VKGLInterop::~VKGLInterop() {
-  if (!available_) {
+  if (!isAvailable()) {
     return;
   }
 
@@ -25,24 +50,24 @@ VKGLInterop::~VKGLInterop() {
   GL_CHECK(glDeleteMemoryObjectsEXT(1, &sharedMemory_.glRef));
 }
 
-bool VKGLInterop::checkAvailable() {
+void VKGLInterop::checkFunctionsAvailable() {
   // check gl extensions
   if (!glGenSemaphoresEXT || !glImportSemaphore || !glDeleteSemaphoresEXT
       || !glWaitSemaphoreEXT || !glSignalSemaphoreEXT) {
-    LOGE("VKGLInterop::checkAvailable failed: gl ext semaphore functions not found");
-    return false;
+    LOGE("VKGLInterop::checkFunctionsAvailable failed: gl extern semaphore functions not found");
+    return;
   }
 
   if (!glCreateMemoryObjectsEXT || !glImportMemory || !glDeleteMemoryObjectsEXT
       || !glTextureStorageMem2DEXT) {
-    LOGE("VKGLInterop::checkAvailable failed: gl ext memory functions not found");
-    return false;
+    LOGE("VKGLInterop::checkFunctionsAvailable failed: gl extern memory functions not found");
+    return;
   }
 
   // check vulkan extensions
   if (!vkGetSemaphoreHandle || !vkGetMemoryHandle) {
-    LOGE("VKGLInterop::checkAvailable failed: vulkan ext functions not found");
-    return false;
+    LOGE("VKGLInterop::checkFunctionsAvailable failed: vulkan extension functions not found");
+    return;
   }
 
   // init structures
@@ -52,8 +77,7 @@ bool VKGLInterop::checkAvailable() {
   exportMemoryAllocateInfo_.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
   exportMemoryAllocateInfo_.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE;
 
-  available_ = true;
-  return available_;
+  functionsAvailable_ = true;
 }
 
 void VKGLInterop::createSharedSemaphores() {

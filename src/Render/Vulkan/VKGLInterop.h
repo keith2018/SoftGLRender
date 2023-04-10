@@ -67,27 +67,11 @@ class VKGLInterop {
   }
   ~VKGLInterop();
 
-  bool checkAvailable();
+  static inline const void *getExtImageCreateInfo() { return &extMemoryImageCreateInfo_; }
+  static inline const void *getExtMemoryAllocateInfo() { return &exportMemoryAllocateInfo_; }
 
-  inline bool isAvailable() const {
-    return available_;
-  }
-
-  inline void *getExtImageCreateInfo() {
-    return &extMemoryImageCreateInfo_;
-  }
-
-  inline void *getExtMemoryAllocateInfo() {
-    return &exportMemoryAllocateInfo_;
-  }
-
-  inline VkSemaphore getSemaphoreGLReady() const {
-    return glReady_.vkRef;
-  }
-
-  inline VkSemaphore getSemaphoreGLComplete() const {
-    return glComplete_.vkRef;
-  }
+  inline VkSemaphore getSemaphoreGLReady() const { return glReady_.vkRef; }
+  inline VkSemaphore getSemaphoreGLComplete() const { return glComplete_.vkRef; }
 
   void createSharedSemaphores();
   void createSharedMemory(VkDeviceMemory memory, VkDeviceSize allocationSize);
@@ -97,17 +81,30 @@ class VKGLInterop {
   void waitGLReady();
   void signalGLComplete();
 
+ public:
+  static void checkFunctionsAvailable();
+  static inline void setVkExtensionsAvailable(bool available) { vkExtensionsAvailable_ = available; };
+  static inline bool isAvailable() { return vkExtensionsAvailable_ && functionsAvailable_; }
+
+  static inline const std::vector<const char *> &getRequiredInstanceExtensions() { return requiredInstanceExtensions; }
+  static inline const std::vector<const char *> &getRequiredDeviceExtensions() { return requiredDeviceExtensions; }
+
  private:
   VKContext &vkCtx_;
   VkDevice device_ = VK_NULL_HANDLE;
-  bool available_ = false;
-
-  VkExternalMemoryImageCreateInfo extMemoryImageCreateInfo_{};
-  VkExportMemoryAllocateInfo exportMemoryAllocateInfo_{};
 
   SharedMemory sharedMemory_{};
   SharedSemaphore glReady_{};
   SharedSemaphore glComplete_{};
+
+ private:
+  static bool vkExtensionsAvailable_;
+  static bool functionsAvailable_;
+  static const std::vector<const char *> requiredInstanceExtensions;
+  static const std::vector<const char *> requiredDeviceExtensions;
+
+  static VkExternalMemoryImageCreateInfo extMemoryImageCreateInfo_;
+  static VkExportMemoryAllocateInfo exportMemoryAllocateInfo_;
 };
 
 }

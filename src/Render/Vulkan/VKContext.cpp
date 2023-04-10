@@ -8,6 +8,7 @@
 #include "Base/Logger.h"
 #include "Base/Timer.h"
 #include "VulkanUtils.h"
+#include "VKGLInterop.h"
 
 namespace SoftGL {
 
@@ -15,14 +16,6 @@ namespace SoftGL {
 #define UNIFORM_BUFFER_POOL_MAX_SIZE 128
 
 #define SEMAPHORE_MAX_SIZE 8
-
-#ifdef PLATFORM_WINDOWS
-constexpr const char *HOST_MEMORY_EXTENSION_NAME = VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME;
-constexpr const char *HOST_SEMAPHORE_EXTENSION_NAME = VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME;
-#else
-constexpr const char *HOST_MEMORY_EXTENSION_NAME    = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
-constexpr const char *HOST_SEMAPHORE_EXTENSION_NAME = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
-#endif
 
 const std::vector<const char *> kValidationLayers = {
     "VK_LAYER_KHRONOS_validation",
@@ -33,18 +26,12 @@ const std::vector<const char *> kRequiredInstanceExtensions = {
     VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 #endif
     VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-    VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
-    VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
 };
 
 const std::vector<const char *> kRequiredDeviceExtensions = {
 #ifdef PLATFORM_OSX
     VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 #endif
-    VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
-    VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
-    HOST_SEMAPHORE_EXTENSION_NAME,
-    HOST_MEMORY_EXTENSION_NAME,
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -84,6 +71,15 @@ bool VKContext::create(bool debugOutput) {
 
   debugOutput_ = debugOutput;
 
+  // query instance extensions
+  uint32_t extensionCount = 0;
+  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+  std::vector<VkExtensionProperties> instanceExtensions(extensionCount);
+  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, instanceExtensions.data());
+  for (auto &ext : instanceExtensions) {
+    instanceExtensions_[ext.extensionName] = ext;
+  }
+
   EXEC_VULKAN_STEP(createInstance)
   EXEC_VULKAN_STEP(setupDebugMessenger)
   EXEC_VULKAN_STEP(pickPhysicalDevice)
@@ -91,6 +87,9 @@ bool VKContext::create(bool debugOutput) {
   EXEC_VULKAN_STEP(createCommandPool)
 
   commandBuffers_.reserve(COMMAND_BUFFER_POOL_MAX_SIZE);
+
+  // OpenGL interop
+  VKGLInterop::checkFunctionsAvailable();
 
   return true;
 }
@@ -315,6 +314,13 @@ bool VKContext::createInstance() {
   if (debugOutput_) {
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
+  auto &glInteropExt = VKGLInterop::getRequiredInstanceExtensions();
+  if (extensionsExits(glInteropExt, instanceExtensions_)) {
+    extensions.insert(extensions.end(), glInteropExt.begin(), glInteropExt.end());
+  } else {
+    LOGE("VKGLInterop required instance extensions not found");
+    VKGLInterop::setVkExtensionsAvailable(false);
+  }
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -382,6 +388,15 @@ bool VKContext::pickPhysicalDevice() {
   if (physicalDevice_ != VK_NULL_HANDLE) {
     vkGetPhysicalDeviceProperties(physicalDevice_, &deviceProperties_);
     vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &deviceMemoryProperties_);
+
+    // query device extensions
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(physicalDevice_, nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> deviceExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(physicalDevice_, nullptr, &extensionCount, deviceExtensions.data());
+    for (auto &ext : deviceExtensions) {
+      deviceExtensions_[ext.extensionName] = ext;
+    }
   }
 
   return physicalDevice_ != VK_NULL_HANDLE;
@@ -405,6 +420,13 @@ bool VKContext::createLogicalDevice() {
   createInfo.pEnabledFeatures = &deviceFeatures;
 
   auto extensions = kRequiredDeviceExtensions;
+  auto &glInteropExt = VKGLInterop::getRequiredDeviceExtensions();
+  if (extensionsExits(glInteropExt, deviceExtensions_)) {
+    extensions.insert(extensions.end(), glInteropExt.begin(), glInteropExt.end());
+  } else {
+    LOGE("VKGLInterop required device extensions not found");
+    VKGLInterop::setVkExtensionsAvailable(false);
+  }
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -511,7 +533,7 @@ void VKContext::createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size) 
                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
-bool VKContext::createImageMemory(AllocatedImage &image, uint32_t properties, void *pNext) {
+bool VKContext::createImageMemory(AllocatedImage &image, uint32_t properties, const void *pNext) {
   if (image.memory != VK_NULL_HANDLE) {
     return true;
   }
@@ -543,6 +565,16 @@ bool VKContext::linearBlitAvailable(VkFormat format) {
     return false;
   }
 
+  return true;
+}
+
+bool VKContext::extensionsExits(const std::vector<const char *> &requiredExtensions,
+                                const std::unordered_map<std::string, VkExtensionProperties> &availableExtensions) {
+  for (auto &reqExt : requiredExtensions) {
+    if (availableExtensions.find(reqExt) == availableExtensions.end()) {
+      return false;
+    }
+  }
   return true;
 }
 

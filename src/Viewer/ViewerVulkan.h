@@ -28,7 +28,7 @@ class ViewerVulkan : public Viewer {
     camera_->setReverseZ(config_.reverseZ);
     cameraDepth_->setReverseZ(config_.reverseZ);
 
-    if (glInterop_ && glInterop_->isAvailable()) {
+    if (glInterop_ && VKGLInterop::isAvailable()) {
       glInterop_->signalGLComplete();
     }
   }
@@ -39,12 +39,12 @@ class ViewerVulkan : public Viewer {
     // first round or texture changed
     if (glInterop_ != &vkTex->getGLInterop()) {
       glInterop_ = &vkTex->getGLInterop();
-      if (glInterop_->isAvailable()) {
+      if (VKGLInterop::isAvailable()) {
         // create new GL texture
         if (interopOutTex_ > 0) {
           GL_CHECK(glDeleteTextures(1, &interopOutTex_));
         }
-        interopOutTex_ = createGLTexture2D(vkTex->width, vkTex->height);
+        interopOutTex_ = createGLTexture2D();
 
         // set texture storage
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, interopOutTex_));
@@ -52,7 +52,7 @@ class ViewerVulkan : public Viewer {
       }
     }
 
-    if (glInterop_ && glInterop_->isAvailable()) {
+    if (glInterop_ && VKGLInterop::isAvailable()) {
       glInterop_->waitGLReady();
       return (int) interopOutTex_;
     }
@@ -112,7 +112,7 @@ class ViewerVulkan : public Viewer {
     return false;
   }
 
-  static GLuint createGLTexture2D(uint32_t width, uint32_t height) {
+  static GLuint createGLTexture2D() {
     unsigned int texture;
     glGenTextures(1, &texture);
     glActiveTexture(GL_TEXTURE0);
