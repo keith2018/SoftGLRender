@@ -1,78 +1,71 @@
-// //////////////////////////////////////////////////////////
-// md5.h
-// Copyright (c) 2014 Stephan Brumme. All rights reserved.
-// see http://create.stephan-brumme.com/disclaimer.html
-//
+/*
+ ***********************************************************************
+ ** md5.h -- header file for implementation of MD5                    **
+ ** RSA Data Security, Inc. MD5 Message-Digest Algorithm              **
+ ** Created: 2/17/90 RLR                                              **
+ ** Revised: 12/27/90 SRD,AJ,BSK,JT Reference C version               **
+ ** Revised (for MD5): RLR 4/27/91                                    **
+ **   -- G modified to have y&~z instead of y&z                       **
+ **   -- FF, GG, HH modified to add in last register done             **
+ **   -- Access pattern: round 2 works mod 5, round 3 works mod 3     **
+ **   -- distinct additive constant for each step                     **
+ **   -- round 4 added, working mod 7                                 **
+ ***********************************************************************
+ */
 
-#pragma once
+/*
+ ***********************************************************************
+ ** Copyright (C) 1990, RSA Data Security, Inc. All rights reserved.  **
+ **                                                                   **
+ ** License to copy and use this software is granted provided that    **
+ ** it is identified as the "RSA Data Security, Inc. MD5 Message-     **
+ ** Digest Algorithm" in all material mentioning or referencing this  **
+ ** software or this function.                                        **
+ **                                                                   **
+ ** License is also granted to make and use derivative works          **
+ ** provided that such works are identified as "derived from the RSA  **
+ ** Data Security, Inc. MD5 Message-Digest Algorithm" in all          **
+ ** material mentioning or referencing the derived work.              **
+ **                                                                   **
+ ** RSA Data Security, Inc. makes no representations concerning       **
+ ** either the merchantability of this software or the suitability    **
+ ** of this software for any particular purpose.  It is provided "as  **
+ ** is" without express or implied warranty of any kind.              **
+ **                                                                   **
+ ** These notices must be retained in any copies of any part of this  **
+ ** documentation and/or software.                                    **
+ ***********************************************************************
+ */
 
-//#include "hash.h"
-#include <string>
-
-// define fixed size integer types
-#ifdef _MSC_VER
-// Windows
-typedef unsigned __int8  uint8_t;
-typedef unsigned __int32 uint32_t;
-typedef unsigned __int64 uint64_t;
-#else
-// GCC
-#include <stdint.h>
+#ifndef __MD5_INCLUDE__
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+/* typedef a 32-bit type */
+#ifdef _LP64
+typedef unsigned int UINT4;
+typedef int          INT4;
+#else
+typedef unsigned long UINT4;
+typedef long          INT4;
+#endif
+#define _UINT4_T
 
-/// compute MD5 hash
-/** Usage:
-    MD5 md5;
-    std::string myHash  = md5("Hello World");     // std::string
-    std::string myHash2 = md5("How are you", 11); // arbitrary data, 11 bytes
+/* Data structure for MD5 (Message-Digest) computation */
+typedef struct {
+  UINT4 i[2];                   /* number of _bits_ handled mod 2^64 */
+  UINT4 buf[4];                                    /* scratch buffer */
+  unsigned char in[64];                              /* input buffer */
+  unsigned char digest[16];     /* actual digest after MD5Final call */
+} MD5_CTX;
 
-    // or in a streaming fashion:
+void MD5_Init (MD5_CTX *mdContext);
+void MD5_Update (MD5_CTX *mdContext, unsigned char *inBuf, unsigned int inLen);
+void MD5_Final (unsigned char hash[], MD5_CTX *mdContext);
 
-    MD5 md5;
-    while (more data available)
-      md5.add(pointer to fresh data, number of new bytes);
-    std::string myHash3 = md5.getHash();
-  */
-class MD5 //: public Hash
-{
-public:
-  /// split into 64 byte blocks (=> 512 bits), hash is 16 bytes long
-  enum { BlockSize = 512 / 8, HashBytes = 16 };
-
-  /// same as reset()
-  MD5();
-
-  /// compute MD5 of a memory block
-  std::string operator()(const void* data, size_t numBytes);
-  /// compute MD5 of a string, excluding final zero
-  std::string operator()(const std::string& text);
-
-  /// add arbitrary number of bytes
-  void add(const void* data, size_t numBytes);
-
-  /// return latest hash as 32 hex characters
-  std::string getHash();
-  /// return latest hash as bytes
-  void        getHash(unsigned char buffer[HashBytes]);
-
-  /// restart
-  void reset();
-
-private:
-  /// process 64 bytes
-  void processBlock(const void* data);
-  /// process everything left in the internal buffer
-  void processBuffer();
-
-  /// size of processed data in bytes
-  uint64_t m_numBytes;
-  /// valid bytes in m_buffer
-  size_t   m_bufferSize;
-  /// bytes not processed yet
-  uint8_t  m_buffer[BlockSize];
-
-  enum { HashValues = HashBytes / 4 };
-  /// hash, stored as integers
-  uint32_t m_hash[HashValues];
-};
+#ifdef __cplusplus
+}
+#endif
+#define __MD5_INCLUDE__
+#endif /* __MD5_INCLUDE__ */

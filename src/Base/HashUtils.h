@@ -46,14 +46,32 @@ class HashUtils {
     seed ^= keyHash + 0x9e3779b9u + (seed << 6u) + (seed >> 2u);
   }
 
-  inline static std::string getHashMD5(const void *data, size_t length) {
-    MD5 md5;
-    return md5(data, length);
+  inline static std::string getHashMD5(const char *data, size_t length) {
+    unsigned char digest[17] = {0};
+
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, (unsigned char *) data, length);
+    MD5_Final(digest, &ctx);
+
+    char str[33] = {0};
+    hexToStr(str, digest, 16);
+    return {str};
   }
 
   inline static std::string getHashMD5(const std::string &text) {
-    MD5 md5;
-    return md5(text);
+    return getHashMD5(text.c_str(), text.length());
+  }
+
+ private:
+  static void hexToStr(char *str, const unsigned char *digest, int length) {
+    uint8_t hexDigit;
+    for (int i = 0; i < length; i++) {
+      hexDigit = (digest[i] >> 4) & 0xF;
+      str[i * 2] = (hexDigit <= 9) ? (hexDigit + '0') : (hexDigit + 'a' - 10);
+      hexDigit = digest[i] & 0xF;
+      str[i * 2 + 1] = (hexDigit <= 9) ? (hexDigit + '0') : (hexDigit + 'a' - 10);
+    }
   }
 };
 

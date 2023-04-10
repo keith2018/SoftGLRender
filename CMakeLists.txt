@@ -73,7 +73,7 @@ add_executable(SoftGLRender
         "${IMGUI_SRC}"
         "${THIRD_PARTY_DIR}/glad/src/glad.c"
         "${THIRD_PARTY_DIR}/json11/json11.cpp"
-        "${THIRD_PARTY_DIR}/md5/md5.cpp"
+        "${THIRD_PARTY_DIR}/md5/md5.c"
         )
 
 if (WIN32)
