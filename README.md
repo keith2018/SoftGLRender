@@ -166,6 +166,7 @@ Texture
 * [stb_image](https://github.com/nothings/stb)
 * [assimp](https://github.com/assimp/assimp)
 * [imgui](https://github.com/ocornut/imgui)
+* [vma](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
 
 ## Clone
 

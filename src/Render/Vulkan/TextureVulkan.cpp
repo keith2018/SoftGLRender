@@ -83,7 +83,7 @@ TextureVulkan::~TextureVulkan() {
   }
   hostImage_.destroy(device_);
 
-  uploadStagingBuffer_.destroy(device_);
+  uploadStagingBuffer_.destroy(vkCtx_.allocator());
 }
 
 void TextureVulkan::initImageData() {
@@ -522,13 +522,11 @@ void TextureVulkan::setImageDataInternal(const std::vector<const void *> &buffer
     vkCtx_.createStagingBuffer(uploadStagingBuffer_, bufferSize);
   }
 
-  uint8_t *dataPtr;
-  VK_CHECK(vkMapMemory(device_, uploadStagingBuffer_.memory, 0, bufferSize, 0, reinterpret_cast<void **>(&dataPtr)));
+  auto *dataPtr = (uint8_t *) uploadStagingBuffer_.allocInfo.pMappedData;
   for (auto &ptr : buffers) {
     memcpy(dataPtr, ptr, static_cast<size_t>(imageSize));
     dataPtr += imageSize;
   }
-  vkUnmapMemory(device_, uploadStagingBuffer_.memory);
 
   auto *copyCmd = vkCtx_.beginCommands();
 

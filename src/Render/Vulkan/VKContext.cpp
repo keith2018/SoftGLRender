@@ -10,6 +10,9 @@
 #include "VulkanUtils.h"
 #include "VKGLInterop.h"
 
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+
 namespace SoftGL {
 
 #define COMMAND_BUFFER_POOL_MAX_SIZE 128
@@ -88,6 +91,16 @@ bool VKContext::create(bool debugOutput) {
 
   commandBuffers_.reserve(COMMAND_BUFFER_POOL_MAX_SIZE);
 
+  // vma
+  VmaAllocatorCreateInfo allocatorCreateInfo{};
+  allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+  allocatorCreateInfo.physicalDevice = physicalDevice_;
+  allocatorCreateInfo.device = device_;
+  allocatorCreateInfo.instance = instance_;
+  allocatorCreateInfo.pVulkanFunctions = nullptr;
+
+  VK_CHECK(vmaCreateAllocator(&allocatorCreateInfo, &allocator_));
+
   // OpenGL interop
   VKGLInterop::checkFunctionsAvailable();
 
@@ -99,8 +112,7 @@ void VKContext::destroy() {
 
   for (auto &kv : uniformBufferPool_) {
     for (auto &buff : kv.second) {
-      vkUnmapMemory(device_, buff.buffer.memory);
-      buff.buffer.destroy(device_);
+      buff.buffer.destroy(allocator_);
       buff.mapPtr = nullptr;
       buff.inUse = false;
     }
@@ -113,16 +125,20 @@ void VKContext::destroy() {
       vkFreeCommandBuffers(device_, commandPool_, 1, &cmd.cmdBuffer);
     }
   }
-
   vkDestroyCommandPool(device_, commandPool_, nullptr);
-  vkDestroyDevice(device_, nullptr);
 
+  // vma
+  vmaDestroyAllocator(allocator_);
+
+  // debug output
   if (debugOutput_) {
     if (VKLoader::vkDestroyDebugUtilsMessengerEXT != nullptr) {
       VKLoader::vkDestroyDebugUtilsMessengerEXT(instance_, debugMessenger_, nullptr);
     }
   }
 
+  // device & instance
+  vkDestroyDevice(device_, nullptr);
   vkDestroyInstance(instance_, nullptr);
 }
 
@@ -266,9 +282,8 @@ UniformBuffer *VKContext::getNewUniformBuffer(VkDeviceSize size) {
 
   UniformBuffer buff{};
   buff.inUse = true;
-  createBuffer(buff.buffer, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  VK_CHECK(vkMapMemory(device_, buff.buffer.memory, 0, size, 0, &buff.mapPtr));
+  createUniformBuffer(buff.buffer, size);
+  buff.mapPtr = buff.buffer.allocInfo.pMappedData;
   pool.push_back(buff);
   maxUniformBufferPoolSize_ = std::max(maxUniformBufferPoolSize_, pool.size());
   if (maxUniformBufferPoolSize_ >= UNIFORM_BUFFER_POOL_MAX_SIZE) {
@@ -301,7 +316,7 @@ bool VKContext::createInstance() {
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.pEngineName = "VulkanRenderer";
   appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.apiVersion = VK_API_VERSION_1_0;
+  appInfo.apiVersion = VK_API_VERSION_1_2;
 
   VkInstanceCreateInfo createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -506,31 +521,45 @@ QueueFamilyIndices VKContext::findQueueFamilies(VkPhysicalDevice physicalDevice)
   return indices;
 }
 
-void VKContext::createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
+void VKContext::createGPUBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage) {
   VkBufferCreateInfo bufferInfo{};
   bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bufferInfo.size = size;
-  bufferInfo.usage = usage;
+  bufferInfo.usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
   bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-  VK_CHECK(vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer.buffer));
+  VmaAllocationCreateInfo allocInfo{};
+  allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-  VkMemoryRequirements memReqs;
-  vkGetBufferMemoryRequirements(device_, buffer.buffer, &memReqs);
-  buffer.allocationSize = memReqs.size;
+  VK_CHECK(vmaCreateBuffer(allocator_, &bufferInfo, &allocInfo, &buffer.buffer, &buffer.allocation, &buffer.allocInfo));
+}
 
-  VkMemoryAllocateInfo allocInfo{};
-  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  allocInfo.allocationSize = memReqs.size;
-  allocInfo.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, properties);
+void VKContext::createUniformBuffer(AllocatedBuffer &buffer, VkDeviceSize size) {
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size = size;
+  bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-  VK_CHECK(vkAllocateMemory(device_, &allocInfo, nullptr, &buffer.memory));
-  VK_CHECK(vkBindBufferMemory(device_, buffer.buffer, buffer.memory, 0));
+  VmaAllocationCreateInfo allocInfo{};
+  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+  allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+  VK_CHECK(vmaCreateBuffer(allocator_, &bufferInfo, &allocInfo, &buffer.buffer, &buffer.allocation, &buffer.allocInfo));
 }
 
 void VKContext::createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size) {
-  createBuffer(buffer, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size = size;
+  bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  VmaAllocationCreateInfo allocInfo{};
+  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+  allocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+  VK_CHECK(vmaCreateBuffer(allocator_, &bufferInfo, &allocInfo, &buffer.buffer, &buffer.allocation, &buffer.allocInfo));
 }
 
 bool VKContext::createImageMemory(AllocatedImage &image, uint32_t properties, const void *pNext) {

@@ -22,6 +22,7 @@ include_directories(
         "${THIRD_PARTY_DIR}/stb/include"
         "${THIRD_PARTY_DIR}/vulkan/include"
         "${THIRD_PARTY_DIR}/glslang"
+        "${THIRD_PARTY_DIR}/vma"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 

@@ -45,13 +45,8 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
     vertexInputInfo_.pVertexAttributeDescriptions = attributeDescriptions_.data();
 
     // create buffers
-    vkCtx_.createBuffer(vertexBuffer_, vertexArr.vertexesBufferLength,
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    vkCtx_.createBuffer(indexBuffer_, vertexArr.indexBufferLength,
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vkCtx_.createGPUBuffer(vertexBuffer_, vertexArr.vertexesBufferLength, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    vkCtx_.createGPUBuffer(indexBuffer_, vertexArr.indexBufferLength, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
     vkCtx_.createStagingBuffer(vertexStagingBuffer_, vertexArr.vertexesBufferLength);
     vkCtx_.createStagingBuffer(indexStagingBuffer_, vertexArr.indexBufferLength);
@@ -64,10 +59,10 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
   }
 
   ~VertexArrayObjectVulkan() {
-    vertexBuffer_.destroy(device_);
-    vertexStagingBuffer_.destroy(device_);
-    indexBuffer_.destroy(device_);
-    indexStagingBuffer_.destroy(device_);
+    vertexBuffer_.destroy(vkCtx_.allocator());
+    vertexStagingBuffer_.destroy(vkCtx_.allocator());
+    indexBuffer_.destroy(vkCtx_.allocator());
+    indexStagingBuffer_.destroy(vkCtx_.allocator());
   }
 
   int getId() const override {
@@ -110,10 +105,7 @@ class VertexArrayObjectVulkan : public VertexArrayObject {
  private:
   void uploadBufferData(AllocatedBuffer &buffer, AllocatedBuffer &stagingBuffer, void *bufferData, VkDeviceSize bufferSize,
                         VkAccessFlags dstAccessMask) {
-    void *dataPtr = nullptr;
-    VK_CHECK(vkMapMemory(device_, stagingBuffer.memory, 0, bufferSize, 0, &dataPtr));
-    memcpy(dataPtr, bufferData, (size_t) bufferSize);
-    vkUnmapMemory(device_, stagingBuffer.memory);
+    memcpy(stagingBuffer.allocInfo.pMappedData, bufferData, (size_t) bufferSize);
 
     auto *commandBuffer = vkCtx_.beginCommands();
 

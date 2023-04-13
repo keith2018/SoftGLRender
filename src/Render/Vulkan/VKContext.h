@@ -11,6 +11,9 @@
 #include <unordered_map>
 #include "VulkanLoader.h"
 
+#define VMA_VULKAN_VERSION 1002000  // Vulkan 1.2
+#include "vk_mem_alloc.h"
+
 namespace SoftGL {
 
 struct QueueFamilyIndices {
@@ -37,16 +40,14 @@ struct AllocatedImage {
 
 struct AllocatedBuffer {
   VkBuffer buffer = VK_NULL_HANDLE;
-  VkDeviceMemory memory = VK_NULL_HANDLE;
-  VkDeviceSize allocationSize = 0;
+  VmaAllocation allocation = VK_NULL_HANDLE;
+  VmaAllocationInfo allocInfo{};
 
-  void destroy(VkDevice device) {
-    vkDestroyBuffer(device, buffer, nullptr);
-    vkFreeMemory(device, memory, nullptr);
+  void destroy(VmaAllocator allocator) {
+    vmaDestroyBuffer(allocator, buffer, allocation);
 
     buffer = VK_NULL_HANDLE;
-    memory = VK_NULL_HANDLE;
-    allocationSize = 0;
+    allocation = VK_NULL_HANDLE;
   }
 };
 
@@ -99,6 +100,10 @@ class VKContext {
     return deviceProperties_;
   }
 
+  inline VmaAllocator &allocator() {
+    return allocator_;
+  }
+
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
 
   UniformBuffer *getNewUniformBuffer(VkDeviceSize size);
@@ -109,7 +114,8 @@ class VKContext {
                    const std::vector<VkSemaphore> &signalSemaphores = {});
   void waitCommands(CommandBuffer *commandBuffer);
 
-  void createBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+  void createGPUBuffer(AllocatedBuffer &buffer, VkDeviceSize size, VkBufferUsageFlags usage);
+  void createUniformBuffer(AllocatedBuffer &buffer, VkDeviceSize size);
   void createStagingBuffer(AllocatedBuffer &buffer, VkDeviceSize size);
   bool createImageMemory(AllocatedImage &image, uint32_t properties, const void *pNext = nullptr);
 
@@ -144,6 +150,8 @@ class VKContext {
   QueueFamilyIndices queueIndices_;
   VkQueue graphicsQueue_ = VK_NULL_HANDLE;
   VkCommandPool commandPool_ = VK_NULL_HANDLE;
+
+  VmaAllocator allocator_ = VK_NULL_HANDLE;
 
   // command buffer pool
   std::vector<CommandBuffer> commandBuffers_;
