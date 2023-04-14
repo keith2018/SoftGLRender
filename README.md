@@ -1,9 +1,10 @@
 # SoftGLRender
 
 Tiny C++ Software Renderer/Rasterizer, It implements the GPU's main rendering pipeline, including point, line, and polygon drawing, texture mapping, and emulates vertex shaders and fragment shaders, 3D models (GLTF) are loaded
-by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.com/g-truc/glm) as math library. 
+by [assimp](https://github.com/assimp/assimp), and using [GLM](https://github.com/g-truc/glm) as math library. The project also adds OpenGL and Vulkan renderers implementation, so you can switch between them in real time while running.
 
-The project also adds OpenGL and Vulkan renderers implementation, so you can switch between them in real time while running.
+The purpose of this project is to provide a starting point for developers who want to learn about modern graphics programming.
+
 
 <div align="center">
 
@@ -167,14 +168,6 @@ Texture
 * [assimp](https://github.com/assimp/assimp)
 * [imgui](https://github.com/ocornut/imgui)
 * [vma](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
-
-## Clone
-
-```bash
-git clone git@github.com:keith2018/SoftGLRender.git
-cd SoftGLRender
-git submodule update --init --recursive
-```
 
 ## Build
 
