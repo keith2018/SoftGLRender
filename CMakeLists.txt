@@ -15,12 +15,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-DDEBUG")
 endif ()
 
-if (MSVC)
-    target_compile_options(${TARGET_NAME} PRIVATE $<$<BOOL:${MSVC}>:/arch:AVX2 /std:c++11>)
-else ()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma -O3")
-endif ()
-
 find_program(CCACHE "ccache")
 if (CCACHE)
     Message(STATUS "find ccache")
@@ -139,6 +133,11 @@ if (UNIX AND NOT APPLE)
             )
 endif ()
 
+if (MSVC)
+    target_compile_options(${TARGET_NAME} PRIVATE $<$<BOOL:${MSVC}>:/arch:AVX2 /std:c++11>)
+else ()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma -O3")
+endif ()
 
 target_link_libraries(${TARGET_NAME} ${LINK_LIBS})
 
