@@ -1,0 +1,11 @@
+Model Information:
+* title:	Robo_OBJ_pose4
+* source:	https://sketchfab.com/3d-models/robo-obj-pose4-uaeYu2fwakD1e1bWp5Cxu3XAqrt
+* author:	Artem Shupa-Dubrova (https://sketchfab.com/fxtema)
+
+Model License:
+* license type:	CC-BY-ND-4.0 (http://creativecommons.org/licenses/by-nd/4.0/)
+* requirements:	Author must be credited. Modified versions can not be distributed. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Robo_OBJ_pose4" (https://sketchfab.com/3d-models/robo-obj-pose4-uaeYu2fwakD1e1bWp5Cxu3XAqrt) by Artem Shupa-Dubrova (https://sketchfab.com/fxtema) licensed under CC-BY-ND-4.0 (http://creativecommons.org/licenses/by-nd/4.0/)

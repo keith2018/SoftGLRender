@@ -1,0 +1,32 @@
+mtllib brickwall.mtl
+
+v -1.0 -1 1.0
+v -1.0 0 -1.0
+v 1.0 0 -1.0
+v 1.0 -1 1.0
+
+# 4 vertices
+
+vt 0.0 1.0
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+
+# 4 texture vertices
+
+vn  0.0 1.0 0.0
+vn  0.0 1.0 0.0
+vn  0.0 1.0 0.0
+vn  0.0 1.0 0.0
+
+# 4 vertex normals
+
+usemtl Material
+g head
+s 1
+f 1/1/1 3/3/3 2/2/2
+f 1/1/1 4/4/4 3/3/3
+
+# 2 faces
+
+mtllib

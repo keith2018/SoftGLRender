@@ -1,0 +1,2 @@
+third_party/** linguist-vendored
+cache/IBL/*.tex filter=lfs diff=lfs merge=lfs -text
