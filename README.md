@@ -23,15 +23,6 @@ programming.
 
 ![](screenshot/helmet.png)
 
-## Project Status
-
-|         |  Software   |  OpenGL  |  OpenGL ES  |   Vulkan    | DirectX | Metal |
-|--------:|:-----------:|:--------:|:-----------:|:-----------:|:-------:|:-----:|
-| Windows |  complete   | complete |             |  complete   |         |       |
-|   Linux |  complete   | complete |             |  complete   |         |       |
-|   MacOS |  complete   | complete |             |  complete   |         |       |
-|     iOS | in progress |          | in progress | in progress |         |       |
-| Android | in progress |          | in progress | in progress |         |       |
 
 ## Features
 

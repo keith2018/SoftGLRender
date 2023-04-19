@@ -17,7 +17,7 @@ endif ()
 
 find_program(CCACHE "ccache")
 if (CCACHE)
-    Message(STATUS "find ccache")
+    message(STATUS "find ccache")
     set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
     set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
 endif (CCACHE)
@@ -28,7 +28,6 @@ include_directories(
         "${THIRD_PARTY_DIR}/glm"
         "${THIRD_PARTY_DIR}/assimp/include"
         "${THIRD_PARTY_DIR}/assimp/contrib"
-        "${CMAKE_CURRENT_BINARY_DIR}/third_party/assimp/include"
         "${THIRD_PARTY_DIR}/imgui"
         "${THIRD_PARTY_DIR}/json11"
         "${THIRD_PARTY_DIR}/md5"
