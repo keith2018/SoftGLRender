@@ -78,9 +78,19 @@ void ConfigPanel::drawSettings() {
   ImGui::Separator();
   ImGui::Text("camera:");
   ImGui::SameLine();
-  if (ImGui::Button("reset")) {
+  if (ImGui::SmallButton("reset")) {
     if (resetCameraFunc_) {
       resetCameraFunc_();
+    }
+  }
+
+  // frame dump
+  ImGui::Separator();
+  ImGui::Text("debug (RenderDoc):");
+  ImGui::SameLine();
+  if (ImGui::SmallButton("capture")) {
+    if (frameDumpFunc_) {
+      frameDumpFunc_();
     }
   }
 

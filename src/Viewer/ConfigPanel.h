@@ -46,6 +46,9 @@ class ConfigPanel {
   inline void setResetReverseZFunc(const std::function<void(void)> &func) {
     resetReverseZFunc_ = func;
   }
+  inline void setFrameDumpFunc(const std::function<void(void)> &func) {
+    frameDumpFunc_ = func;
+  }
 
  private:
   bool loadConfig();
@@ -76,6 +79,7 @@ class ConfigPanel {
   std::function<void(void)> resetCameraFunc_;
   std::function<void(void)> resetMipmapsFunc_;
   std::function<void(void)> resetReverseZFunc_;
+  std::function<void(void)> frameDumpFunc_;
 };
 
 }

@@ -31,6 +31,9 @@ class Viewer {
   void waitRenderIdle();
   void resetReverseZ();
 
+  // used by RenderDoc to capture frames
+  virtual void *getDevicePointer() { return nullptr; }
+
  protected:
   virtual std::shared_ptr<Renderer> createRenderer() = 0;
   virtual bool loadShaders(ShaderProgram &program, ShadingModel shading) = 0;
