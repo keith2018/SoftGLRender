@@ -13,6 +13,7 @@
 #include "ViewerSoftware.h"
 #include "ViewerOpenGL.h"
 #include "ViewerVulkan.h"
+#include "RenderDebug.h"
 
 namespace SoftGL {
 namespace View {
@@ -81,6 +82,9 @@ class ViewerManager {
       waitRenderIdle();
       return modelLoader_->loadSkybox(path);
     });
+    configPanel_->setFrameDumpFunc([&]() -> void {
+      dumpFrame_ = true;
+    });
     configPanel_->setUpdateLightFunc([&](glm::vec3 &position, glm::vec3 &color) -> void {
       auto &scene = modelLoader_->getScene();
       scene.pointLight.vertexes[0].a_position = position;
@@ -105,7 +109,14 @@ class ViewerManager {
       viewer->create(width_, height_, outTexId_);
     }
     viewer->configRenderer();
+    if (dumpFrame_) {
+      RenderDebugger::startFrameCapture(viewer->getDevicePointer());
+    }
     viewer->drawFrame(modelLoader_->getScene());
+    if (dumpFrame_) {
+      dumpFrame_ = false;
+      RenderDebugger::endFrameCapture(viewer->getDevicePointer());
+    }
     return viewer->swapBuffer();
   }
 
@@ -183,6 +194,7 @@ class ViewerManager {
 
   int rendererType_ = RENDER_TYPE_NONE;
   bool showConfigPanel_ = true;
+  bool dumpFrame_ = false;
 };
 
 }

@@ -64,7 +64,8 @@ programming.
 - PBR & IBL shading
 - Skybox CubeMap & Equirectangular
 - ShadowMap
-- FXAA
+- FXAA anti-aliasing
+- RenderDoc In-application Frame Capture
 
 ## Renderer abstraction
 

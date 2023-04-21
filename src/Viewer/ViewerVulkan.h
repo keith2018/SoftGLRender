@@ -95,6 +95,11 @@ class ViewerVulkan : public Viewer {
     return renderer;
   }
 
+  void *getDevicePointer() override {
+    auto *rendererVK = dynamic_cast<RendererVulkan *>(renderer_.get());
+    return (*((void **) (rendererVK->getVkCtx().instance())));   // RENDERDOC_DEVICEPOINTER_FROM_VKINSTANCE
+  }
+
   bool loadShaders(ShaderProgram &program, ShadingModel shading) override {
     auto *programVK = dynamic_cast<ShaderProgramVulkan *>(&program);
     switch (shading) {

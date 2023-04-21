@@ -35,6 +35,7 @@ include_directories(
         "${THIRD_PARTY_DIR}/vulkan/include"
         "${THIRD_PARTY_DIR}/glslang"
         "${THIRD_PARTY_DIR}/vma"
+        "${THIRD_PARTY_DIR}/renderdoc"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
@@ -153,4 +154,7 @@ add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
 
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/cache $<TARGET_FILE_DIR:${TARGET_NAME}>/cache
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${THIRD_PARTY_DIR}/renderdoc/renderdoc.dll $<TARGET_FILE_DIR:${TARGET_NAME}>/renderdoc.dll
         )
