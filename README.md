@@ -1,5 +1,9 @@
 # SoftGLRender
 
+[![CMake MacOS](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_macos.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_macos.yml)
+[![CMake Windows](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml)
+[![CMake Linux](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml)
+
 Tiny C++ software renderer/rasterizer that implements the main steps of the GPU rendering pipeline, including point,
 line and polygon rasterization, texture mapping, depth testing, color blending, etc., and emulates vertex shaders and
 fragment shaders using C++, 3D models (GLTF) are loaded
@@ -9,20 +13,6 @@ real time while running.
 
 The purpose of this project is to provide a starting point for developers who want to learn about modern graphics
 programming.
-
-
-<div align="center">
-
-[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-
-[![CMake MacOS](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_macos.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_macos.yml)
-[![CMake Windows](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_windows.yml)
-[![CMake Linux](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml/badge.svg)](https://github.com/keith2018/SoftGLRender/actions/workflows/cmake_linux.yml)
-
-</div>
-
-![](screenshot/helmet.png)
-
 
 ## Features
 
@@ -59,13 +49,13 @@ programming.
 ### Viewer
 
 - Config panel based on `imgui`
-- Orbit Camera Controller
+- Orbit camera controller
 - Blinn-Phong shading
 - PBR & IBL shading
-- Skybox CubeMap & Equirectangular
-- ShadowMap
+- Skybox cubeMap & equirectangular
+- Shadow mapping
 - FXAA anti-aliasing
-- RenderDoc In-application Frame Capture
+- RenderDoc in-application frame capture
 
 ## Renderer abstraction
 
@@ -189,7 +179,3 @@ other improvements. Please ensure that your code is well-documented and adheres 
 ## License
 
 This code is licensed under the MIT License (see [LICENSE](LICENSE)).
-
-------
-Thanks for checking out my C++ software renderer project! If you have any questions or feedback, please don't hesitate
-to get in touch.
