@@ -14,6 +14,14 @@ real time while running.
 The purpose of this project is to provide a starting point for developers who want to learn about modern graphics
 programming.
 
+## Examples
+
+|                               |                                |
+|-------------------------------|--------------------------------|
+| ![](screenshot/boombox.png)   | ![](screenshot/robot.png)      |
+| ![](screenshot/helmet.png)    | ![](screenshot/glasstable.png) |
+| ![](screenshot/brickwall.png) | ![](screenshot/cube.png)       |
+
 ## Features
 
 ### Software Renderer
@@ -94,14 +102,6 @@ class Renderer {
   void endRenderPass();
 };
 ```
-
-## Examples
-
-|                               |                                |
-|-------------------------------|--------------------------------|
-| ![](screenshot/boombox.png)   | ![](screenshot/robot.png)      |
-| ![](screenshot/helmet.png)    | ![](screenshot/glasstable.png) |
-| ![](screenshot/brickwall.png) | ![](screenshot/cube.png)       |
 
 ## Getting Started
 
