@@ -182,6 +182,11 @@ class TextureSoft : public Texture {
       }
     }
 
+    if (!file) {
+      LOGE("failed to read file: %s", path);
+      return false;
+    }
+
     file.close();
     return true;
   }
