@@ -349,11 +349,11 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
     return;
   }
   for (size_t i = 0; i < ai_material->GetTextureCount(textureType); i++) {
-    aiTextureMapMode texMapMode;
+    aiTextureMapMode texMapMode[2];
     aiString texPath;
     aiReturn retStatus = ai_material->GetTexture(textureType, i, &texPath,
                                                  nullptr, nullptr, nullptr, nullptr,
-                                                 &texMapMode);
+                                                 &texMapMode[0]);
     if (retStatus != aiReturn_SUCCESS || texPath.length == 0) {
       LOGW("load texture type=%d, index=%d failed with return value=%d", textureType, i, retStatus);
       continue;
@@ -385,7 +385,7 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
     auto buffer = loadTextureFile(absolutePath);
     if (buffer) {
       WrapMode mode;
-      switch (texMapMode) {
+      switch (texMapMode[0]) {
         case aiTextureMapMode_Wrap:
           mode = Wrap_REPEAT;
           break;
