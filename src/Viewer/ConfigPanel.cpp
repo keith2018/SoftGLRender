@@ -150,30 +150,28 @@ void ConfigPanel::drawSettings() {
   ImGui::Checkbox("shadow floor", &config_.showFloor);
   config_.shadowMap = config_.showFloor;
 
-  if (config_.wireframe) {
-    return;
-  }
+  if (!config_.wireframe) {
+    // light
+    ImGui::Separator();
+    ImGui::Text("ambient color");
+    ImGui::ColorEdit3("ambient color", (float *) &config_.ambientColor, ImGuiColorEditFlags_NoLabel);
 
-  // light
-  ImGui::Separator();
-  ImGui::Text("ambient color");
-  ImGui::ColorEdit3("ambient color", (float *) &config_.ambientColor, ImGuiColorEditFlags_NoLabel);
+    ImGui::Separator();
+    ImGui::Checkbox("point light", &config_.showLight);
+    if (config_.showLight) {
+      ImGui::Text("light color");
+      ImGui::ColorEdit3("light color", (float *) &config_.pointLightColor, ImGuiColorEditFlags_NoLabel);
 
-  ImGui::Separator();
-  ImGui::Checkbox("point light", &config_.showLight);
-  if (config_.showLight) {
-    ImGui::Text("light color");
-    ImGui::ColorEdit3("light color", (float *) &config_.pointLightColor, ImGuiColorEditFlags_NoLabel);
+      ImGui::Text("light position");
+      ImGui::SliderAngle("##light position", &lightPositionAngle_, 0, 360.f);
+    }
 
-    ImGui::Text("light position");
-    ImGui::SliderAngle("##light position", &lightPositionAngle_, 0, 360.f);
-  }
-
-  // mipmaps
-  ImGui::Separator();
-  if (ImGui::Checkbox("mipmaps", &config_.mipmaps)) {
-    if (resetMipmapsFunc_) {
-      resetMipmapsFunc_();
+    // mipmaps
+    ImGui::Separator();
+    if (ImGui::Checkbox("mipmaps", &config_.mipmaps)) {
+      if (resetMipmapsFunc_) {
+        resetMipmapsFunc_();
+      }
     }
   }
 
