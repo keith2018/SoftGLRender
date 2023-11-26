@@ -222,7 +222,9 @@ void RendererSoft::processClipping() {
         if (renderState_->polygonMode != PolygonMode_FILL) {
           continue;
         }
-        clippingTriangle(primitive);
+        std::vector<PrimitiveHolder> appendPrimitives;
+        clippingTriangle(primitive, appendPrimitives);
+        primitives_.insert(primitives_.end(), appendPrimitives.begin(), appendPrimitives.end());
         break;
     }
   }
@@ -441,17 +443,21 @@ void RendererSoft::clippingPoint(PrimitiveHolder &point) {
 void RendererSoft::clippingLine(PrimitiveHolder &line, bool postVertexProcess) {
   VertexHolder *v0 = &vertexes_[line.indices[0]];
   VertexHolder *v1 = &vertexes_[line.indices[1]];
+  auto clipMaskV0 = v0->clipMask;
+  auto clipMaskV1 = v1->clipMask;
+  auto clipPosV0 = v0->clipPos;
+  auto clipPosV1 = v1->clipPos;
 
   bool fullClip = false;
   float t0 = 0.f;
   float t1 = 1.f;
 
-  int mask = v0->clipMask | v1->clipMask;
+  int mask = clipMaskV0 | clipMaskV1;
   if (mask != 0) {
     for (int i = 0; i < 6; i++) {
       if (mask & FrustumClipMaskArray[i]) {
-        float d0 = glm::dot(FrustumClipPlane[i], v0->clipPos);
-        float d1 = glm::dot(FrustumClipPlane[i], v1->clipPos);
+        float d0 = glm::dot(FrustumClipPlane[i], clipPosV0);
+        float d1 = glm::dot(FrustumClipPlane[i], clipPosV1);
 
         if (d0 < 0 && d1 < 0) {
           fullClip = true;
@@ -472,18 +478,15 @@ void RendererSoft::clippingLine(PrimitiveHolder &line, bool postVertexProcess) {
     return;
   }
 
-  if (v0->clipMask) {
-    auto &vert = clippingNewVertex(line.indices[0], line.indices[1], t0, postVertexProcess);
-    line.indices[0] = vert.index;
+  if (clipMaskV0) {
+    line.indices[0] = clippingNewVertex(line.indices[0], line.indices[1], t0, postVertexProcess);
   }
-
-  if (v1->clipMask) {
-    auto &vert = clippingNewVertex(line.indices[0], line.indices[1], t1, postVertexProcess);
-    line.indices[1] = vert.index;
+  if (clipMaskV1) {
+    line.indices[1] = clippingNewVertex(line.indices[0], line.indices[1], t1, postVertexProcess);
   }
 }
 
-void RendererSoft::clippingTriangle(PrimitiveHolder &triangle) {
+void RendererSoft::clippingTriangle(PrimitiveHolder &triangle, std::vector<PrimitiveHolder> &appendPrimitives) {
   auto *v0 = &vertexes_[triangle.indices[0]];
   auto *v1 = &vertexes_[triangle.indices[1]];
   auto *v2 = &vertexes_[triangle.indices[2]];
@@ -523,8 +526,8 @@ void RendererSoft::clippingTriangle(PrimitiveHolder &triangle) {
         if (std::signbit(dPre) != std::signbit(d)) {
           float t = d < 0 ? dPre / (dPre - d) : -dPre / (d - dPre);
           // create new vertex
-          auto &vert = clippingNewVertex(idxPre, idx, t);
-          indicesOut.push_back(vert.index);
+          auto vertIdx = clippingNewVertex(idxPre, idx, t);
+          indicesOut.push_back(vertIdx);
         }
 
         idxPre = idx;
@@ -545,8 +548,8 @@ void RendererSoft::clippingTriangle(PrimitiveHolder &triangle) {
   triangle.indices[2] = indicesIn[2];
 
   for (int i = 3; i < indicesIn.size(); i++) {
-    primitives_.emplace_back();
-    PrimitiveHolder &ph = primitives_.back();
+    appendPrimitives.emplace_back();
+    PrimitiveHolder &ph = appendPrimitives.back();
     ph.discard = false;
     ph.indices[0] = indicesIn[0];
     ph.indices[1] = indicesIn[i - 1];
@@ -950,7 +953,7 @@ void RendererSoft::setFrameColor(int x, int y, const RGBA &color, int sample) {
   }
 }
 
-VertexHolder &RendererSoft::clippingNewVertex(size_t idx0, size_t idx1, float t, bool postVertexProcess) {
+size_t RendererSoft::clippingNewVertex(size_t idx0, size_t idx1, float t, bool postVertexProcess) {
   vertexes_.emplace_back();
   VertexHolder &vh = vertexes_.back();
   vh.discard = false;
@@ -962,7 +965,7 @@ VertexHolder &RendererSoft::clippingNewVertex(size_t idx0, size_t idx1, float t,
     viewportTransformImpl(vh);
   }
 
-  return vh;
+  return vh.index;
 }
 
 void RendererSoft::vertexShaderImpl(VertexHolder &vertex) {

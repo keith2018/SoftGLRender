@@ -71,7 +71,7 @@ class RendererSoft : public Renderer {
 
   void clippingPoint(PrimitiveHolder &point);
   void clippingLine(PrimitiveHolder &line, bool postVertexProcess = false);
-  void clippingTriangle(PrimitiveHolder &triangle);
+  void clippingTriangle(PrimitiveHolder &triangle, std::vector<PrimitiveHolder> &appendPrimitives);
 
   void interpolateVertex(VertexHolder &out, VertexHolder &v0, VertexHolder &v1, float t);
   void interpolateLinear(float *varsOut, const float *varsIn[2], size_t elemCnt, float t);
@@ -94,7 +94,7 @@ class RendererSoft : public Renderer {
   inline float *getFrameDepth(int x, int y, int sample);
   inline void setFrameColor(int x, int y, const RGBA &color, int sample);
 
-  VertexHolder &clippingNewVertex(size_t idx0, size_t idx1, float t, bool postVertexProcess = false);
+  size_t clippingNewVertex(size_t idx0, size_t idx1, float t, bool postVertexProcess = false);
   void vertexShaderImpl(VertexHolder &vertex);
   void perspectiveDivideImpl(VertexHolder &vertex);
   void viewportTransformImpl(VertexHolder &vertex);
