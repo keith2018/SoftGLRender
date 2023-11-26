@@ -512,8 +512,8 @@ void Viewer::setupTextures(Material &material) {
     texDesc.multiSample = false;
 
     SamplerDesc sampler{};
-    sampler.wrapS = kv.second.wrapMode;
-    sampler.wrapT = kv.second.wrapMode;
+    sampler.wrapS = kv.second.wrapModeU;
+    sampler.wrapT = kv.second.wrapModeV;
     sampler.filterMin = Filter_LINEAR;
     sampler.filterMag = Filter_LINEAR;
 
@@ -526,7 +526,7 @@ void Viewer::setupTextures(Material &material) {
       }
       case MaterialTexType_CUBE: {
         texDesc.type = TextureType_CUBE;
-        sampler.wrapR = kv.second.wrapMode;
+        sampler.wrapR = kv.second.wrapModeW;
         break;
       }
       default: {

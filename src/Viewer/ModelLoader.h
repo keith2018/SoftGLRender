@@ -57,6 +57,7 @@ class ModelLoader {
 
   static glm::mat4 convertMatrix(const aiMatrix4x4 &m);
   static BoundingBox convertBoundingBox(const aiAABB &aabb);
+  static WrapMode convertTexWrapMode(const aiTextureMapMode &mode);
   static glm::mat4 adjustModelCenter(BoundingBox &bounds);
 
   void preloadTextureFiles(const aiScene *scene, const std::string &resDir);
