@@ -99,7 +99,9 @@ struct TextureData {
   size_t width = 0;
   size_t height = 0;
   std::vector<std::shared_ptr<Buffer<RGBA>>> data;
-  WrapMode wrapMode = Wrap_REPEAT;
+  WrapMode wrapModeU = Wrap_REPEAT;
+  WrapMode wrapModeV = Wrap_REPEAT;
+  WrapMode wrapModeW = Wrap_REPEAT;
 };
 
 class MaterialObject {

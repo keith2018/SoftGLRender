@@ -150,7 +150,9 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     texData.width = skyboxTex[0]->getWidth();
     texData.height = skyboxTex[0]->getHeight();
     texData.data = std::move(skyboxTex);
-    texData.wrapMode = Wrap_CLAMP_TO_EDGE;
+    texData.wrapModeU = Wrap_CLAMP_TO_EDGE;
+    texData.wrapModeV = Wrap_CLAMP_TO_EDGE;
+    texData.wrapModeW = Wrap_CLAMP_TO_EDGE;
   } else {
     skyboxTex.resize(1);
     skyboxTex[0] = loadTextureFile(filepath);
@@ -160,7 +162,9 @@ bool ModelLoader::loadSkybox(const std::string &filepath) {
     texData.width = skyboxTex[0]->getWidth();
     texData.height = skyboxTex[0]->getHeight();
     texData.data = std::move(skyboxTex);
-    texData.wrapMode = Wrap_CLAMP_TO_EDGE;
+    texData.wrapModeU = Wrap_CLAMP_TO_EDGE;
+    texData.wrapModeV = Wrap_CLAMP_TO_EDGE;
+    texData.wrapModeW = Wrap_CLAMP_TO_EDGE;
   }
 
   skyboxMaterialCache_[filepath] = material;
@@ -349,7 +353,7 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
     return;
   }
   for (size_t i = 0; i < ai_material->GetTextureCount(textureType); i++) {
-    aiTextureMapMode texMapMode[2];
+    aiTextureMapMode texMapMode[2];  // [u, v]
     aiString texPath;
     aiReturn retStatus = ai_material->GetTexture(textureType, i, &texPath,
                                                  nullptr, nullptr, nullptr, nullptr,
@@ -384,27 +388,13 @@ void ModelLoader::processMaterial(const aiMaterial *ai_material,
 
     auto buffer = loadTextureFile(absolutePath);
     if (buffer) {
-      WrapMode mode;
-      switch (texMapMode[0]) {
-        case aiTextureMapMode_Wrap:
-          mode = Wrap_REPEAT;
-          break;
-        case aiTextureMapMode_Clamp:
-          mode = Wrap_CLAMP_TO_EDGE;
-          break;
-        case aiTextureMapMode_Mirror:
-          mode = Wrap_MIRRORED_REPEAT;
-          break;
-        default:
-          mode = Wrap_REPEAT;
-          break;
-      }
       auto &texData = material.textureData[texType];
       texData.tag = absolutePath;
       texData.width = buffer->getWidth();
       texData.height = buffer->getHeight();
       texData.data = {buffer};
-      texData.wrapMode = mode;
+      texData.wrapModeU = convertTexWrapMode(texMapMode[0]);
+      texData.wrapModeV = convertTexWrapMode(texMapMode[1]);
     } else {
       LOGE("load texture failed: %s, path: %s", Material::materialTexTypeStr(texType), absolutePath.c_str());
     }
@@ -426,6 +416,26 @@ BoundingBox ModelLoader::convertBoundingBox(const aiAABB &aabb) {
   ret.min = glm::vec3(aabb.mMin.x, aabb.mMin.y, aabb.mMin.z);
   ret.max = glm::vec3(aabb.mMax.x, aabb.mMax.y, aabb.mMax.z);
   return ret;
+}
+
+WrapMode ModelLoader::convertTexWrapMode(const aiTextureMapMode &mode) {
+  WrapMode retWrapMode;
+  switch (mode) {
+    case aiTextureMapMode_Wrap:
+      retWrapMode = Wrap_REPEAT;
+      break;
+    case aiTextureMapMode_Clamp:
+      retWrapMode = Wrap_CLAMP_TO_EDGE;
+      break;
+    case aiTextureMapMode_Mirror:
+      retWrapMode = Wrap_MIRRORED_REPEAT;
+      break;
+    default:
+      retWrapMode = Wrap_REPEAT;
+      break;
+  }
+
+  return retWrapMode;
 }
 
 glm::mat4 ModelLoader::adjustModelCenter(BoundingBox &bounds) {
